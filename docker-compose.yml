@@ -1,0 +1,133 @@
+version: '3'
+services:
+  mongo:
+    image: "mongo:4.4"
+    restart: always
+    #ports:
+    #  - "27017:27017"
+    volumes:
+      - ./data/db:/data/db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+
+  mail:
+    image: "bytemark/smtp"
+    restart: always
+    #ports:
+    #  - "25:25"
+
+  redis:
+    image: "bitnami/redis:latest"
+    # before expose this port, you have to set redis password for security reason
+    #ports:
+    #  - "6379:6379"
+    restart: always
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+
+  webapp:
+    image: "sclabio/webapp:1.0.0"
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data:/data
+      - ./jwt:/data/jwt
+    env_file:
+      - ./common.env
+      - ./webapp.env
+    environment:
+      - METEOR_SETTINGS=${METEOR_SETTINGS}
+    links:
+      - mongo
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - mongo
+      - redis
+
+  gis-process:
+    image: "sclabio/gis-process:1.0.0"
+    restart: always
+    volumes:
+      - ./data:/data
+    env_file:
+      - ./common.env
+      - ./gis-process.env
+    environment:
+      - METEOR_SETTINGS=${METEOR_SETTINGS}
+    links:
+      - mongo
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - mongo
+      - redis
+
+  mqtt-client:
+    image: "sclabio/mqtt-client:1.0.0"
+    restart: always
+    ports:
+      - "8090:80"
+    volumes:
+      - ./data:/data
+    env_file:
+      - ./common.env
+      - ./mqtt-client.env
+    environment:
+      - METEOR_SETTINGS=${METEOR_SETTINGS}
+    links:
+      - mongo
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - mongo
+      - redis
+
+  mqtt-broker:
+    image: "sclabio/mqtt-broker:1.0.0"
+    restart: always
+    ports:
+      - "8092:80"
+      - "8883:8883"
+      - "8888:8888"
+    volumes:
+      - ./cert:/data/cert
+      - ./jwt:/data/jwt
+    env_file:
+      - ./common.env
+      - ./mqtt-broker.env
+    environment:
+      - METEOR_SETTINGS=${METEOR_SETTINGS}
+    links:
+      - mongo
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - mongo
+      - redis
