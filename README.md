@@ -222,9 +222,13 @@ $ sudo openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/j
 
 ## Step 8. running instances
 ```bash
+# running daemon mode
 $ sudo ./run.sh
 ```
-Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.
+     Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.
+     After access SCLAB web page you have to login using admin account.
+     Default account information is [admin@sclab.io / admin] from settings.json private.adminEmail, private.adminPassword.
+     You can change your admin password from web page, don't have change settings.json file private.adminPassword
 
 ## Stop Running instance
 ```bash
