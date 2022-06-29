@@ -11,8 +11,6 @@ SCLAB Docker images
      [https://github.com/sclab-io/docker-images/issues](https://github.com/sclab-io/docker-images/issues)
 - **Source of this description**:  
      [docs repo's `sclab/` directory](https://github.com/sclab-io/docker-images/blob/master/README.md) ([history](https://github.com/sclab-io/docker-images/blob/master/history.md))
-- **Source of this description**:  
-     [docs repo's `sclab/` directory](https://github.com/sclab-io/docker-images/blob/master/README.md) ([history](https://github.com/sclab-io/docker-images/blob/master/history.md))
 - **Developer documents**:
      [docs.sclab.io](https://docs.sclab.io)
 
