@@ -209,9 +209,10 @@ $ sudo openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS2
 ## Step 6. create SSL key file for mqtt-broker
 * If you have your own key file just use that key
 ~~~bash
-$ sudo ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
-# empty passphrase - just press enter
-$ sudo openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
+$ mkdir cert
+$ sudo openssl genrsa -out ./cert/privkey.pem 2048
+$ sudo openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
+$ sudo openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
 ~~~
 
 ## Step 7. create JWT key file for SCLAB API
