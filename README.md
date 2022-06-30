@@ -94,6 +94,9 @@ $ vi common.env
 $ vi settings.json
 # edit siteDomain
 # "siteDomain" : "yourdomain.com"
+$ vi mqtt-broker.env
+# edit SERVER_DOMAIN
+# SERVER_DOMAIN=yourdomain.com
 ```
 
 ### common.env
