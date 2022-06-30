@@ -82,7 +82,7 @@ setup.zip file contains these files.
 | logs.sh            | logs script                 |
 
 ## Step 4. Modify config files from setup.zip
-```shell
+```bash
 # ROOT_URL in common.env
 # If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
 # ex) http://yourdomain.com
