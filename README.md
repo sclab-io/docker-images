@@ -4,15 +4,15 @@ SCLAB Docker images
 # Quick reference
 
 - **Maintained by**:  
-     [SCLAB](https://github.com/sclab-io/docker-images)
+  [SCLAB](https://github.com/sclab-io/docker-images)
 - **Where to get help**:  
-     [the Docker Community Forums](https://forums.docker.com/), [the Docker Community Slack](https://dockr.ly/slack), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=docker)
+  [the Docker Community Forums](https://forums.docker.com/), [the Docker Community Slack](https://dockr.ly/slack), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=docker)
 - **Where to file issues**:  
-     [https://github.com/sclab-io/docker-images/issues](https://github.com/sclab-io/docker-images/issues)
+  [https://github.com/sclab-io/docker-images/issues](https://github.com/sclab-io/docker-images/issues)
 - **Source of this description**:  
-     [docs repo's `sclab/` directory](https://github.com/sclab-io/docker-images/blob/master/README.md) ([history](https://github.com/sclab-io/docker-images/blob/master/history.md))
+  [docs repo's `sclab/` directory](https://github.com/sclab-io/docker-images/blob/master/README.md) ([history](https://github.com/sclab-io/docker-images/blob/master/history.md))
 - **Developer documents**:
-     [docs.sclab.io](https://docs.sclab.io)
+  [docs.sclab.io](https://docs.sclab.io)
 
 # What is SCLAB?
 
@@ -230,7 +230,7 @@ $ sudo ./run.sh
      Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.
      After access SCLAB web page you have to login using admin account.
      Default account information is [admin@sclab.io / admin] from settings.json private.adminEmail, private.adminPassword.
-     You can change your admin password from web page, don't have change settings.json file private.adminPassword
+     You can change your admin password from web page, don't need to change settings.json file private.adminPassword.
 
 ## Stop Running instance
 ```bash
