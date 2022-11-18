@@ -22,7 +22,8 @@
   },
   "private": {
     "adminEmail": "admin@sclab.io",
-    "adminPassword": "admin"
+    "adminPassword": "admin",
+    "license": "LICENSE CODE HERE"
   },
   "redisOplog": {
     "redis": {
