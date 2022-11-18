@@ -35,7 +35,7 @@ Provides a platform to quickly build data visualizations by integrating all data
 * [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
 * [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
 
-You can use this image 15 days without LICENSE KEY.
+You can not use this image without LICENSE KEY.
 If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
 
 # Installation
