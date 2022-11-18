@@ -29,6 +29,7 @@ Provides a platform to quickly build data visualizations by integrating all data
 * [sclabio/gis-process](https://hub.docker.com/r/sclabio/gis-process)
 * [sclabio/mqtt-client](https://hub.docker.com/r/sclabio/mqtt-client)
 * [sclabio/mqtt-broker](https://hub.docker.com/r/sclabio/mqtt-broker)
+* [sclabio/kafka-client](https://hub.docker.com/r/sclabio/kafka-client)
 
 ## Other image list for running SCLAB images
 * [mongo](https://hub.docker.com/_/mongo)
@@ -67,19 +68,20 @@ $ unzip setup.zip
 
 setup.zip file contains these files.
 
-| File Name          | Description                 |
-|:-------------------|:----------------------------|
-| common.env         | Common Environment          |
-| webapp.env         | Environment for webapp      |
-| gis-process.env    | Environment for GIS Process |
-| mqtt-client.env    | Environment for MQTT Client |
-| mqtt-broker.env    | Environment for MQTT Broker |
-| docker-compose.yml | Docker Compose YAML         |
-| redis.conf         | Redis config                |
-| settings.json      | sclab settings              |
-| run.sh             | run script                  |
-| down.sh            | down script                 |
-| logs.sh            | logs script                 |
+| File Name          | Description                  |
+|:-------------------|:-----------------------------|
+| common.env         | Common Environment           |
+| webapp.env         | Environment for webapp       |
+| gis-process.env    | Environment for GIS Process  |
+| mqtt-client.env    | Environment for MQTT Client  |
+| mqtt-broker.env    | Environment for MQTT Broker  |
+| kafka-client.env   | Environment for Kafka Client |
+| docker-compose.yml | Docker Compose YAML          |
+| redis.conf         | Redis config                 |
+| settings.json      | sclab settings               |
+| run.sh             | run script                   |
+| down.sh            | down script                  |
+| logs.sh            | logs script                  |
 
 ## Step 4. Modify config files from setup.zip
 ```bash
@@ -158,6 +160,15 @@ $ vi mqtt-broker.env
 | JWT_KEY         | MQTT JWT Key file path (RS256)  |
 | TLS_CERT        | certification file path for SSL |
 | TLS_PRIVATE_KEY | private key file path for SSL   |
+
+### kafka-client.env
+| var           | description                 |
+|:--------------|:----------------------------|
+| SERVER_NAME   | Kafka client server name    |
+| SERVER_DOMAIN | Kafka client server domain  |
+| SERVER_REGION | Kafka client server region  |
+| PUBLIC_IP     | public IP address           |
+| PRIVATE_IP    | private IP address          |
 
 ### settings.json
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
