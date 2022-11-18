@@ -6,7 +6,7 @@ services:
     #ports:
     #  - "27017:27017"
     volumes:
-      - ./data/db:/data/db
+      - ./mongo/db:/data/db
     logging:
       driver: "json-file"
       options:
@@ -21,7 +21,6 @@ services:
 
   redis:
     image: "bitnami/redis:latest"
-    # before expose this port, you have to set redis password for security reason
     #ports:
     #  - "6379:6379"
     restart: always
@@ -40,7 +39,9 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./data:/data
+      - ./webapp:/data
+      - ./webapp/logs:/data/logs
+      - ./webapp/files:/data/files
       - ./jwt:/data/jwt
     env_file:
       - ./common.env
@@ -63,7 +64,7 @@ services:
     image: "sclabio/gis-process:1.0.0"
     restart: always
     volumes:
-      - ./data:/data
+      - ./gis-process/logs:/data/logs
     env_file:
       - ./common.env
       - ./gis-process.env
@@ -87,7 +88,7 @@ services:
     ports:
       - "8090:80"
     volumes:
-      - ./data:/data
+      - ./mqtt-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./mqtt-client.env
@@ -113,11 +114,36 @@ services:
       - "8883:8883"
       - "8888:8888"
     volumes:
+      - ./mqtt-broker/logs:/data/logs
       - ./cert:/data/cert
       - ./jwt:/data/jwt
     env_file:
       - ./common.env
       - ./mqtt-broker.env
+    environment:
+      - METEOR_SETTINGS=${METEOR_SETTINGS}
+    links:
+      - mongo
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - mongo
+      - redis
+  
+  kafka-client:
+    image: "sclabio/kafka-client:1.0.0"
+    restart: always
+    ports:
+      - "8100:80"
+    volumes:
+      - ./kafka-client/logs:/data/logs
+    env_file:
+      - ./common.env
+      - ./kafka-client.env
     environment:
       - METEOR_SETTINGS=${METEOR_SETTINGS}
     links:

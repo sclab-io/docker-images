@@ -17,7 +17,8 @@
     "mainPrefix": "",
     "sso": [],
     "useForceSSL": false,
-    "uploadMaxMB": 15
+    "uploadMaxMB": 15,
+    "editorHosts": ["localhost", "127.0.0.1"]
   },
   "private": {
     "adminEmail": "admin@sclab.io",
