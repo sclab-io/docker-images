@@ -93,7 +93,8 @@ $ vi common.env
 # ex) yourdomain.com
 $ vi settings.json
 # edit siteDomain
-# "siteDomain" : "yourdomain.com"
+# "public.siteDomain" : "yourdomain.com"
+# "private.license": "your license code"
 $ vi mqtt-broker.env
 # edit SERVER_DOMAIN
 # SERVER_DOMAIN=yourdomain.com
