@@ -238,6 +238,8 @@ $ sudo openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/j
 
 ## Step 8. running instances
 ```bash
+# create network
+$ docker create network sclab-network
 # running daemon mode
 $ sudo ./run.sh
 ```
