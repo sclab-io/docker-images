@@ -1,3 +1,7 @@
+## 1.0.4, 2022-11-19
+
+* add networks to docker-compose.yml
+
 ## 1.0.3, 2022-11-18
 
 * update settings.json
