@@ -157,3 +157,8 @@ services:
     depends_on:
       - mongo
       - redis
+
+networks:
+  default:
+    external:
+      name: sclab-network
