@@ -85,8 +85,6 @@ services:
   mqtt-client:
     image: "sclabio/mqtt-client:1.0.0"
     restart: always
-    ports:
-      - "8090:80"
     volumes:
       - ./mqtt-client/logs:/data/logs
     env_file:
@@ -110,7 +108,6 @@ services:
     image: "sclabio/mqtt-broker:1.0.0"
     restart: always
     ports:
-      - "8092:80"
       - "8883:8883"
       - "8888:8888"
     volumes:
@@ -137,8 +134,6 @@ services:
   kafka-client:
     image: "sclabio/kafka-client:1.0.0"
     restart: always
-    ports:
-      - "8100:80"
     volumes:
       - ./kafka-client/logs:/data/logs
     env_file:
