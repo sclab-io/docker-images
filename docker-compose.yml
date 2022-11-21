@@ -154,6 +154,5 @@ services:
       - redis
 
 networks:
-  default:
-    external:
-      name: sclab-network
+  sclab-network:
+    external: true

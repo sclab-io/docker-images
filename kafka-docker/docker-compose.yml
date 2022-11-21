@@ -47,12 +47,13 @@ services:
       OFFSET_STORAGE_TOPIC: my_connect_offsets
       STATUS_STORAGE_TOPIC: my_connect_statuses
       BOOTSTRAP_SERVERS: kafka:9092
-    volumes:
-      - "./data/kafka-connect/jars:/etc/kafka-connect/jars"  
+  
   mysql:
     image: quay.io/debezium/example-mysql
     command: --default-authentication-plugin=caching_sha2_password
     restart: always
+    volumes:
+      - ./data/mysql:/var/lib/mysql
     ports:
       - "3306:3306"
     environment:
@@ -81,6 +82,5 @@ services:
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
 
 networks:
-  default:
-    external:
-      name: sclab-network
+  sclab-network:
+    external: true
