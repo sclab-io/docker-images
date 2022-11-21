@@ -61,16 +61,15 @@ services:
     ports:
       - 9200:9200
 
-  mysql:
-    image: quay.io/debezium/example-mysql
-    command: --default-authentication-plugin=caching_sha2_password
-    restart: always
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: debezium
-      MYSQL_USER: mysqluser
-      MYSQL_PASSWORD: mysqlpw
+#  kibana:
+#    container_name: kb-container
+#    image: docker.elastic.co/kibana/kibana:7.11.0
+#    environment:
+#      - ELASTICSEARCH_HOSTS=http://es-container:9200
+#    depends_on:
+#      - elasticsearch
+#    ports:
+#      - 5601:5601
       
   kafka-connect-ui:
     image: landoop/kafka-connect-ui
