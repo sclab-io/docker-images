@@ -6,7 +6,7 @@ services:
     #ports:
     #  - "27017:27017"
     volumes:
-      - ./mongo/db:/data/db
+      - ./data/mongo/db:/data/db
     logging:
       driver: "json-file"
       options:
@@ -39,9 +39,9 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./webapp:/data
-      - ./webapp/logs:/data/logs
-      - ./webapp/files:/data/files
+      - ./data/webapp:/data
+      - ./data/webapp/logs:/data/logs
+      - ./data/webapp/files:/data/files
       - ./jwt:/data/jwt
     env_file:
       - ./common.env
@@ -64,7 +64,7 @@ services:
     image: "sclabio/gis-process:1.0.0"
     restart: always
     volumes:
-      - ./gis-process/logs:/data/logs
+      - ./data/gis-process/logs:/data/logs
     env_file:
       - ./common.env
       - ./gis-process.env
@@ -86,7 +86,7 @@ services:
     image: "sclabio/mqtt-client:1.0.0"
     restart: always
     volumes:
-      - ./mqtt-client/logs:/data/logs
+      - ./data/mqtt-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./mqtt-client.env
@@ -111,7 +111,7 @@ services:
       - "8883:8883"
       - "8888:8888"
     volumes:
-      - ./mqtt-broker/logs:/data/logs
+      - ./data/mqtt-broker/logs:/data/logs
       - ./cert:/data/cert
       - ./jwt:/data/jwt
     env_file:
@@ -135,7 +135,7 @@ services:
     image: "sclabio/kafka-client:1.0.0"
     restart: always
     volumes:
-      - ./kafka-client/logs:/data/logs
+      - ./data/kafka-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./kafka-client.env
