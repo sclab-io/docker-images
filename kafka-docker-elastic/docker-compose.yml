@@ -4,6 +4,8 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     restart: always
+    networks:
+      - sclab-network
     environment:
       ZOOKEEPER_SERVER_ID: 1
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -23,6 +25,8 @@ services:
     ports:
       - "29092:29092"
       - "9092:9092"
+    networks:
+      - sclab-network
     restart: always
     environment:
       KAFKA_BROKER_ID: 1
@@ -41,6 +45,8 @@ services:
       - kafka
     ports:
       - "8083:8083"
+    networks:
+      - sclab-network
     restart: always
     environment:
       CONFIG_STORAGE_TOPIC: my_connect_configs
@@ -60,16 +66,19 @@ services:
       - "discovery.type=single-node"
     ports:
       - 9200:9200
-
-#  kibana:
-#    container_name: kb-container
-#    image: docker.elastic.co/kibana/kibana:7.11.0
-#    environment:
-#      - ELASTICSEARCH_HOSTS=http://es-container:9200
-#    depends_on:
-#      - elasticsearch
-#    ports:
-#      - 5601:5601
+    networks:
+      - sclab-network
+  kibana:
+    container_name: kb-container
+    image: docker.elastic.co/kibana/kibana:7.11.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-container:9200
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+    networks:
+      - sclab-network
       
   kafka-connect-ui:
     image: landoop/kafka-connect-ui
@@ -80,7 +89,9 @@ services:
       - "8000:8000"
     environment:
       CONNECT_URL: http://kafka-connect:8083
-      
+    networks:
+      - sclab-network 
+  
   kafka-ui:
     image: provectuslabs/kafka-ui
     container_name: kafka-ui
@@ -90,6 +101,8 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+    networks:
+      - sclab-network
 
 networks:
   sclab-network:

@@ -12,13 +12,17 @@ services:
       options:
         max-size: "20m"
         max-file: "10"
+    networks:
+      - sclab-network
 
   mail:
     image: "bytemark/smtp"
     restart: always
     #ports:
     #  - "25:25"
-
+    networks:
+      - sclab-network
+  
   redis:
     image: "bitnami/redis:latest"
     #ports:
@@ -31,6 +35,8 @@ services:
       options:
         max-size: "20m"
         max-file: "10"
+    networks:
+      - sclab-network
 
   webapp:
     image: "sclabio/webapp:1.0.0"
@@ -59,6 +65,8 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - sclab-network
 
   gis-process:
     image: "sclabio/gis-process:1.0.0"
@@ -81,7 +89,9 @@ services:
     depends_on:
       - mongo
       - redis
-
+    networks:
+      - sclab-network
+  
   mqtt-client:
     image: "sclabio/mqtt-client:1.0.0"
     restart: always
@@ -103,7 +113,9 @@ services:
     depends_on:
       - mongo
       - redis
-
+    networks:
+      - sclab-network
+      
   mqtt-broker:
     image: "sclabio/mqtt-broker:1.0.0"
     restart: always
@@ -130,7 +142,9 @@ services:
     depends_on:
       - mongo
       - redis
-  
+    networks:
+      - sclab-network
+      
   kafka-client:
     image: "sclabio/kafka-client:1.0.0"
     restart: always
@@ -152,6 +166,8 @@ services:
     depends_on:
       - mongo
       - redis
+    networks:
+      - sclab-network
 
 networks:
   sclab-network:
