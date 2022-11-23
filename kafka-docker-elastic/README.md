@@ -1,7 +1,7 @@
 # Setup
 ~~~bash
-$ mkdir -p ./data/kafka-connect
-$ cp ./elastic-source-connect-1.5.2-jar-with-dependencies.jar ./data/kafka-connect
+$ mkdir -p ./data/kafka-connect/plugins
+$ cp ./elastic-source-connect-1.5.2-jar-with-dependencies.jar ./data/kafka-connect/plugins
 
 # start docker compose
 $ docker compose up
