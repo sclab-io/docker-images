@@ -13,27 +13,8 @@ async function run(){
   await client.index({
     index: 'my_index_1',
     body: {
-      id: 1,
-      name: 'jsy',
-      timestamp: Date.now()
-    }
-  });
-
-  await client.index({
-    index: 'my_index_1',
-    body: {
-      id: 2,
-      name: 'jsy2',
-      timestamp: Date.now()
-    }
-  });
-
-  await client.index({
-    index: 'my_index_1',
-    body: {
-      id: 3,
-      name: 'jsy3',
-      timestamp: Date.now()
+      temp: Math.floor(Math.random() * 100),
+      createdAt: Date.now(),
     }
   });
 }
