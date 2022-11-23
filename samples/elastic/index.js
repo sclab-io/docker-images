@@ -14,7 +14,7 @@ async function run(){
     index: 'my_index_1',
     body: {
       temp: Math.floor(Math.random() * 100),
-      createdAt: Date.now(),
+      timestamp: Date.now(),
     }
   });
 }
