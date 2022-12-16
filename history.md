@@ -1,3 +1,8 @@
+## 1.0.5, 2022-12-16
+
+* add kafka samples
+* docker-compose.yml network bug fix
+
 ## 1.0.4, 2022-11-19
 
 * add networks to docker-compose.yml
