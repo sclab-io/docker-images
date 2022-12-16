@@ -58,10 +58,14 @@ If you want to get one, please contact us. [support@sclab.io](mailto://support@s
 
 * docker - [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
 
-## Step 2. Download file
+## Step 2. Download file or clone
 * [setup.zip](https://github.com/sclab-io/docker-images/releases)
+* git clone
+~~~bash
+$ git clone https://github.com/sclab-io/docker-images.git
+~~~
 
-## Step 3. Unzip setup.zip
+## Step 3. Unzip setup.zip (If you downloaded setup.zip file)
 ~~~console
 $ unzip setup.zip
 ~~~
