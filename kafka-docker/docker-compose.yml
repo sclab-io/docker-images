@@ -12,6 +12,7 @@ services:
       ZOOKEEPER_SYNC_LIMIT: 2
     ports:
       - "2181:2181"
+    user: "12345"
     volumes:
       - "./data/zookeeper/data:/var/lib/zookeeper/data"
       - "./data/zookeeper/logs:/var/lib/zookeeper/log"
@@ -33,6 +34,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    user: "12345"
     volumes:
       - "./data/kafka/data:/var/lib/kafka/data"
     networks:
@@ -57,6 +59,7 @@ services:
     image: quay.io/debezium/example-mysql
     command: --default-authentication-plugin=caching_sha2_password
     restart: always
+    user: "12345"
     volumes:
       - ./data/mysql:/var/lib/mysql
     ports:
