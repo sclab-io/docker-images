@@ -14,6 +14,7 @@ services:
       ZOOKEEPER_SYNC_LIMIT: 2
     ports:
       - "2181:2181"
+    user: "12345"
     volumes:
       - "./data/zookeeper/data:/var/lib/zookeeper/data"
       - "./data/zookeeper/logs:/var/lib/zookeeper/log"
@@ -36,6 +37,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    user: "12345"
     volumes:
       - "./data/kafka/data:/var/lib/kafka/data"
       
@@ -53,12 +55,14 @@ services:
       OFFSET_STORAGE_TOPIC: my_connect_offsets
       STATUS_STORAGE_TOPIC: my_connect_statuses
       BOOTSTRAP_SERVERS: kafka:9092
+    user: "12345"
     volumes:
       - "./data/kafka-connect/plugins:/kafka/connect"
   
   elasticsearch:
     container_name: es-container
     image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
+    user: "12345"
     volumes:
       - "./data/es:/usr/share/elasticsearch/data"
     environment:
