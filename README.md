@@ -58,17 +58,10 @@ If you want to get one, please contact us. [support@sclab.io](mailto://support@s
 
 * docker - [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
 
-## Step 2. git clone
+## Step 2. Download files
 ~~~bash
 $ git clone https://github.com/sclab-io/docker-images.git
 ~~~
-
-## Step 3. Unzip setup.zip (If you downloaded setup.zip file)
-~~~console
-$ unzip setup.zip
-~~~
-
-setup.zip file contains these files.
 
 | File Name          | Description                  |
 |:-------------------|:-----------------------------|
@@ -85,7 +78,7 @@ setup.zip file contains these files.
 | down.sh            | down script                  |
 | logs.sh            | logs script                  |
 
-## Step 4. Modify config files from setup.zip
+## Step 3. Modify config files from setup.zip
 ```bash
 # ROOT_URL in common.env
 # If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
@@ -214,7 +207,7 @@ $ vi mqtt-broker.env
 | redisOplog.mutationDefaults.pushToRedis              | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-## Step 5. create JWT key file for mqtt-broker
+## Step 4. create JWT key file for mqtt-broker
 ~~~bash
 $ mkdir jwt
 $ sudo ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
@@ -222,7 +215,7 @@ $ sudo ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
 $ sudo openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
 ~~~
 
-## Step 6. create SSL key file for mqtt-broker
+## Step 5. create SSL key file for mqtt-broker
 * If you have your own key file just use that key
 ~~~bash
 $ mkdir cert
@@ -231,14 +224,14 @@ $ sudo openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
 $ sudo openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
 ~~~
 
-## Step 7. create JWT key file for SCLAB API
+## Step 6. create JWT key file for SCLAB API
 ~~~bash
 $ sudo ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
 # empty passphrase - just press enter
 $ sudo openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
 ~~~
 
-## Step 8. running instances
+## Step 7. running instances
 ```bash
 # create network
 $ docker network create sclab-network
