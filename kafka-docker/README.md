@@ -29,7 +29,7 @@ create stream products_stream (
 
 create stream products_where as 
 select payload->after->id as id, payload->after->name as name, payload->after->weight as weight from products_stream
-where payload->after->weight > 100;
+where payload->after->weight > 100 emit changes;
 ```
 # reference
 - https://ksqldb.io
