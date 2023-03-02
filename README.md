@@ -78,7 +78,7 @@ $ git clone https://github.com/sclab-io/docker-images.git
 | down.sh            | down script                  |
 | logs.sh            | logs script                  |
 
-## Step 3. Modify config files from setup.zip
+## Step 3. Modify config files from this source
 ```bash
 # ROOT_URL in common.env
 # If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
