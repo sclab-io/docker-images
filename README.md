@@ -254,4 +254,4 @@ $ sudo ./logs.sh
 ```
 
 # License
-Copyright (c) 2022 SCLAB All rights reserved.
+Copyright (c) 2023 SCLAB All rights reserved.
