@@ -81,6 +81,7 @@ services:
     links:
       - mongo
       - redis
+      - webapp
     logging:
       driver: "json-file"
       options:

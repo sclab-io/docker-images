@@ -129,11 +129,13 @@ $ vi mqtt-broker.env
 | IOT_JWT_PUB_KEY    | IOT JWT PUBLIC KEY file path                       |
 | API_JWT_KEY        | API JWT PRIVATE KEY file path                      |
 | API_JWT_PUB_KEY    | API JWT PUBLIC KEY file path                       |
+| SERVER_FILE_URL    | read file path for server side                     |
 
 ### gis-process.env
 | var       | description                                                                                                                                          |
 |:----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | SERVER_ID | Server ID is an ID used when parsing GIS files and storing them in DB. When duplicating using multiple servers, each server must use a different ID. |
+| SERVER_FILE_URL | read file path for server side |
 
 ### mqtt-client.env
 | var           | description               |
