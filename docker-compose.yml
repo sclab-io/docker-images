@@ -49,6 +49,7 @@ services:
       - ./data/webapp/logs:/data/logs
       - ./data/webapp/files:/data/files
       - ./jwt:/data/jwt
+      - ./cert:/data/cert
     env_file:
       - ./common.env
       - ./webapp.env
