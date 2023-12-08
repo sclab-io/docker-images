@@ -191,7 +191,7 @@ services:
     image: "sclabio/ai-service:1.0.0"
     restart: always
     volumes:
-      - ./data/ai-service/logs:/data/logs
+      - ./data/ai-service/logs:/app/dist/utils/data/logs
     env_file:
       - ./common.env
       - ./ai-service.env
