@@ -72,6 +72,7 @@ services:
     links:
       - mongo
       - redis
+      - qdrant
     logging:
       driver: "json-file"
       options:
@@ -80,6 +81,7 @@ services:
     depends_on:
       - mongo
       - redis
+      - qdrant
     networks:
       - sclab-network
 
