@@ -30,11 +30,13 @@ Provides a platform to quickly build data visualizations by integrating all data
 * [sclabio/mqtt-client](https://hub.docker.com/r/sclabio/mqtt-client)
 * [sclabio/mqtt-broker](https://hub.docker.com/r/sclabio/mqtt-broker)
 * [sclabio/kafka-client](https://hub.docker.com/r/sclabio/kafka-client)
+* [sclabio/ai-service](https://hub.docker.com/r/sclabio/ai-service)
 
 ## Other image list for running SCLAB images
 * [mongo](https://hub.docker.com/_/mongo)
 * [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
 * [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
+* [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
 
 You can not use this image without LICENSE KEY.
 If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
@@ -71,6 +73,7 @@ $ git clone https://github.com/sclab-io/docker-images.git
 | mqtt-client.env    | Environment for MQTT Client  |
 | mqtt-broker.env    | Environment for MQTT Broker  |
 | kafka-client.env   | Environment for Kafka Client |
+| ai-service.env     | Environment for AI service   |
 | docker-compose.yml | Docker Compose YAML          |
 | redis.conf         | Redis config                 |
 | settings.json      | sclab settings               |
@@ -112,6 +115,8 @@ $ vi mqtt-broker.env
 | METEORD_NODE_OPTIONS     | Options when running node. [nodejs options](https://nodejs.org/api/cli.html#cli_options)                                                                                                                  |
 | NO_CUSTOM_LOG            | Set to 1 when you only console log                                                                                                                                                                        |
 | MAIL_URL                 | Send mail server connection url (SMTP)                                                                                                                                                                    |
+| QDRANT_CLUSTER_URL | QDRANT vector database cluster url |
+| QDRANT_API_KEY | QDRANT vector database API Key |
 
 ### webapp.env
 | var                | description                                        |
@@ -166,6 +171,23 @@ $ vi mqtt-broker.env
 | SERVER_REGION | Kafka client server region  |
 | PUBLIC_IP     | public IP address           |
 | PRIVATE_IP    | private IP address          |
+
+### ai-service.env
+| var           | description                 |
+|:--------------|:----------------------------|
+| OPENAI_KEY    | OpenAI api key              |
+| REDIS_URL     | Redis server url            |
+| AI_SERVER_ID  | AI Service ID for HA        |
+| USE_AI_SERVICE | AI Service run flag ("1" / "") |
+| IS_SYNC_SERVER | AI Data sync server flag (If you have multiple AI Service then only one server set "1") |
+| USE_CHAT_SERVICE    | AI Chat Service flag          |
+| SERVER_FILE_URL | read file path for server side |
+| LOG_DIR | Log file path |
+| NODE_OPTIONS | node options |
+| ORIGIN | cors orgin |
+| CREDENTIALS | CREDENTIALS flag ("true" / "") |
+| PORT | AI Service REST API web service port |
+| NODE_ENV | node environment |
 
 ### settings.json
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
