@@ -6,7 +6,7 @@ SCLAB Docker images
 - **Maintained by**:  
   [SCLAB](https://github.com/sclab-io/docker-images)
 - **Where to get help**:  
-  [the Docker Community Forums](https://forums.docker.com/), [the Docker Community Slack](https://dockr.ly/slack), or [Stack Overflow](https://stackoverflow.com/search?tab=newest&q=docker)
+  [SCLAB Discord](https://discord.gg/KJqMvvR7dE) or Send email to support@sclab.io
 - **Where to file issues**:  
   [https://github.com/sclab-io/docker-images/issues](https://github.com/sclab-io/docker-images/issues)
 - **Source of this description**:  
