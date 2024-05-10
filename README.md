@@ -117,6 +117,7 @@ $ vi mqtt-broker.env
 | MAIL_URL                 | Send mail server connection url (SMTP)                                                                                                                                                                    |
 | QDRANT_CLUSTER_URL | QDRANT vector database cluster url |
 | QDRANT_API_KEY | QDRANT vector database API Key |
+| OPENAI_KEY    | OpenAI api key              |
 
 ### webapp.env
 | var                | description                                        |
@@ -175,7 +176,6 @@ $ vi mqtt-broker.env
 ### ai-service.env
 | var           | description                 |
 |:--------------|:----------------------------|
-| OPENAI_KEY    | OpenAI api key              |
 | REDIS_URL     | Redis server url            |
 | AI_SERVER_ID  | AI Service ID for HA        |
 | USE_AI_SERVICE | AI Service run flag ("1" / "") |
