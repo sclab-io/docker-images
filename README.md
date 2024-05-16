@@ -38,12 +38,13 @@ Provides a platform to quickly build data visualizations by integrating all data
 * [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
 * [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
 
-You can not use this image without LICENSE KEY.
-If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
-
 # Installation
 
 ## Pre-requirements
+
+### License code
+You can not use this image without LICENSE KEY.
+If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
 
 ### OS
 
