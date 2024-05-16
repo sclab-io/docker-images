@@ -124,13 +124,6 @@ $ vi mqtt-broker.env
 |:-------------------|:---------------------------------------------------|
 | SERVER_ID          | ID used to distinguish when using multiple servers |
 | ADD_INDEX          | Setting up mongodb index creation (1 - create)     |
-| USE_HTTPS          | Use ssl (1 - use)                                  |
-| SSL_KEY_PATH       | SSL key file path                                  |
-| SSL_CERT_PATH      | SSL certification file path                        |
-| SSL_PORT           | SSL port (443)                                     |
-| SSL_TARGET_IP      | SSL ssl target ip (127.0.0.1)                      |
-| SSL_TARGET_PORT    | SSL ssl target port (80)                           |
-| FORCE_SSL          | http connection redirect to https (1 - use)        |
 | IOT_JWT_KEY        | IOT JWT PRIVATE KEY file path                      |
 | IOT_JWT_PUB_KEY    | IOT JWT PUBLIC KEY file path                       |
 | API_JWT_KEY        | API JWT PRIVATE KEY file path                      |
