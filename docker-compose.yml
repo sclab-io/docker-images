@@ -53,7 +53,7 @@ services:
       - sclab-network
 
   webapp:
-    image: "sclabio/webapp:1.0.0"
+    image: "sclabio/webapp:latest"
     restart: always
     ports:
       - "80"
