@@ -168,20 +168,21 @@ $ vi mqtt-broker.env
 | PRIVATE_IP    | private IP address          |
 
 ### ai-service.env
-| var           | description                 |
-|:--------------|:----------------------------|
-| REDIS_URL     | Redis server url            |
-| AI_SERVER_ID  | AI Service ID for HA        |
-| USE_AI_SERVICE | AI Service run flag ("1" / "") |
+| var           | description                                                                             |
+|:--------------|:----------------------------------------------------------------------------------------|
+| REDIS_URL     | Redis server url                                                                        |
+| AI_SERVER_ID  | AI Service ID for HA                                                                    |
+| USE_AI_SERVICE | AI Service run flag ("1" / "")                                                          |
 | IS_SYNC_SERVER | AI Data sync server flag (If you have multiple AI Service then only one server set "1") |
-| USE_CHAT_SERVICE    | AI Chat Service flag          |
-| SERVER_FILE_URL | read file path for server side |
-| LOG_DIR | Log file path |
-| NODE_OPTIONS | node options |
-| ORIGIN | cors orgin |
-| CREDENTIALS | CREDENTIALS flag ("true" / "") |
-| PORT | AI Service REST API web service port |
-| NODE_ENV | node environment |
+| USE_CHAT_SERVICE    | AI Chat Service flag                                                                    |
+| SERVER_FILE_URL | read file path for server side                                                          |
+| LOG_DIR | Log file path                                                                           |
+| NODE_OPTIONS | node options                                                                            |
+| ORIGIN | cors orgin                                                                              |
+| CREDENTIALS | CREDENTIALS flag ("true" / "")                                                          |
+| PORT | AI Service REST API web service port                                                    |
+| NODE_ENV | node environment                                                                        |
+| USE_SQL_GEN_SERVICE | SQL Generator flag for union data ("1" / "")                                            |
 
 ### settings.json
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
