@@ -37,6 +37,7 @@ Provides a platform to quickly build data visualizations by integrating all data
 * [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
 * [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
 * [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
+* [nginx](https://hub.docker.com/_/nginx)
 
 # Installation
 
