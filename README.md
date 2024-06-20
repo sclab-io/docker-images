@@ -110,6 +110,7 @@ $ vi mqtt-broker.env
 | LOG_PATH                 | It is a log file path, and it does not need to be changed because it is an address to be used in the Docker image.                                                                                        |
 | LOG_LEVEL                | Display log levels [error, warn, info, debug]                                                                                                                                                             |
 | USE_FILE_LOG  | If you don't want to save log file set empty |
+| LOG_FILE_COUNT  | A log file is created daily, and if set to 31, logs will be retained for 31 days. |
 | PORT                     | This is the default port number of the service, but it does not need to be changed because it is the port to be used within the Docker image. To change the actual port, change it in docker-compose.yml. |
 | NODE_ENV                 | node js execution environment variable                                                                                                                                                                    |
 | MONGO_URL                | Connection string for MongoDB                                                                                                                                                                             |
