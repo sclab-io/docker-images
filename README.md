@@ -109,13 +109,13 @@ $ vi mqtt-broker.env
 | HTTP_FORWARDED_COUNT     | The number of procedure servers in front of the service to properly check the IP address of the accessor.                                                                                                 |
 | LOG_PATH                 | It is a log file path, and it does not need to be changed because it is an address to be used in the Docker image.                                                                                        |
 | LOG_LEVEL                | Display log levels [error, warn, info, debug]                                                                                                                                                             |
+| USE_FILE_LOG  | If you don't want to save log file set empty |
 | PORT                     | This is the default port number of the service, but it does not need to be changed because it is the port to be used within the Docker image. To change the actual port, change it in docker-compose.yml. |
 | NODE_ENV                 | node js execution environment variable                                                                                                                                                                    |
 | MONGO_URL                | Connection string for MongoDB                                                                                                                                                                             |
 | MONGO_DB_READ_PREFERENCE | Read Preference for MongoDB                                                                                                                                                                               |
 | MONGO_DB_POOL_SIZE       | Size of MongoDB connection pool                                                                                                                                                                           |
 | METEORD_NODE_OPTIONS     | Options when running node. [nodejs options](https://nodejs.org/api/cli.html#cli_options)                                                                                                                  |
-| NO_CUSTOM_LOG            | Set to 1 when you only console log                                                                                                                                                                        |
 | MAIL_URL                 | Send mail server connection url (SMTP)                                                                                                                                                                    |
 | QDRANT_CLUSTER_URL | QDRANT vector database cluster url |
 | QDRANT_API_KEY | QDRANT vector database API Key |
