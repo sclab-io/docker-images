@@ -232,33 +232,42 @@ $ vi mqtt-broker.env
 ## Step 4. create JWT key file for mqtt-broker
 ~~~bash
 $ mkdir jwt
-$ sudo ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
+$ ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
 # empty passphrase - just press enter
-$ sudo openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
+$ openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
 ~~~
 
 ## Step 5. create SSL key file for mqtt-broker
 * If you have your own key file just use that key
 ~~~bash
 $ mkdir cert
-$ sudo openssl genrsa -out ./cert/privkey.pem 2048
-$ sudo openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
-$ sudo openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
+$ openssl genrsa -out ./cert/privkey.pem 2048
+$ openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
+$ openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
 ~~~
 
 ## Step 6. create JWT key file for SCLAB API
 ~~~bash
-$ sudo ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
+$ ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
 # empty passphrase - just press enter
-$ sudo openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
+$ openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
 ~~~
 
-## Step 7. running instances
+## Step 7. Install AWS CLI
+[https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
+## Step 8. AWS Configure
+~~~bash
+$ aws configure
+# add AWS Access Key ID and AWS Secret Access Key from SCLAB
+~~~
+
+## Step 9. running instances
 ```bash
 # create network
 $ docker network create sclab-network
 # running daemon mode
-$ sudo ./run.sh
+$ ./run.sh
 ```
      Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.
      After access SCLAB web page you have to login using admin account.
@@ -267,12 +276,12 @@ $ sudo ./run.sh
 
 ## Stop Running instance
 ```bash
-$ sudo ./down.sh
+$ ./down.sh
 ```
 
 ## Display logs
 ```bash
-$ sudo ./logs.sh
+$ ./logs.sh
 ```
 
 # License

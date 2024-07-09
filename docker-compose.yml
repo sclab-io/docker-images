@@ -53,7 +53,7 @@ services:
       - sclab-network
 
   webapp:
-    image: "sclabio/webapp:latest"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp:latest"
     restart: always
     ports:
       - "80"
@@ -86,7 +86,7 @@ services:
       - sclab-network
 
   gis-process:
-    image: "sclabio/gis-process:1.0.0"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest"
     restart: always
     volumes:
       - ./data/gis-process/logs:/data/logs
@@ -111,7 +111,7 @@ services:
       - sclab-network
   
   mqtt-client:
-    image: "sclabio/mqtt-client:1.0.0"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest"
     restart: always
     volumes:
       - ./data/mqtt-client/logs:/data/logs
@@ -135,7 +135,7 @@ services:
       - sclab-network
       
   mqtt-broker:
-    image: "sclabio/mqtt-broker:1.0.0"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-broker:latest"
     restart: always
     ports:
       - "8883:8883"
@@ -164,7 +164,7 @@ services:
       - sclab-network
       
   kafka-client:
-    image: "sclabio/kafka-client:1.0.0"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-kafka-client:latest"
     restart: always
     volumes:
       - ./data/kafka-client/logs:/data/logs
@@ -188,7 +188,7 @@ services:
       - sclab-network
   
   ai-service:
-    image: "sclabio/ai-service:1.0.0"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest"
     restart: always
     volumes:
       - ./data/ai-service/logs:/app/dist/utils/data/logs
