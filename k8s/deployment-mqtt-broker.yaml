@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sclab-mqtt-broker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sclab-mqtt-broker
+  template:
+    metadata:
+      labels:
+        app: sclab-mqtt-broker
+    spec:
+      containers:
+        - name: sclab-mqtt-broker
+          image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-broker:latest
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 250m
+            limits:
+              cpu: 1000m
+          envFrom:
+            - configMapRef:
+                name: sclab-common-env
+          env:
+            - name: SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: SERVER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: SERVER_DOMAIN
+              value: mqtt-broker.your-domain.com
+            - name: SERVER_REGION
+              value: region-01
+      imagePullSecrets:
+        - name: sclab-ecr-sec
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: sclab-webapp-pvc

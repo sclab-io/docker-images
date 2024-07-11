@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sclab-webapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sclab-webapp
+  template:
+    metadata:
+      labels:
+        app: sclab-webapp
+    spec:
+      containers:
+        - name: sclab-webapp
+          image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp:latest
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 250m
+            limits:
+              cpu: 1000m
+          envFrom:
+            - configMapRef:
+                name: sclab-common-env
+            - configMapRef:
+                name: sclab-webapp-env      
+          env:
+            - name: SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+      imagePullSecrets:
+        - name: sclab-ecr-sec
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: sclab-webapp-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sclab-webapp-service
+spec:
+  selector:
+    app: sclab-webapp
+  type: NodePort  
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sclab-webapp-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  # add tls secret
+  # kubectl create secret tls sclab-webapp-tls --cert=path/to/tls.crt --key=path/to/tls.key
+  # tls:
+  #   - hosts:
+  #     - your-domain.com
+  #     secretName: sclab-webapp-tls
+  #   - hosts:
+  #     - *.your-domain.com
+  #     secretName: sclab-webapp-tls
+  rules:
+    - host: "your-domain.com"
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: sclab-webapp-service
+              port:
+                number: 80
+    - host: "*.your-domain.com"
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: sclab-webapp-service
+              port:
+                number: 80

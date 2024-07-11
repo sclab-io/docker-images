@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sclab-webapp-env
+  namespace: default
+data:
+  #LOG_PATH: /data/logs/webapp
+  ADD_INDEX: "1"
+  API_JWT_KEY: /data/jwt/jwt-api-RS256.key
+  API_JWT_PUB_KEY: /data/jwt/jwt-api-RS256.key.pub
+  IOT_JWT_KEY: /data/jwt/jwtRS256.key
+  IOT_JWT_PUB_KEY: /data/jwt/jwtRS256.key.pub

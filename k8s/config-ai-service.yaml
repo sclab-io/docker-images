@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sclab-ai-service-env
+  namespace: default
+data:
+  REDIS_URL: "redis://redis:6379"
+  USE_AI_SERVICE: "1"
+  IS_SYNC_SERVER: "1"
+  USE_CHAT_SERVICE: "1"
+  # If you want to use file log uncomment below
+  #LOG_PATH: "/data/logs/ai-service"
+  NODE_OPTIONS: "--max-old-space-size=7000"
+  ORIGIN: "*"
+  CREDENTIALS: "true"
+  PORT: "80"
+  NODE_ENV: "production"
+  USE_SQL_GEN_SERVICE: "1"

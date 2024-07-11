@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sclab-ai-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sclab-ai-service
+  template:
+    metadata:
+      labels:
+        app: sclab-ai-service
+    spec:
+      containers:
+        - name: sclab-ai-service
+          image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 250m
+            limits:
+              cpu: 1000m
+          envFrom:
+            - configMapRef:
+                name: sclab-common-env
+            - configMapRef:
+                name: sclab-ai-service-env      
+          env:
+            - name: AI_SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+      imagePullSecrets:
+        - name: sclab-ecr-sec
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: sclab-webapp-pvc

@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sclab-common-env
+  namespace: default
+data:
+  ROOT_URL: http://your-domain.com
+  HTTP_FORWARDED_COUNT: "1"
+  LOG_LEVEL: info
+
+  # If you want to use file log uncomment below
+  #USE_FILE_LOG: "1"
+  #LOG_FILE_COUNT: "31"
+
+  MONGO_URL: mongodb://mongodb:27017/sclab
+  PORT: "80"
+  NODE_ENV: production
+  MONGO_DB_READ_PREFERENCE: primaryPreferred
+  MONGO_DB_POOL_SIZE: "20"
+  METEORD_NODE_OPTIONS: --max-old-space-size=4096
+  MAIL_URL: smtp://mail:25
+  NODE_TLS_REJECT_UNAUTHORIZED: "0"
+  SERVER_FILE_URL: http://sclab-webapp-service
+
+  # ai service
+  QDRANT_CLUSTER_URL: "http://qdrant:6333"
+  QDRANT_API_KEY: ""
+  OPENAI_KEY: ""
+  METEOR_SETTINGS: |
+    {
+      "public": {
+        "siteName": "SCLAB",
+        "siteDescription": "SCLAB",
+        "defaultLanguage": "ko",
+        "analyticsSettings": {
+          "Google Analytics" : {"trackingId": ""}
+        },
+        "storagePath": "/data/files",
+        "pageSize": 12,
+        "noImg": "/static/img/no_img.png",
+        "themeDefaultImg": "/static/img/theme_default.png",
+        "staticFilePath": "/static",
+        "supportName": "Support Team",
+        "supportEmail": "support@sclab.io",
+        "siteDomain": "your-domain.com",
+        "mainPrefix": "",
+        "sso": [],
+        "useForceSSL": false,
+        "uploadMaxMB": 15,
+        "editorHosts": [],
+        "ai": {
+          "chat": {
+            "prompt": "Use the following pieces of context to answer the question at the end. If you do not know the answer, just say that you do not know, do not try to make up an answer.",
+            "resPrompt": "Within the fused documents, as much as possible, That is a very detailed, helpful answer."
+          }
+        }
+      },
+      "private": {
+        "adminEmail": "admin@sclab.io",
+        "adminPassword": "admin",
+        "license": "LICENSE CODE HERE"
+      },
+      "redisOplog": {
+        "redis": {
+          "port": 6379,
+          "host": "redis"
+        },
+        "retryIntervalMs": 10000,
+        "mutationDefaults": {
+          "optimistic": false,
+          "pushToRedis": true
+        },
+        "debug": false
+      }
+    }

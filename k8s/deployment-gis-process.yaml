@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sclab-gis-process
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sclab-gis-process
+  template:
+    metadata:
+      labels:
+        app: sclab-gis-process
+    spec:
+      containers:
+        - name: sclab-gis-process
+          image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest
+          volumeMounts:
+            - name: data-volume
+              mountPath: /data
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 250m
+            limits:
+              cpu: 1000m
+          envFrom:
+            - configMapRef:
+                name: sclab-common-env
+          env:
+            - name: SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+      imagePullSecrets:
+        - name: sclab-ecr-sec
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: sclab-webapp-pvc
