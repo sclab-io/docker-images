@@ -39,5 +39,5 @@ spec:
   selector:
     app: qdrant
   ports:
-    - port: 6379
-      targetPort: 6379
+    - port: 6333
+      targetPort: 6333
