@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: sclab-gis-process
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: sclab-gis-process
