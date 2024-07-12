@@ -29,7 +29,8 @@
           "model": "OLLAMA_gemma2:latest",
           "label": "Gemma2 9B"
         }
-      ]
+      ],
+      "sqlModel": "OLLAMA_gemma2:latest"
     },
     "hub": {
       "llmAPI": "ollama"
