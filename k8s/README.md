@@ -54,7 +54,7 @@ kubectl apply -f statefulset-redis.yaml
 ## copy cert and jwt folder to pvc
 ~~~bash
 kubectl apply -f deployment-webapp.yaml
-kubectl get pods
+kubectl get pods -l app=sclab-webapp
 kubectl cp ./cert <sclab-webapp-pod-name>:/data/cert
 kubectl cp ./jwt <sclab-webapp-pod-name>:/data/jwt
 kubectl rollout restart deployment/sclab-webapp

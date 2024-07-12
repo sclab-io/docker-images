@@ -185,6 +185,7 @@ $ vi mqtt-broker.env
 | PORT | AI Service REST API web service port                                                    |
 | NODE_ENV | node environment                                                                        |
 | USE_SQL_GEN_SERVICE | SQL Generator flag for union data ("1" / "")                                            |
+| OLLAMA_API_HOST | Ollama api host url (http://host:11434) |
 
 ### settings.json
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
@@ -208,6 +209,8 @@ $ vi mqtt-broker.env
 | public.uploadMaxMB                                   | max upload file size (MB)                                                                                                                                                                                                                                                                                               |
 | public.editorHosts                                   | editor host array                                                                                                                                                                                                                                                                                                       |
 | public.ai.chat | ai chat bot default prompt (If you don't want to use this ai feature, remove "public.ai" field.) |
+| public.ai.ollama | ollama llm list array [{"model": "OLLAMA_gemma2:latest","label": "Gemma2 9B"}] current support model ("OLLAMA_gemma2:latest", "OLLAMA_gemma2:9b-instruct-q8_0", "OLLAMA_gemma2:27b", "OLLAMA_llama3:latest", "OLLAMA_llama3:8b-instruct-q8_0", "OLLAMA_llama3:70b") |
+| public.ai.sqlModel | model for SQL generation current support model ("GPT4", "GPT3_16K", "OLLAMA_gemma2:latest", "OLLAMA_gemma2:9b-instruct-q8_0", "OLLAMA_gemma2:27b", "OLLAMA_llama3:latest", "OLLAMA_llama3:8b-instruct-q8_0", "OLLAMA_llama3:70b") |
 | private                                              | private settings (only for server)                                                                                                                                                                                                                                                                                      |
 | private.adminEmail                                   | admin email address - If admin account doesn't exists, then create admin account using this email address                                                                                                                                                                                                               |
 | private.adminPassword                                | admin password when create admin account, you can change after login.                                                                                                                                                                                                                                                   |
