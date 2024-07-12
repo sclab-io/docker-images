@@ -25,15 +25,11 @@
         "resPrompt": "Within the fused documents, as much as possible, That is a very detailed, helpful answer."
       },
       "ollama": [
-        {
-          "model": "OLLAMA_gemma2:latest",
-          "label": "Gemma2 9B"
-        }
       ],
-      "sqlModel": "OLLAMA_gemma2:latest"
+      "sqlModel": "GPT4"
     },
     "hub": {
-      "llmAPI": "ollama"
+      "llmAPI": "GPT4"
     }
   },
   "private": {
