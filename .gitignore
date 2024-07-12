@@ -76,3 +76,6 @@ setup.zip
 /.idea/.gitignore
 /.idea/docker-images.iml
 /.idea/vcs.xml
+
+**/jwt/
+**/cert/
