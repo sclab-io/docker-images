@@ -20,12 +20,9 @@ spec:
               mountPath: /data
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
-          resources:
-            requests:
-              cpu: 250m
-            limits:
-              cpu: 1000m
+            - containerPort: 1883
+            - containerPort: 8883
+            - containerPort: 8888
           envFrom:
             - configMapRef:
                 name: sclab-common-env
@@ -37,7 +34,7 @@ spec:
             - name: SERVER_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: metadata.uid
+                  fieldPath: metadata.name
             - name: SERVER_DOMAIN
               value: mqtt-broker.your-domain.com
             - name: SERVER_REGION
@@ -48,3 +45,22 @@ spec:
         - name: data-volume
           persistentVolumeClaim:
             claimName: sclab-webapp-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sclab-mqtt-service
+spec:
+  selector:
+    app: sclab-mqtt-broker
+  type: NodePort  
+  ports:
+    - name: mqtt-port
+      port: 1883
+      targetPort: 8883
+    - name: mqtts-port
+      port: 8883
+      targetPort: 8883
+    - name: mqtt-wss-port
+      port: 8888
+      targetPort: 8888
