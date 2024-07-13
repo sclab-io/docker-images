@@ -50,45 +50,44 @@ metadata:
 spec:
   selector:
     app: sclab-webapp
-  type: NodePort  
   ports:
     - port: 80
       targetPort: 80
-# ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: sclab-webapp-ingress
-#   annotations:
-#     nginx.ingress.kubernetes.io/rewrite-target: /
-# spec:
-#   # add tls secret
-#   # kubectl create secret tls sclab-webapp-tls --cert=path/to/tls.crt --key=path/to/tls.key
-#   # tls:
-#   #   - hosts:
-#   #     - your-domain.com
-#   #     secretName: sclab-webapp-tls
-#   #   - hosts:
-#   #     - *.your-domain.com
-#   #     secretName: sclab-webapp-tls
-#   rules:
-#     - host: "your-domain.com"
-#       http:
-#         paths:
-#         - path: /
-#           pathType: Prefix
-#           backend:
-#             service:
-#               name: sclab-webapp-service
-#               port:
-#                 number: 80
-#     - host: "*.your-domain.com"
-#       http:
-#         paths:
-#         - path: /
-#           pathType: Prefix
-#           backend:
-#             service:
-#               name: sclab-webapp-service
-#               port:
-#                 number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sclab-webapp-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  # add tls secret
+  # kubectl create secret tls sclab-webapp-tls --cert=path/to/tls.crt --key=path/to/tls.key
+  # tls:
+  #   - hosts:
+  #     - your-domain.com
+  #     secretName: sclab-webapp-tls
+  #   - hosts:
+  #     - *.your-domain.com
+  #     secretName: sclab-webapp-tls
+  rules:
+    - host: "your-domain.com"
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: sclab-webapp-service
+              port:
+                number: 80
+    - host: "*.your-domain.com"
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: sclab-webapp-service
+              port:
+                number: 80

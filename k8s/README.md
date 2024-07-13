@@ -67,4 +67,10 @@ kubectl apply -f deployment-gis-process.yaml
 kubectl apply -f deployment-kafka-client.yaml
 kubectl apply -f deployment-mqtt-broker.yaml
 kubectl apply -f deployment-mqtt-client.yaml
+~~~
+
+## Ingress
+If you need nginx ingress
 ~~~bash
+kubectl apply -f ingress.yaml
+~~~
