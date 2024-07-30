@@ -267,16 +267,16 @@ $ sudo ./aws/install
 
 ## Step 8. AWS Configure
 ~~~bash
-$ aws configure
+$ sudo aws configure
 # add AWS Access Key ID and AWS Secret Access Key from SCLAB
 ~~~
 
 ## Step 9. running instances
 ```bash
 # create network
-$ docker network create sclab-network
+$ sudo docker network create sclab-network
 # running daemon mode
-$ ./run.sh
+$ sudo ./run.sh
 ```
      Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.
      After access SCLAB web page you have to login using admin account.
@@ -285,12 +285,12 @@ $ ./run.sh
 
 ## Stop Running instance
 ```bash
-$ ./down.sh
+$ sudo ./down.sh
 ```
 
 ## Display logs
 ```bash
-$ ./logs.sh
+$ sudo ./logs.sh
 ```
 
 # License

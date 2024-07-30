@@ -1,0 +1,19 @@
+[Unit]
+Description=Ollama Service
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+RestartSec=3
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+Environment="OLLAMA_HOST=0.0.0.0"
+Environment="OLLAMA_MAX_LOADED_MODELS=7"
+Environment="OLLAMA_KEEP_ALIVE=-1"
+Environment="OLLAMA_MAX_QUEUE=100"
+Environment="OLLAMA_NUM_PARALLEL=2"
+
+[Install]
+WantedBy=default.target
