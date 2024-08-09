@@ -29,7 +29,7 @@
       "sqlModel": "GPT4"
     },
     "hub": {
-      "llmAPI": "GPT4"
+      "llmAPI": "openai"
     }
   },
   "private": {
