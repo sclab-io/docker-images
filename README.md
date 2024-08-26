@@ -64,7 +64,7 @@ If you want to get one, please contact us. [support@sclab.io](mailto://support@s
 
 ## Step 2. Download files
 ~~~bash
-$ git clone https://github.com/sclab-io/docker-images.git
+git clone https://github.com/sclab-io/docker-images.git
 ~~~
 
 | File Name          | Description                  |
@@ -84,22 +84,31 @@ $ git clone https://github.com/sclab-io/docker-images.git
 | logs.sh            | logs script                  |
 
 ## Step 3. Modify config files from this source
+### edit common.env (required)
+- ROOT_URL in common.env
+- If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
+- ex) 127.0.0.1 yourdomain.com
+- ROOT_URL=http://yourdomain.com
 ```bash
-# ROOT_URL in common.env
-# If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
-# ex) 127.0.0.1 yourdomain.com
-$ vi common.env
-# edit ROOT_URL
-# ROOT_URL=http://yourdomain.com
-# public.siteDomain from settings.json
-# ex) yourdomain.com
-$ vi settings.json
-# edit siteDomain
-# "public.siteDomain" : "yourdomain.com"
-# "private.license": "your license code"
-$ vi mqtt-broker.env
-# edit SERVER_DOMAIN
-# SERVER_DOMAIN=yourdomain.com
+vi common.env
+```
+
+### edit settings.json (required)
+- public.siteDomain from settings.json
+- ex) yourdomain.com
+- edit siteDomain
+- "public.siteDomain" : "yourdomain.com"
+- **`private.license`: `your license code`**  
+- ***`(*** lICENSE CODE IS REQUIRED ***)`***
+```bash
+vi settings.json
+```
+
+### edit mqtt-broker.env (optional - If you using our mqtt broker with your domain)
+- edit SERVER_DOMAIN
+- SERVER_DOMAIN=yourdomain.com
+```bash
+vi mqtt-broker.env
 ```
 
 ### common.env
@@ -234,49 +243,67 @@ $ vi mqtt-broker.env
 
 ## Step 4. create JWT key file for mqtt-broker
 ~~~bash
-$ mkdir jwt
-$ ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
-# empty passphrase - just press enter
-$ openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
+mkdir jwt
+~~~
+~~~bash
+ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
+~~~
+- empty passphrase - just press enter
+~~~bash
+openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
 ~~~
 
 ## Step 5. create SSL key file for mqtt-broker
 * If you have your own key file just use that key
 ~~~bash
-$ mkdir cert
-$ openssl genrsa -out ./cert/privkey.pem 2048
-$ openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
-$ openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
+mkdir cert
+~~~
+~~~bash
+openssl genrsa -out ./cert/privkey.pem 2048
+~~~
+~~~bash
+openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
+~~~
+~~~bash
+openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
 ~~~
 
 ## Step 6. create JWT key file for SCLAB API
 ~~~bash
-$ ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
-# empty passphrase - just press enter
-$ openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
+ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
 ~~~
+~~~bash
+openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
+~~~
+- empty passphrase - just press enter
 
 ## Step 7. Install AWS CLI
 [https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+### linux install
 ~~~bash
-# linux install
-$ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-$ unzip awscliv2.zip
-$ sudo ./aws/install
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+~~~
+~~~bash
+unzip awscliv2.zip
+~~~
+~~~bash
+sudo ./aws/install
 ~~~
 
 ## Step 8. AWS Configure
+- add AWS Access Key ID and AWS Secret Access Key from SCLAB
 ~~~bash
-$ sudo aws configure
-# add AWS Access Key ID and AWS Secret Access Key from SCLAB
+sudo aws configure
 ~~~
 
 ## Step 9. running instances
+### create network
 ```bash
-# create network
-$ sudo docker network create sclab-network
-# running daemon mode
-$ sudo ./run.sh
+sudo docker network create sclab-network
+```
+### running daemon mode
+```bash
+sudo ./run.sh
 ```
      Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.
      After access SCLAB web page you have to login using admin account.
@@ -285,12 +312,12 @@ $ sudo ./run.sh
 
 ## Stop Running instance
 ```bash
-$ sudo ./down.sh
+sudo ./down.sh
 ```
 
 ## Display logs
 ```bash
-$ sudo ./logs.sh
+sudo ./logs.sh
 ```
 
 # License
