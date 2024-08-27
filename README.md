@@ -320,5 +320,16 @@ sudo ./down.sh
 sudo ./logs.sh
 ```
 
+## Download new images
+```bash
+sudo ./pull.sh
+```
+
+## Update images and restart webapp
+If any service other than the webapp is updated, please stop them with "sudo ./down.sh" and then restart them with "sudo ./run.sh".
+```bash
+sudo ./update.sh
+```
+
 # License
 Copyright (c) 2023 SCLAB All rights reserved.
