@@ -325,8 +325,13 @@ sudo ./logs.sh
 sudo ./pull.sh
 ```
 
+## Update all images
+```bash
+sudo ./update-all.sh
+```
+
 ## Update images and restart webapp
-If any service other than the webapp is updated, please stop them with "sudo ./down.sh" and then restart them with "sudo ./run.sh".
+If any service other than the webapp is updated, please use "./update-all.sh".
 ```bash
 sudo ./update.sh
 ```
