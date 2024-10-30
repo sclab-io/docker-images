@@ -1,0 +1,43 @@
+{
+  "public": {
+    "siteName": "SCLAB",
+    "siteDescription": "SCLAB",
+    "defaultLanguage": "ko",
+    "analyticsSettings": {
+      "Google Analytics" : {"trackingId": ""}
+    },
+    "storagePath": "/data/files",
+    "pageSize": 12,
+    "noImg": "/static/img/no_img.png",
+    "themeDefaultImg": "/static/img/theme_default.png",
+    "staticFilePath": "/static",
+    "supportName": "Support Team",
+    "supportEmail": "support@sclab.io",
+    "siteDomain": "your-domain.com",
+    "mainPrefix": "",
+    "sso": [],
+    "useForceSSL": false,
+    "uploadMaxMB": 15,
+    "editorHosts": ["ip1", "ip2"],
+    "hub": {
+      "llmAPI": "openai"
+    }
+  },
+  "private": {
+    "adminEmail": "admin@sclab.io",
+    "adminPassword": "admin",
+    "license": "LICENSE CODE HERE"
+  },
+  "redisOplog": {
+    "redis": {
+      "port": 6379,
+      "host": "ip1"
+    },
+    "retryIntervalMs": 10000,
+    "mutationDefaults": {
+      "optimistic": false,
+      "pushToRedis": true
+    },
+    "debug": false
+  }
+}

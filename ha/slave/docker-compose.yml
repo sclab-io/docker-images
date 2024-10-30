@@ -1,54 +1,22 @@
 services:
   mongo:
-    image: "mongo:4.4"
-    restart: always
-    #ports:
-    #  - "27017:27017"
+    image: mongo:4.4
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    # environment:
+    #   MONGO_INITDB_ROOT_USERNAME: root
+    #   MONGO_INITDB_ROOT_PASSWORD: changeMePLZ
     volumes:
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
       - ./data/mongo/db:/data/db
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "10"
-    networks:
-      - sclab-network
-
-  mail:
-    image: "bytemark/smtp"
-    restart: always
-    #ports:
-    #  - "25:25"
+    command: mongod --replSet rs0 --bind_ip_all
     networks:
       - sclab-network
   
-  redis:
-    image: "bitnami/redis:7.0.9"
-    #ports:
-    #  - "6379:6379"
+  mail:
+    image: "bytemark/smtp"
     restart: always
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "10"
-    networks:
-      - sclab-network
-
-  qdrant:
-    image: "qdrant/qdrant:v1.7.0"
-    #ports:
-    # - "6333:6333"
-    restart: always
-    volumes:
-      - ./data/qdrant:/qdrant/storage
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "10"
     networks:
       - sclab-network
 
@@ -57,7 +25,6 @@ services:
     restart: always
     ports:
       - "80"
-      #- "443"
     volumes:
       - ./data/webapp:/data
       - ./data/webapp/logs:/data/logs
@@ -102,7 +69,7 @@ services:
       - webapp
     networks:
       - sclab-network
-  
+
   mqtt-client:
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest"
     restart: always
@@ -194,7 +161,7 @@ services:
       - webapp
     networks:
       - sclab-network
-
+      
   sclab-proxy:
     image: nginx:alpine3.18
     ports:
