@@ -64,8 +64,6 @@ services:
       - sclab-network
 
   webapp:
-    container_name: webapp
-    hostname: webapp
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp:latest"
     restart: always
     ports:
