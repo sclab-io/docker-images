@@ -1,5 +1,6 @@
 services:
   mail:
+    container_name: mail
     image: "bytemark/smtp"
     restart: always
     networks:
@@ -30,6 +31,8 @@ services:
       - sclab-network
       
   sclab-proxy:
+    container_name: sclab-proxy
+    hostname: sclab-proxy
     image: nginx:alpine3.18
     ports:
       - '80:80'

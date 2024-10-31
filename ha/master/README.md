@@ -40,6 +40,7 @@ git clone https://github.com/sclab-io/docker-images.git
 ~~~bash
 vi ../setup.sh
 
+# change site domain
 # add license code
 vi settings.json
 ~~~

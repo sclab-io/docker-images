@@ -1,9 +1,9 @@
 services:
   mongo:
+    container_name: mongo
+    hostname: mongo
     image: "mongo:4.4"
     restart: always
-    #ports:
-    #  - "27017:27017"
     volumes:
       - ./data/mongo/db:/data/db
     logging:
@@ -15,17 +15,17 @@ services:
       - sclab-network
 
   mail:
+    container_name: mail
+    hostname: mail
     image: "bytemark/smtp"
     restart: always
-    #ports:
-    #  - "25:25"
     networks:
       - sclab-network
   
   redis:
+    container_name: redis
+    hostname: redis
     image: "bitnami/redis:7.0.9"
-    #ports:
-    #  - "6379:6379"
     restart: always
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
@@ -38,9 +38,9 @@ services:
       - sclab-network
 
   qdrant:
+    container_name: qdrant
+    hostname: qdrant
     image: "qdrant/qdrant:v1.7.0"
-    #ports:
-    # - "6333:6333"
     restart: always
     volumes:
       - ./data/qdrant:/qdrant/storage
@@ -53,6 +53,8 @@ services:
       - sclab-network
 
   webapp:
+    container_name: webapp
+    hostname: webapp
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp:latest"
     restart: always
     ports:
@@ -82,6 +84,8 @@ services:
       - sclab-network
 
   gis-process:
+    container_name: gis-process
+    hostname: gis-process
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest"
     restart: always
     volumes:
@@ -104,6 +108,8 @@ services:
       - sclab-network
   
   mqtt-client:
+    container_name: mqtt-client
+    hostname: mqtt-client
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest"
     restart: always
     volumes:
@@ -126,6 +132,8 @@ services:
       - sclab-network
       
   mqtt-broker:
+    container_name: mqtt-broker
+    hostname: mqtt-broker
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-broker:latest"
     restart: always
     ports:
@@ -153,6 +161,8 @@ services:
       - sclab-network
       
   kafka-client:
+    container_name: kafka-client
+    hostname: kafka-client
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-kafka-client:latest"
     restart: always
     volumes:
@@ -175,6 +185,8 @@ services:
       - sclab-network
   
   ai-service:
+    container_name: ai-service
+    hostname: ai-service
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest"
     restart: always
     volumes:
@@ -196,6 +208,8 @@ services:
       - sclab-network
 
   sclab-proxy:
+    container_name: sclab-proxy
+    hostname: sclab-proxy
     image: nginx:alpine3.18
     ports:
       - '80:80'

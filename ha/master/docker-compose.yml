@@ -1,30 +1,41 @@
 services:
   mongo:
-    image: mongo:4.4
     container_name: mongo
+    hostname: mongo
+    image: "mongo:4.4"
+    restart: always
     ports:
       - "27017:27017"
-    # environment:
-    #   MONGO_INITDB_ROOT_USERNAME: root
-    #   MONGO_INITDB_ROOT_PASSWORD: changeMePLZ
     volumes:
       - ./data/mongo/db:/data/db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
     networks:
       - sclab-network
 
   mail:
+    container_name: mail
+    hostname: mail
     image: "bytemark/smtp"
     restart: always
     networks:
       - sclab-network
 
   redis:
-    image: "bitnami/redis:7.0.9"
+    container_name: redis
+    hostname: redis
+    image: "bitnami/redis:7.4.1"
     ports:
-     - "6379:6379"
+      - "6379:6379"
     restart: always
     environment:
-      - ALLOW_EMPTY_PASSWORD=yes
+      - ALLOW_EMPTY_PASSWORD=no
+      - REDIS_ALLOW_REMOTE_CONNECTIONS=yes
+      - REDIS_PASSWORD=changeThisRedisPassword
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     logging:
       driver: "json-file"
       options:
@@ -34,10 +45,14 @@ services:
       - sclab-network
 
   qdrant:
-    image: "qdrant/qdrant:v1.7.0"
+    container_name: qdrant
+    hostname: qdrant
+    image: "qdrant/qdrant:v1.12.1"
     ports:
-    - "6333:6333"
+      - "6333:6333"
     restart: always
+    environment:
+      - QDRANT__SERVICE__HOST=0.0.0.0
     volumes:
       - ./data/qdrant:/qdrant/storage
     logging:
@@ -49,6 +64,8 @@ services:
       - sclab-network
 
   webapp:
+    container_name: webapp
+    hostname: webapp
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp:latest"
     restart: always
     ports:
@@ -77,6 +94,8 @@ services:
       - sclab-network
 
   gis-process:
+    container_name: gis-process
+    hostname: gis-process
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest"
     restart: always
     volumes:
@@ -94,11 +113,12 @@ services:
     depends_on:
       - mongo
       - redis
-      - webapp
     networks:
       - sclab-network
 
   mqtt-client:
+    container_name: mqtt-client
+    hostname: mqtt-client
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest"
     restart: always
     volumes:
@@ -116,11 +136,12 @@ services:
     depends_on:
       - mongo
       - redis
-      - webapp
     networks:
       - sclab-network
       
   mqtt-broker:
+    container_name: mqtt-broker
+    hostname: mqtt-broker
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-broker:latest"
     restart: always
     ports:
@@ -128,8 +149,8 @@ services:
       - "8888:8888"
     volumes:
       - /mnt/nfs_share/data/mqtt-broker/logs:/data/logs
-      - ./cert:/data/cert
-      - ./jwt:/data/jwt
+      - /mnt/nfs_share/cert:/data/cert
+      - /mnt/nfs_share/jwt:/data/jwt
     env_file:
       - ./common.env
       - ./mqtt-broker.env
@@ -143,11 +164,12 @@ services:
     depends_on:
       - mongo
       - redis
-      - webapp
     networks:
       - sclab-network
       
   kafka-client:
+    container_name: kafka-client
+    hostname: kafka-client
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-kafka-client:latest"
     restart: always
     volumes:
@@ -165,11 +187,12 @@ services:
     depends_on:
       - mongo
       - redis
-      - webapp
     networks:
       - sclab-network
   
   ai-service:
+    container_name: ai-service
+    hostname: ai-service
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest"
     restart: always
     volumes:
@@ -186,11 +209,12 @@ services:
       - mongo
       - redis
       - qdrant
-      - webapp
     networks:
       - sclab-network
       
   sclab-proxy:
+    container_name: sclab-proxy
+    hostname: sclab-proxy
     image: nginx:alpine3.18
     ports:
       - '80:80'
@@ -199,6 +223,8 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
     restart: 'unless-stopped'
     depends_on:
+      - webapp
+    links:
       - webapp
     networks:
       - sclab-network
