@@ -56,6 +56,7 @@ services:
     restart: always
     environment:
       - QDRANT__SERVICE__HOST=0.0.0.0
+      - QDRANT__SERVICE__API_KEY=changeThisQdrantApiKey
     volumes:
       - ./data/qdrant:/qdrant/storage
     logging:
