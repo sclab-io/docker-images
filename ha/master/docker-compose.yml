@@ -8,9 +8,7 @@ services:
     #   MONGO_INITDB_ROOT_USERNAME: root
     #   MONGO_INITDB_ROOT_PASSWORD: changeMePLZ
     volumes:
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
       - ./data/mongo/db:/data/db
-    command: mongod --replSet rs0 --bind_ip_all
     networks:
       - sclab-network
 
@@ -56,11 +54,11 @@ services:
     ports:
       - "80"
     volumes:
-      - ./data/webapp:/data
-      - ./data/webapp/logs:/data/logs
-      - ./data/webapp/files:/data/files
-      - ./jwt:/data/jwt
-      - ./cert:/data/cert
+      - /mnt/nfs_share/data/webapp:/data
+      - /mnt/nfs_share/data/webapp/logs:/data/logs
+      - /mnt/nfs_share/data/webapp/files:/data/files
+      - /mnt/nfs_share/jwt:/data/jwt
+      - /mnt/nfs_share/cert:/data/cert
     env_file:
       - ./common.env
       - ./webapp.env
@@ -82,7 +80,7 @@ services:
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest"
     restart: always
     volumes:
-      - ./data/gis-process/logs:/data/logs
+      - /mnt/nfs_share/data/gis-process/logs:/data/logs
     env_file:
       - ./common.env
       - ./gis-process.env
@@ -104,7 +102,7 @@ services:
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest"
     restart: always
     volumes:
-      - ./data/mqtt-client/logs:/data/logs
+      - /mnt/nfs_share/data/mqtt-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./mqtt-client.env
@@ -129,7 +127,7 @@ services:
       - "8883:8883"
       - "8888:8888"
     volumes:
-      - ./data/mqtt-broker/logs:/data/logs
+      - /mnt/nfs_share/data/mqtt-broker/logs:/data/logs
       - ./cert:/data/cert
       - ./jwt:/data/jwt
     env_file:
@@ -153,7 +151,7 @@ services:
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-kafka-client:latest"
     restart: always
     volumes:
-      - ./data/kafka-client/logs:/data/logs
+      - /mnt/nfs_share/data/kafka-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./kafka-client.env
@@ -175,7 +173,7 @@ services:
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest"
     restart: always
     volumes:
-      - ./data/ai-service/logs:/app/dist/utils/data/logs
+      - /mnt/nfs_share/data/ai-service/logs:/app/dist/utils/data/logs
     env_file:
       - ./common.env
       - ./ai-service.env

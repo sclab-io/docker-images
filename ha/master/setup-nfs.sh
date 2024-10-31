@@ -12,7 +12,7 @@ sudo chown nobody:nogroup $NFS_DIR
 sudo chmod 777 $NFS_DIR
 
 echo "configure nfs server"
-echo "$NFS_DIR *(rw,sync,no_subtree_check)" | sudo tee -a /etc/exports
+echo "$NFS_DIR *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
 sudo exportfs -a
 sudo systemctl restart nfs-kernel-server
 
