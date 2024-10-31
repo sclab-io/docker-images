@@ -25,7 +25,7 @@ services:
   redis:
     container_name: redis
     hostname: redis
-    image: "bitnami/redis:7.0.9"
+    image: "bitnami/redis:7.4.1"
     restart: always
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
@@ -40,7 +40,7 @@ services:
   qdrant:
     container_name: qdrant
     hostname: qdrant
-    image: "qdrant/qdrant:v1.7.0"
+    image: "qdrant/qdrant:v1.12.1"
     restart: always
     volumes:
       - ./data/qdrant:/qdrant/storage
