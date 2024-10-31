@@ -38,6 +38,7 @@ git clone https://github.com/sclab-io/docker-images.git
 * change server ip address and domain
 
 ~~~bash
+# edit ip, domain and passwords
 vi ../setup.sh
 
 # change site domain
