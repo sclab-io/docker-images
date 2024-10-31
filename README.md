@@ -6,7 +6,7 @@ SCLAB Docker images
 - **Maintained by**:  
   [SCLAB](https://github.com/sclab-io/docker-images)
 - **Where to get help**:  
-  [SCLAB Discord](https://discord.gg/KJqMvvR7dE) or Send email to support@sclab.io
+  [SCLAB Discord](https://discord.gg/KJqMvvR7dE) or Send email to <support@sclab.io>
 - **Where to file issues**:  
   [https://github.com/sclab-io/docker-images/issues](https://github.com/sclab-io/docker-images/issues)
 - **Source of this description**:  
@@ -25,44 +25,48 @@ Provides a platform to quickly build data visualizations by integrating all data
 # About this image
 
 ## SCLAB image list
+
 * [sclabio/webapp](https://hub.docker.com/r/sclabio/webapp)
-* [sclabio/gis-process](https://hub.docker.com/r/sclabio/gis-process)
-* [sclabio/mqtt-client](https://hub.docker.com/r/sclabio/mqtt-client)
-* [sclabio/mqtt-broker](https://hub.docker.com/r/sclabio/mqtt-broker)
-* [sclabio/kafka-client](https://hub.docker.com/r/sclabio/kafka-client)
-* [sclabio/ai-service](https://hub.docker.com/r/sclabio/ai-service)
+- [sclabio/gis-process](https://hub.docker.com/r/sclabio/gis-process)
+- [sclabio/mqtt-client](https://hub.docker.com/r/sclabio/mqtt-client)
+- [sclabio/mqtt-broker](https://hub.docker.com/r/sclabio/mqtt-broker)
+- [sclabio/kafka-client](https://hub.docker.com/r/sclabio/kafka-client)
+- [sclabio/ai-service](https://hub.docker.com/r/sclabio/ai-service)
 
 ## Other image list for running SCLAB images
+
 * [mongo](https://hub.docker.com/_/mongo)
-* [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
-* [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
-* [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
-* [nginx](https://hub.docker.com/_/nginx)
+- [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
+- [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
+- [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
+- [nginx](https://hub.docker.com/_/nginx)
 
 # Installation
 
 ## Pre-requirements
 
 ### License code
+
 You can not use this image without LICENSE KEY.
 If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
 
 ### OS
 
-* os.linux.x86_64 (ubuntu, osx, linux)
-* docker
-* docker-compose
+- os.linux.x86_64 (ubuntu, osx, linux)
+- docker
+- docker-compose
 
 ### Minimum system requirements
 
-* Memory 8GB
-* 40GB Free space
+- Memory 8GB
+- 40GB Free space
 
 ## Step 1. Install docker
 
-* docker - [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+- docker - [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
 
 ## Step 2. Download files
+
 ~~~bash
 git clone https://github.com/sclab-io/docker-images.git
 ~~~
@@ -84,34 +88,42 @@ git clone https://github.com/sclab-io/docker-images.git
 | logs.sh            | logs script                  |
 
 ## Step 3. Modify config files from this source
+
 ### edit common.env (required)
+
 - ROOT_URL in common.env
 - If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
 - ex) 127.0.0.1 yourdomain.com
-- ROOT_URL=http://yourdomain.com
+- ROOT_URL=<http://yourdomain.com>
+
 ```bash
 vi common.env
 ```
 
 ### edit settings.json (required)
+
 - public.siteDomain from settings.json
 - ex) yourdomain.com
 - edit siteDomain
 - "public.siteDomain" : "yourdomain.com"
 - **`private.license`: `your license code`**  
 - ***`(*** lICENSE CODE IS REQUIRED ***)`***
+
 ```bash
 vi settings.json
 ```
 
 ### edit mqtt-broker.env (optional - If you using our mqtt broker with your domain)
+
 - edit SERVER_DOMAIN
 - SERVER_DOMAIN=yourdomain.com
+
 ```bash
 vi mqtt-broker.env
 ```
 
 ### common.env
+
 | var                      | description                                                                                                                                                                                               |
 |:-------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ROOT_URL                 | root url with your domain                                                                                                                                                                                 |
@@ -130,9 +142,10 @@ vi mqtt-broker.env
 | QDRANT_CLUSTER_URL | QDRANT vector database cluster url |
 | QDRANT_API_KEY | QDRANT vector database API Key |
 | OPENAI_KEY    | OpenAI api key              |
-| OLLAMA_API_HOST | Ollama api host url (http://host:11434) |
+| OLLAMA_API_HOST | Ollama api host url (<http://host:11434>) |
 
 ### webapp.env
+
 | var                | description                                        |
 |:-------------------|:---------------------------------------------------|
 | SERVER_ID          | ID used to distinguish when using multiple servers |
@@ -144,12 +157,14 @@ vi mqtt-broker.env
 | SERVER_FILE_URL    | read file path for server side                     |
 
 ### gis-process.env
+
 | var       | description                                                                                                                                          |
 |:----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | SERVER_ID | Server ID is an ID used when parsing GIS files and storing them in DB. When duplicating using multiple servers, each server must use a different ID. |
 | SERVER_FILE_URL | read file path for server side |
 
 ### mqtt-client.env
+
 | var           | description               |
 |:--------------|:--------------------------|
 | SERVER_NAME   | MQTT client server name   |
@@ -159,6 +174,7 @@ vi mqtt-broker.env
 | PRIVATE_IP    | private IP address        |
 
 ### mqtt-broker.env
+
 | var             | description                     |
 |:----------------|:--------------------------------|
 | SERVER_NAME     | MQTT broker server name         |
@@ -171,6 +187,7 @@ vi mqtt-broker.env
 | TLS_PRIVATE_KEY | private key file path for SSL   |
 
 ### kafka-client.env
+
 | var           | description                 |
 |:--------------|:----------------------------|
 | SERVER_NAME   | Kafka client server name    |
@@ -180,6 +197,7 @@ vi mqtt-broker.env
 | PRIVATE_IP    | private IP address          |
 
 ### ai-service.env
+
 | var           | description                                                                             |
 |:--------------|:----------------------------------------------------------------------------------------|
 | REDIS_URL     | Redis server url                                                                        |
@@ -197,6 +215,7 @@ vi mqtt-broker.env
 | USE_SQL_GEN_SERVICE | SQL Generator flag for union data ("1" / "")                                            |
 
 ### settings.json
+
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
 |:-----------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | public                                               | public settings (can access client and server)                                                                                                                                                                                                                                                                          |
@@ -242,99 +261,134 @@ vi mqtt-broker.env
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
 ## Step 4. create JWT key file for mqtt-broker
+
 ~~~bash
 mkdir jwt
 ~~~
+
 ~~~bash
 ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
 ~~~
+
 - empty passphrase - just press enter
+
 ~~~bash
 openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
 ~~~
 
 ## Step 5. create SSL key file for mqtt-broker
+
 * If you have your own key file just use that key
+
 ~~~bash
 mkdir cert
 ~~~
+
 ~~~bash
 openssl genrsa -out ./cert/privkey.pem 2048
 ~~~
+
 ~~~bash
 openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
 ~~~
+
 ~~~bash
 openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
 ~~~
 
 ## Step 6. create JWT key file for SCLAB API
+
 ~~~bash
 ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
 ~~~
+
 ~~~bash
 openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
 ~~~
+
 - empty passphrase - just press enter
 
 ## Step 7. Install AWS CLI
+
 [https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
 ### linux install
+
 ~~~bash
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 ~~~
+
 ~~~bash
 unzip awscliv2.zip
 ~~~
+
 ~~~bash
 sudo ./aws/install
 ~~~
 
 ## Step 8. AWS Configure
+
 - add AWS Access Key ID and AWS Secret Access Key from SCLAB
+
 ~~~bash
 sudo aws configure
 ~~~
 
 ## Step 9. running instances
+
 ### create network
+
 ```bash
 sudo docker network create sclab-network
 ```
+
 ### running daemon mode
+
 ```bash
 sudo ./run.sh
 ```
-Now you can access SCLAB Studio at http://yourdomain.com/ from your host system.  
+
+Now you can access SCLAB Studio at <http://yourdomain.com/> from your host system.  
 After access SCLAB web page you have to login using admin account.  
 Default account information is [admin@sclab.io / admin] from settings.json private.adminEmail, private.adminPassword.  
 You can change your admin password from web page, don't need to change settings.json file private.adminPassword.  
 
 ## Stop Running instance
+
 ```bash
 sudo ./down.sh
 ```
 
 ## Display logs
+
 ```bash
 sudo ./logs.sh
 ```
 
 ## Download new images
+
 ```bash
 sudo ./pull.sh
 ```
 
 ## Update all images
+
 ```bash
 sudo ./update-all.sh
 ```
 
 ## Update images and restart webapp
+
 If any service other than the webapp is updated, please use "./update-all.sh".
+
 ```bash
 sudo ./update.sh
 ```
 
+## System diagram
+
+![System Diagram](./System-Diagram.png)
+
 # License
+
 Copyright (c) 2023 SCLAB All rights reserved.

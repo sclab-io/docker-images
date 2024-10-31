@@ -1,4 +1,4 @@
-SCLAB HA Master
+SCLAB HA SLAVE
 ===================
 
 # Installation
