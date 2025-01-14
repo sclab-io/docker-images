@@ -26,6 +26,8 @@
       },
       "ollama": [
       ],
+      "ollamaEmbedModel": [
+      ],
       "sqlModel": "GPT4"
     },
     "hub": {
