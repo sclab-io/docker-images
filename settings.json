@@ -25,8 +25,16 @@
         "resPrompt": "Within the fused documents, as much as possible, That is a very detailed, helpful answer."
       },
       "ollama": [
+        {
+          "model": "OLLAMA_gemma2:latest",
+          "label": "Gemma2 9B"
+        }
       ],
       "ollamaEmbedModel": [
+        {
+          "model": "mxbai-embed-large",
+          "label": "mxbai-embed-large"
+        }
       ],
       "sqlModel": "GPT4"
     },
