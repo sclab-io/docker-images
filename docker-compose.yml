@@ -208,6 +208,8 @@ services:
       - sclab-network
 
   sclab-agent:
+    container_name: sclab-agent
+    hostname: sclab-agent
     image: "sclabio/sclab-agent:latest"
     restart: always
     logging:
