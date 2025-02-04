@@ -261,7 +261,7 @@ vi mqtt-broker.env
 | redisOplog.mutationDefaults.pushToRedis              | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-## Step 4. create JWT key file for mqtt-broker
+## Step 4. create JWT key file for mqtt-broker, sclab-db-agent, sclab-api
 
 ~~~bash
 mkdir jwt
@@ -277,7 +277,7 @@ ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
 openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
 ~~~
 
-## Step 5. create SSL key file for mqtt-broker
+## Step 5. create SSL key file for mqtt-broker, sclab-db-agent
 
 * If you have your own key file just use that key
 
@@ -297,19 +297,7 @@ openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
 openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
 ~~~
 
-## Step 6. create JWT key file for SCLAB API
-
-~~~bash
-ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwt-api-RS256.key
-~~~
-
-~~~bash
-openssl rsa -in ./jwt/jwt-api-RS256.key -pubout -outform PEM -out ./jwt/jwt-api-RS256.key.pub
-~~~
-
-- empty passphrase - just press enter
-
-## Step 7. Install AWS CLI
+## Step 6. Install AWS CLI
 
 [https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
@@ -327,7 +315,7 @@ unzip awscliv2.zip
 sudo ./aws/install
 ~~~
 
-## Step 8. AWS Configure
+## Step 7. AWS Configure
 
 - add AWS Access Key ID and AWS Secret Access Key from SCLAB
 
@@ -335,7 +323,7 @@ sudo ./aws/install
 sudo aws configure
 ~~~
 
-## Step 9. running instances
+## Step 8. running instances
 
 ### create network
 
@@ -385,6 +373,9 @@ If any service other than the webapp is updated, please use "./update-all.sh".
 ```bash
 sudo ./update.sh
 ```
+
+## install ollama
+[Ollama Install](./ollama/README.md)
 
 ## System diagram
 
