@@ -374,6 +374,12 @@ If any service other than the webapp is updated, please use "./update-all.sh".
 sudo ./update.sh
 ```
 
+## get db agent API token
+
+```bash
+docker logs sclab-agent
+```
+
 ## install ollama
 [Ollama Install](./ollama/README.md)
 
