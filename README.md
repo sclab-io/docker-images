@@ -80,7 +80,9 @@ git clone https://github.com/sclab-io/docker-images.git
 | mqtt-broker.env    | Environment for MQTT Broker  |
 | kafka-client.env   | Environment for Kafka Client |
 | ai-service.env     | Environment for AI service   |
+| db-agent.env       | Environment for SCLAB Agent  |
 | docker-compose.yml | Docker Compose YAML          |
+| nginx.conf         | Nginx config                 |
 | redis.conf         | Redis config                 |
 | settings.json      | sclab settings               |
 | run.sh             | run script                   |
