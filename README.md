@@ -26,12 +26,13 @@ Provides a platform to quickly build data visualizations by integrating all data
 
 ## SCLAB image list
 
-* [sclabio/webapp](https://hub.docker.com/r/sclabio/webapp)
-- [sclabio/gis-process](https://hub.docker.com/r/sclabio/gis-process)
-- [sclabio/mqtt-client](https://hub.docker.com/r/sclabio/mqtt-client)
-- [sclabio/mqtt-broker](https://hub.docker.com/r/sclabio/mqtt-broker)
-- [sclabio/kafka-client](https://hub.docker.com/r/sclabio/kafka-client)
-- [sclabio/ai-service](https://hub.docker.com/r/sclabio/ai-service)
+- sclabio/webapp
+- sclabio/gis-process
+- sclabio/mqtt-client
+- sclabio/mqtt-broker
+- sclabio/kafka-client
+- sclabio/ai-service
+- [sclabio/sclab-agent](https://hub.docker.com/r/sclabio/sclab-agent)
 
 ## Other image list for running SCLAB images
 
