@@ -265,43 +265,13 @@ vi mqtt-broker.env
 | redisOplog.mutationDefaults.pushToRedis              | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-## Step 4. create JWT key file for mqtt-broker, sclab-db-agent, sclab-api
+## Step 4. create key files for mqtt-broker, sclab-db-agent, sclab-api, sclab-db-agent
 
 ~~~bash
-mkdir jwt
+docker compose -f gen.yml run key-generator
 ~~~
 
-~~~bash
-ssh-keygen -t rsa -b 4096 -m PEM -f ./jwt/jwtRS256.key
-~~~
-
-- empty passphrase - just press enter
-
-~~~bash
-openssl rsa -in ./jwt/jwtRS256.key -pubout -outform PEM -out ./jwt/jwtRS256.key.pub
-~~~
-
-## Step 5. create SSL key file for mqtt-broker, sclab-db-agent
-
-* If you have your own key file just use that key
-
-~~~bash
-mkdir cert
-~~~
-
-~~~bash
-openssl genrsa -out ./cert/privkey.pem 2048
-~~~
-
-~~~bash
-openssl req -new -sha256 -key ./cert/privkey.pem -out ./cert/csr.pem
-~~~
-
-~~~bash
-openssl x509 -req -in ./cert/csr.pem -signkey ./cert/privkey.pem -out ./cert/cert.pem
-~~~
-
-## Step 6. Install AWS CLI
+## Step 5. Install AWS CLI
 
 [https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
@@ -319,7 +289,7 @@ unzip awscliv2.zip
 sudo ./aws/install
 ~~~
 
-## Step 7. AWS Configure
+## Step 6. AWS Configure
 
 - add AWS Access Key ID and AWS Secret Access Key from SCLAB
 
@@ -327,7 +297,7 @@ sudo ./aws/install
 sudo aws configure
 ~~~
 
-## Step 8. running instances
+## Step 7. running instances
 
 ### create network
 

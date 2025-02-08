@@ -1,0 +1,12 @@
+services:
+  key-generator:
+    image: alpine:latest
+    volumes:
+      - ./cert:/cert
+      - ./jwt:/jwt
+    command: >
+      sh -c "apk add --no-cache openssl openssh &&
+      openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /cert/privkey.pem -out /cert/cert.pem -subj '/CN=localhost' &&
+      ssh-keygen -t rsa -b 4096 -m PEM -f /jwt/jwtRS256.key -N '' &&
+      openssl rsa -in /jwt/jwtRS256.key -pubout -outform PEM -out /jwt/jwtRS256.key.pub"
+    restart: "no"
