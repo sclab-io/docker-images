@@ -13,7 +13,7 @@
     "staticFilePath": "/static",
     "supportName": "Support Team",
     "supportEmail": "support@sclab.io",
-    "siteDomain": "your-domain.com",
+    "siteDomain": "yourdomain.com",
     "mainPrefix": "",
     "sso": [],
     "useForceSSL": false,
