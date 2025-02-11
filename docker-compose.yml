@@ -189,7 +189,7 @@ services:
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest"
     restart: always
     volumes:
-      - ./data/ai-service/logs:/app/dist/utils/data/logs
+      - ./data/ai-service/logs:/data/logs
     env_file:
       - ./common.env
       - ./ai-service.env
