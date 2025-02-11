@@ -40,7 +40,7 @@ services:
   qdrant:
     container_name: qdrant
     hostname: qdrant
-    image: "qdrant/qdrant:v1.12.1"
+    image: "qdrant/qdrant:v1.13.2"
     restart: always
     volumes:
       - ./data/qdrant:/qdrant/storage
