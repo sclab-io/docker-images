@@ -268,7 +268,7 @@ vi mqtt-broker.env
 ## Step 4. create key files for mqtt-broker, sclab-db-agent, sclab-api, sclab-db-agent
 
 ~~~bash
-docker compose -f gen.yml --rm run key-generator
+docker compose -f gen.yml run --rm key-generator
 ~~~
 
 ## Step 5. Install AWS CLI
