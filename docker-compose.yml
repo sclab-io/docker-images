@@ -13,6 +13,9 @@ services:
         max-file: "10"
     networks:
       - sclab-network
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=root
+#      - MONGO_INITDB_ROOT_PASSWORD=changeThisMongoPassword
 
   mail:
     container_name: mail
@@ -29,6 +32,10 @@ services:
     restart: always
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+#      - ALLOW_EMPTY_PASSWORD=no
+#      - REDIS_ALLOW_REMOTE_CONNECTIONS=yes
+#      - REDIS_PASSWORD=changeThisRedisPassword
+#      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     logging:
       driver: "json-file"
       options:
@@ -51,6 +58,9 @@ services:
         max-file: "10"
     networks:
       - sclab-network
+#    environment:
+#      - QDRANT__SERVICE__HOST=0.0.0.0
+#      - QDRANT__SERVICE__API_KEY=changeThisQdrantApiKey
 
   webapp:
     hostname: webapp
