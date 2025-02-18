@@ -22,11 +22,6 @@ This example does not include a LoadBalancer. Please set up a LoadBalancer in fr
 | 8888  | MQTT over WebSocket |
 | 7890  | SCLAB Agent (HTTPS) |
 | 2049  | NFS                 |
-| 111   | NFS RPC             |
-| 32803 | NFS RPC             |
-| 892   | NFS RPC             |
-| 662   | NFS RPC             |
-| 875   | NFS RPC             |
 
 ## Installation
 
