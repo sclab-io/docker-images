@@ -26,8 +26,8 @@
       },
       "ollama": [
         {
-          "model": "OLLAMA_gemma2:latest",
-          "label": "Gemma2 9B"
+          "model": "OLLAMA_gemma3:4b",
+          "label": "Gemma3 4B"
         }
       ],
       "ollamaEmbedModel": [

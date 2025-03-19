@@ -53,7 +53,7 @@ If you want to get one, please contact us. [support@sclab.io](mailto://support@s
 
 ### OS
 
-- os.linux.x86_64 (ubuntu, osx, linux)
+- os.linux.x86_64 (linux, windows, macos - intel)
 - docker
 - docker-compose
 
@@ -201,21 +201,22 @@ vi mqtt-broker.env
 
 ### ai-service.env
 
-| var           | description                                                                             |
-|:--------------|:----------------------------------------------------------------------------------------|
-| REDIS_URL     | Redis server url                                                                        |
-| AI_SERVER_ID  | AI Service ID for HA                                                                    |
-| USE_AI_SERVICE | AI Service run flag ("1" / "")                                                          |
-| IS_SYNC_SERVER | AI Data sync server flag (If you have multiple AI Service then only one server set "1") |
+| var                 | description                                                                             |
+|:--------------------|:----------------------------------------------------------------------------------------|
+| REDIS_URL           | Redis server url                                                                        |
+| AI_SERVER_ID        | AI Service ID for HA                                                                    |
+| USE_AI_SERVICE      | AI Service run flag ("1" / "")                                                          |
+| IS_SYNC_SERVER      | AI Data sync server flag (If you have multiple AI Service then only one server set "1") |
 | USE_CHAT_SERVICE    | AI Chat Service flag                                                                    |
-| SERVER_FILE_URL | read file path for server side                                                          |
-| LOG_DIR | Log file path                                                                           |
-| NODE_OPTIONS | node options                                                                            |
-| ORIGIN | cors orgin                                                                              |
-| CREDENTIALS | CREDENTIALS flag ("true" / "")                                                          |
-| PORT | AI Service REST API web service port                                                    |
-| NODE_ENV | node environment                                                                        |
+| SERVER_FILE_URL     | read file path for server side                                                          |
+| LOG_DIR             | Log file path                                                                           |
+| NODE_OPTIONS        | node options                                                                            |
+| ORIGIN              | cors orgin                                                                              |
+| CREDENTIALS         | CREDENTIALS flag ("true" / "")                                                          |
+| PORT                | AI Service REST API web service port                                                    |
+| NODE_ENV            | node environment                                                                        |
 | USE_SQL_GEN_SERVICE | SQL Generator flag for union data ("1" / "")                                            |
+| HIDE_JSON           | hide JSON from chat message ("1" / "")                                                  |
 
 ### settings.json
 
@@ -240,7 +241,7 @@ vi mqtt-broker.env
 | public.uploadMaxMB                                   | max upload file size (MB)                                                                                                                                                                                                                                                                                               |
 | public.editorHosts                                   | editor host array                                                                                                                                                                                                                                                                                                       |
 | public.ai.chat                                       | ai chat bot default prompt (If you don't want to use this ai feature, remove "public.ai" field.)                                                                                                                                                                                                                        |
-| public.ai.ollama                                     | ollama llm list array [{"model": "OLLAMA_gemma2:latest","label": "Gemma2 9B"}] current support model ("OLLAMA_gemma2:latest", "OLLAMA_gemma2:9b-instruct-q8_0", "OLLAMA_gemma2:27b", "OLLAMA_llama3:latest", "OLLAMA_llama3:8b-instruct-q8_0", "OLLAMA_llama3:70b")                                                     |
+| public.ai.ollama                                     | ollama llm list array [{"model": "OLLAMA_gemma2:latest","label": "Gemma2 9B"}] you can use any OLLAMA models with prefix "OLLAMA_"                                                                                                                                                                                      |
 | public.ai.ollamaEmbedModel                           | ollama embedding model list array [{"model": "mxbai-embed-large","label": "mxbai-embed-large"}] current support model ("mxbai-embed-large")                                                                                                                                                                             |
 | public.ai.sqlModel                                   | model for SQL generation current support model ("GPT4", "GPT3_16K", "OLLAMA_gemma2:latest", "OLLAMA_gemma2:9b-instruct-q8_0", "OLLAMA_gemma2:27b", "OLLAMA_llama3:latest", "OLLAMA_llama3:8b-instruct-q8_0", "OLLAMA_llama3:70b")                                                                                       |
 | public.hub.llmAPI                                    | "openai" (defaut), "ollama"                                                                                                                                                                                                                                                                                             |
