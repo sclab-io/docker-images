@@ -10,7 +10,7 @@ SCLAB Docker images
 - **Where to file issues**:  
   [https://github.com/sclab-io/docker-images/issues](https://github.com/sclab-io/docker-images/issues)
 - **Source of this description**:  
-  [docs repo's `sclab/` directory](https://github.com/sclab-io/docker-images/blob/master/README.md) ([history](https://github.com/sclab-io/docker-images/blob/master/history.md))
+  [docs repo's `sclab/` directory](https://github.com/sclab-io/docker-images/blob/master/README.md) ([history](https://docs.sclab.io/docs/history/SCLAB%20Studio%20OnPremise))
 - **Developer documents**:
   [docs.sclab.io](https://docs.sclab.io)
 
