@@ -234,6 +234,8 @@ services:
       - ./cert:/data/cert
     env_file:
       - ./db-agent.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - sclab-network
 
