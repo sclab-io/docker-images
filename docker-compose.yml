@@ -89,6 +89,8 @@ services:
       - mongo
       - redis
       - qdrant
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - sclab-network
 
@@ -213,6 +215,8 @@ services:
       - redis
       - qdrant
       - webapp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - sclab-network
 
