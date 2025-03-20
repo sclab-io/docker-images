@@ -17,7 +17,7 @@
     "mainPrefix": "",
     "sso": [],
     "useForceSSL": false,
-    "uploadMaxMB": 15,
+    "uploadMaxMB": 50,
     "editorHosts": ["127.0.0.1"],
     "ai": {
       "chat": {
