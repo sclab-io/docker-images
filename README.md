@@ -360,7 +360,7 @@ docker logs sclab-agent
 
 ## System diagram
 
-![System Diagram](./System-Diagram.png)
+![System Diagram](./img/System-Diagram.png)
 
 # License
 
