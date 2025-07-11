@@ -3,9 +3,6 @@
     "siteName": "SCLAB",
     "siteDescription": "SCLAB",
     "defaultLanguage": "ko",
-    "analyticsSettings": {
-      "Google Analytics" : {"trackingId": ""}
-    },
     "storagePath": "/data/files",
     "pageSize": 12,
     "noImg": "/static/img/no_img.png",

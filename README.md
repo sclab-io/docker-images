@@ -201,22 +201,23 @@ vi mqtt-broker.env
 
 ### ai-service.env
 
-| var                 | description                                                                             |
-|:--------------------|:----------------------------------------------------------------------------------------|
-| REDIS_URL           | Redis server url                                                                        |
-| AI_SERVER_ID        | AI Service ID for HA                                                                    |
-| USE_AI_SERVICE      | AI Service run flag ("1" / "")                                                          |
-| IS_SYNC_SERVER      | AI Data sync server flag (If you have multiple AI Service then only one server set "1") |
-| USE_CHAT_SERVICE    | AI Chat Service flag                                                                    |
-| SERVER_FILE_URL     | read file path for server side                                                          |
-| LOG_DIR             | Log file path                                                                           |
-| NODE_OPTIONS        | node options                                                                            |
-| ORIGIN              | cors orgin                                                                              |
-| CREDENTIALS         | CREDENTIALS flag ("true" / "")                                                          |
-| PORT                | AI Service REST API web service port                                                    |
-| NODE_ENV            | node environment                                                                        |
-| USE_SQL_GEN_SERVICE | SQL Generator flag for union data ("1" / "")                                            |
-| HIDE_JSON           | hide JSON from chat message ("1" / "")                                                  |
+| var                         | description                                                                             |
+|:----------------------------|:----------------------------------------------------------------------------------------|
+| REDIS_URL                   | Redis server url                                                                        |
+| AI_SERVER_ID                | AI Service ID for HA                                                                    |
+| USE_AI_SERVICE              | AI Service run flag ("1" / "")                                                          |
+| IS_SYNC_SERVER              | AI Data sync server flag (If you have multiple AI Service then only one server set "1") |
+| USE_CHAT_SERVICE            | AI Chat Service flag                                                                    |
+| USE_SQL_GEN_SERVICE         | SQL Generator flag for union data ("1" / "")                                            |
+| USE_AGENT_SERVICE           | AI Agent Service flag ("1" / "")                                                        |
+| USE_AGENT_SERVICE_SCHEDULER | AI Agent Service Scheduler flag ("1" / "")                                              |
+| SERVER_FILE_URL             | read file path for server side                                                          |
+| NODE_OPTIONS                | node options                                                                            |
+| ORIGIN                      | cors orgin                                                                              |
+| CREDENTIALS                 | CREDENTIALS flag ("true" / "")                                                          |
+| PORT                        | AI Service REST API web service port                                                    |
+| NODE_ENV                    | node environment                                                                        |
+| HIDE_JSON                   | hide JSON from chat message ("1" / "")                                                  |
 
 ### settings.json
 
@@ -226,7 +227,6 @@ vi mqtt-broker.env
 | public.siteName                                      | site name                                                                                                                                                                                                                                                                                                               |
 | public.siteDescription                               | site description                                                                                                                                                                                                                                                                                                        |
 | public.defaultLanguage                               | default language (en, ko, es, hi, pt)                                                                                                                                                                                                                                                                                   |
-| public.analyticsSettings.Google Analytics.trackingId | google analytics tracking id                                                                                                                                                                                                                                                                                            |
 | public.storagePath                                   | storage file path                                                                                                                                                                                                                                                                                                       |
 | public.pageSize                                      | default page size for single page                                                                                                                                                                                                                                                                                       |
 | public.noImg                                         | no image url                                                                                                                                                                                                                                                                                                            |
