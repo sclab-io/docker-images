@@ -2,7 +2,7 @@ services:
   mongo:
     container_name: mongo
     hostname: mongo
-    image: "mongo:4.4"
+    image: "mongo:8.0.11"
     restart: always
     volumes:
       - ./data/mongo/db:/data/db
