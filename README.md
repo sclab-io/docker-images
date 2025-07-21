@@ -368,6 +368,8 @@ docker logs sclab-agent
 - Change the MAIL_URL environment variable in the common.env file as follows.
 - MAIL_URL=smtps://[GMAIL_ID]:[APP_PASSWORD]@smtp.gmail.com:465
 - ex) MAIL_URL=smtps://yourname@gmail.com:abcdwxyz1234pqrs@smtp.gmail.com:465
+- Change the public.supportEmail value in the settings.json as follows.
+- supportEmail: "yourname@gmail.com"
 
 # License
 
