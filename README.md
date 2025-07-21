@@ -362,6 +362,13 @@ docker logs sclab-agent
 
 ![System Diagram](./img/System-Diagram.png)
 
+## How to use Google SMTP server
+- Make app password 
+- [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+- Change the MAIL_URL environment variable in the common.env file as follows.
+- MAIL_URL=smtps://[GMAIL_ID]:[APP_PASSWORD]@smtp.gmail.com:465
+- ex) MAIL_URL=smtps://yourname@gmail.com:abcdwxyz1234pqrs@smtp.gmail.com:465
+
 # License
 
 Copyright (c) 2023 SCLAB All rights reserved.
