@@ -211,6 +211,7 @@ vi mqtt-broker.env
 | USE_SQL_GEN_SERVICE         | SQL Generator flag for union data ("1" / "")                                            |
 | USE_AGENT_SERVICE           | AI Agent Service flag ("1" / "")                                                        |
 | USE_AGENT_SERVICE_SCHEDULER | AI Agent Service Scheduler flag ("1" / "")                                              |
+| USE_MCP_SERVICE             | MCP Service flag ("1" / "")                                                             |
 | SERVER_FILE_URL             | read file path for server side                                                          |
 | NODE_OPTIONS                | node options                                                                            |
 | ORIGIN                      | cors orgin                                                                              |
