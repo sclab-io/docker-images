@@ -54,9 +54,9 @@ docker compose -f ollama-gpu-amd.yml up -d
 ### embedding model
 docker exec -it ollama ollama pull mxbai-embed-large
 ### LLM model
-docker exec -it ollama ollama pull gemma3:27b
+docker exec -it ollama ollama pull gpt-oss:20b
 ### test
-docker exec -it ollama ollama run gemma3:27b
+docker exec -it ollama ollama run gpt-oss:20b
 ### process check
 docker exec -it ollama ollama ps
 ~~~

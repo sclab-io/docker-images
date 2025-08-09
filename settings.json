@@ -23,8 +23,8 @@
       },
       "ollama": [
         {
-          "model": "OLLAMA_gemma3:27b",
-          "label": "Gemma3 27B"
+          "model": "OLLAMA_gpt-oss:20b",
+          "label": "OpenAI GPT OSS 20B"
         }
       ],
       "ollamaEmbedModel": [
@@ -33,7 +33,7 @@
           "label": "mxbai-embed-large"
         }
       ],
-      "sqlModel": "OLLAMA_gemma3:27b"
+      "sqlModel": "OLLAMA_gpt-oss:20b"
     },
     "hub": {
       "llmAPI": "ollama"
