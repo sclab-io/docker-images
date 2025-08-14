@@ -31,6 +31,7 @@ Provides a platform to quickly build data visualizations by integrating all data
 - sclabio/mqtt-client
 - sclabio/mqtt-broker
 - sclabio/kafka-client
+- sclabio/node-vm-service
 - sclabio/ai-service
 - [sclabio/sclab-agent](https://hub.docker.com/r/sclabio/sclab-agent)
 
@@ -116,7 +117,7 @@ vi common.env
 vi settings.json
 ```
 
-### edit mqtt-broker.env (optional - If you using our mqtt broker with your domain)
+### edit mqtt-broker.env (optional - If you're using our mqtt broker with your domain)
 
 - edit SERVER_DOMAIN
 - SERVER_DOMAIN=yourdomain.com
@@ -133,8 +134,8 @@ vi mqtt-broker.env
 | HTTP_FORWARDED_COUNT     | The number of procedure servers in front of the service to properly check the IP address of the accessor.                                                                                                 |
 | LOG_PATH                 | It is a log file path, and it does not need to be changed because it is an address to be used in the Docker image.                                                                                        |
 | LOG_LEVEL                | Display log levels [error, warn, info, debug]                                                                                                                                                             |
-| USE_FILE_LOG  | If you don't want to save log file set empty |
-| LOG_FILE_COUNT  | A log file is created daily, and if set to 31, logs will be retained for 31 days. |
+| USE_FILE_LOG             | If you don't want to save log file set empty                                                                                                                                                              |
+| LOG_FILE_COUNT           | A log file is created daily, and if set to 31, logs will be retained for 31 days.                                                                                                                         |
 | PORT                     | This is the default port number of the service, but it does not need to be changed because it is the port to be used within the Docker image. To change the actual port, change it in docker-compose.yml. |
 | NODE_ENV                 | node js execution environment variable                                                                                                                                                                    |
 | MONGO_URL                | Connection string for MongoDB                                                                                                                                                                             |
@@ -142,10 +143,10 @@ vi mqtt-broker.env
 | MONGO_DB_POOL_SIZE       | Size of MongoDB connection pool                                                                                                                                                                           |
 | METEORD_NODE_OPTIONS     | Options when running node. [nodejs options](https://nodejs.org/api/cli.html#cli_options)                                                                                                                  |
 | MAIL_URL                 | Send mail server connection url (SMTP)                                                                                                                                                                    |
-| QDRANT_CLUSTER_URL | QDRANT vector database cluster url |
-| QDRANT_API_KEY | QDRANT vector database API Key |
-| OPENAI_KEY    | OpenAI api key              |
-| OLLAMA_API_HOST | Ollama api host url (<http://host:11434>) |
+| QDRANT_CLUSTER_URL       | QDRANT vector database cluster url                                                                                                                                                                        |
+| QDRANT_API_KEY           | QDRANT vector database API Key                                                                                                                                                                            |
+| OPENAI_KEY               | OpenAI api key                                                                                                                                                                                            |
+| OLLAMA_API_HOST          | Ollama api host url (<http://host:11434>)                                                                                                                                                                 |
 
 ### webapp.env
 
@@ -161,10 +162,10 @@ vi mqtt-broker.env
 
 ### gis-process.env
 
-| var       | description                                                                                                                                          |
-|:----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| SERVER_ID | Server ID is an ID used when parsing GIS files and storing them in DB. When duplicating using multiple servers, each server must use a different ID. |
-| SERVER_FILE_URL | read file path for server side |
+| var             | description                                                                                                                                          |
+|:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| SERVER_ID       | Server ID is an ID used when parsing GIS files and storing them in DB. When duplicating using multiple servers, each server must use a different ID. |
+| SERVER_FILE_URL | read file path for server side                                                                                                                       |
 
 ### mqtt-client.env
 
@@ -220,6 +221,36 @@ vi mqtt-broker.env
 | NODE_ENV                    | node environment                                                                        |
 | HIDE_JSON                   | hide JSON from chat message ("1" / "")                                                  |
 
+### node-vm-service.env
+
+| var                    | description              |
+|:-----------------------|:-------------------------|
+| LOG_DIR                | log path                 |
+| PORT                   | port for node-vm-service |
+| NODE_ENV               | node environment         |
+| LOG_LEVEL              | log level                |
+| ISOLATED_VM_TIMEOUT    | timeout seconds          |
+| ISOLATED_VM_MAX_MEMORY | max memory MB            |
+
+### db-agent.env
+
+| var                           | description                       |
+|:------------------------------|:----------------------------------|
+| LOG_DIR                       | log path                          |
+| PORT                          | port for node-vm-service          |
+| NODE_ENV                      | node environment                  |
+| LOG_LEVEL                     | log level                         |
+| SECRET_KEY                    | secret key                        |
+| JWT_PRIVATE_KEY_PATH          | JWT Private key path              |
+| JWT_PUBLIC_KEY_PATH           | JWT public key path               |
+| TLS_CERT                      | SSL public key file path          |
+| TLS_KEY                       | SSL private key file path         |
+| AGENT_DB_PATH                 | agent.db file path                |
+| USE_MYBATIS                   | Use mybatis mapper                |
+| ORACLE_CLIENT_DIR             | ORACLE Client DIR                 |
+| MSSQL_IDLE_TIMEOUT_MS         | SQL Server idle time out ms       |
+| TUNNEL_KEEP_ALIVE_INTERVAL_MS | ssh tunnel keep alive interval ms |
+
 ### settings.json
 
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
@@ -242,7 +273,7 @@ vi mqtt-broker.env
 | public.uploadMaxMB                                   | max upload file size (MB)                                                                                                                                                                                                                                                                                               |
 | public.editorHosts                                   | editor host array                                                                                                                                                                                                                                                                                                       |
 | public.ai.chat                                       | ai chat bot default prompt (If you don't want to use this ai feature, remove "public.ai" field.)                                                                                                                                                                                                                        |
-| public.ai.ollama                                     | ollama llm list array [{"model": "OLLAMA_gemma3:27b","label": "Gemma3 27B"}] you can use any OLLAMA models with prefix "OLLAMA_"                                                                                                                                                                                        |
+| public.ai.ollama                                     | ollama llm list array [{"model": "OLLAMA_gpt-oss:20b","label": "OPENAI GPT OSS 20b"}] you can use any OLLAMA models with prefix "OLLAMA_"                                                                                                                                                                               |
 | public.ai.ollamaEmbedModel                           | ollama embedding model list array [{"model": "mxbai-embed-large","label": "mxbai-embed-large"}] current support model ("mxbai-embed-large")                                                                                                                                                                             |
 | public.ai.sqlModel                                   | model for SQL generation current support model ("GPT4", "GPT3_16K", "OLLAMA_gemma2:latest", and you can use any OLLAMA models with prefix "OLLAMA_")                                                                                                                                                                    |
 | public.hub.llmAPI                                    | "openai" (defaut), "ollama"                                                                                                                                                                                                                                                                                             |

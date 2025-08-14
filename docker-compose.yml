@@ -194,7 +194,28 @@ services:
       - webapp
     networks:
       - sclab-network
-  
+
+  node-vm-service:
+    container_name: node-vm-service
+    hostname: node-vm-service
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-node-vm-service:latest"
+    restart: always
+    volumes:
+      - ./data/node-vm-service/logs:/data/logs
+    env_file:
+      - ./node-vm-service.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    ports:
+      - "80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - sclab-network
+
   ai-service:
     container_name: ai-service
     hostname: ai-service
@@ -215,6 +236,7 @@ services:
       - redis
       - qdrant
       - webapp
+      - node-vm-service
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
