@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
-# One-time secret & domain setup / replacement script
-# Secrets in: docker-compose.yml, common.env, settings.json
-# Domain only in: common.env, nginx.conf, settings.json, mqtt-broker.env
-# License only in: settings.json
-# Placeholders:
-#   - changeThisMongoPassword
-#   - changeThisRedisPassword
-#   - changeThisQdrantApiKey
-#   - openAiApiKeyHere (optional; Enter = empty)
-#   - yourdomain.com  (optional; Enter = skip)
-#   - LICENSE CODE HERE (required; abort if empty)
+# SCLAB Studio Installation Script
+# This script performs one-time configuration for secrets, domains, and license keys.
+# 
+# Files that will be modified:
+# - Secrets: docker-compose.yml, common.env, settings.json, ai-service.env
+# - Domain: common.env, nginx.conf, settings.json, mqtt-broker.env
+# - License: settings.json
+#
+# Default placeholders that will be replaced:
+#   - changeThisMongoPassword (MongoDB database password)
+#   - changeThisRedisPassword (Redis cache password)
+#   - changeThisQdrantApiKey (Qdrant vector database API key)
+#   - openAiApiKeyHere (OpenAI API key - optional, leave empty for local models)
+#   - yourdomain.com (Your domain name - optional, skip if using localhost)
+#   - LICENSE CODE HERE (Your SCLAB license key - required)
 
 set -euo pipefail
 
@@ -26,14 +30,14 @@ DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env")
 LICENSE_FILE="settings.json"
 LICENSE_PLACEHOLDER="LICENSE CODE HERE"
 
-# Exit if already initialized
+# Check if installation has already been completed
 if [[ -f "$INIT_FILE" ]]; then
-  echo "[Info] Already initialized (.init exists)."
-  echo "To reset, delete $INIT_FILE and run this script again."
+  echo "[Info] Installation has already been completed (.init file exists)."
+  echo "To reinstall with new settings, please delete the $INIT_FILE file and run this script again."
   exit 0
 fi
 
-# Generate a secure random 32-char alphanumeric secret
+# Generate a cryptographically secure 32-character alphanumeric password
 gen_secret() {
   # Temporarily disable pipefail to avoid SIGPIPE from 'head -c' killing the pipeline
   set +o pipefail
@@ -45,7 +49,7 @@ gen_secret() {
   set -o pipefail
 }
 
-# Prompt for a secret (silent). Enter = auto-generate a secure default.
+# Prompt for password input (hidden for security). Press Enter to auto-generate a secure password.
 prompt_secret() {
   local var_name="$1"
   local prompt_msg="$2"
@@ -58,10 +62,10 @@ prompt_secret() {
 
   if [[ -n "$typed" ]]; then
     value="$typed"
-    echo " → Using user-provided value."
+    echo " → Using your custom password."
   else
     value="$(gen_secret)"
-    echo " → Enter pressed: applying secure auto-generated default."
+    echo " → Auto-generating secure password (32 random characters)."
   fi
 
   # Safe assignment (no eval)
@@ -140,54 +144,120 @@ do_replace_license_only() {
   echo " - $f: replaced '$placeholder' with <$label>."
 }
 
-echo "SCLAB STUDIO Installation process start."
-echo "Tip: For secrets, press Enter to auto-generate a secure 32-character default."
+echo "========================================"
+echo "SCLAB STUDIO Installation"
+echo "========================================"
+echo ""
+echo "This script will configure your SCLAB Studio installation."
+echo "For security passwords, you can either:"
+echo "  - Enter your own password, or"
+echo "  - Press Enter to auto-generate a secure 32-character password"
 echo
 
-# REQUIRED: License key (treat whitespace-only as empty)
-read -r -s -p "Enter License Key for settings.json (REQUIRED): " LICENSE_KEY || true
+# License Key Configuration (REQUIRED)
+echo ""
+echo "License Key Configuration"
+echo "------------------------"
+echo "Please enter your SCLAB Studio license key."
+echo "This is required to activate your installation."
+read -r -s -p "License Key: " LICENSE_KEY || true
 echo
 if [[ ! "$LICENSE_KEY" =~ [^[:space:]] ]]; then
-  echo "[Error] License key is required. Aborting."
+  echo "[Error] License key cannot be empty. Installation aborted."
+  echo "Please obtain a valid license key and try again."
   exit 1
 fi
+echo " → License key accepted."
 
-# Ask for each secret (Enter = auto-generate)
-prompt_secret MONGO_PW   "Enter MongoDB root password [Enter = auto-generate]: "
-prompt_secret REDIS_PW   "Enter Redis password [Enter = auto-generate]: "
-prompt_secret QDRANT_KEY "Enter Qdrant API key [Enter = auto-generate]: "
+# Database and Service Passwords
+echo ""
+echo "Database and Service Configuration"
+echo "----------------------------------"
+echo "Configure passwords for the following services:"
+echo ""
+prompt_secret MONGO_PW   "MongoDB root password [Enter = auto-generate]: "
+prompt_secret REDIS_PW   "Redis password [Enter = auto-generate]: "
+prompt_secret QDRANT_KEY "Qdrant API key [Enter = auto-generate]: "
 
-# Ask for OpenAI API key (Enter = empty)
-read -r -s -p "Enter OpenAI API Key for common.env [Enter = empty]: " OPENAI_KEY || true
+# AI Service Configuration
+echo ""
+echo "AI Service Configuration"
+echo "------------------------"
+echo "If you have an OpenAI API key, enter it to use GPT models."
+echo "Leave empty to use local Ollama models instead."
+read -r -s -p "OpenAI API Key [Enter = skip]: " OPENAI_KEY || true
 echo
 if [[ -n "${OPENAI_KEY:-}" ]]; then
-  echo " → Using provided OpenAI API key."
+  echo " → OpenAI API key configured. GPT models will be available."
 else
-  echo " → No OpenAI API key provided, will use empty value."
+  echo " → No OpenAI API key provided. Will use local Ollama models."
 fi
 
-# Ask for mainPrefix (Enter = empty)
-echo
-echo "mainPrefix is used to set a different domain for the editor instead of using siteDomain."
-echo "Example: If siteDomain is 'example.com' and mainPrefix is 'editor', editor will be at 'editor.example.com'"
-read -r -p "Enter mainPrefix for settings.json [Enter = empty]: " MAIN_PREFIX || true
+# Editor Subdomain Configuration
+echo ""
+echo "Editor Subdomain Configuration"
+echo "------------------------------"
+echo "The mainPrefix allows you to host the editor interface on a separate subdomain."
+echo "This is useful for separating the main site from the editor interface."
+echo ""
+echo "Examples:"
+echo "  - If your domain is 'example.com' and mainPrefix is 'editor',"
+echo "    the editor will be accessible at 'editor.example.com'"
+echo "  - Leave empty to use the same domain for both site and editor"
+echo ""
+read -r -p "Editor subdomain prefix [Enter = none]: " MAIN_PREFIX || true
 echo
 if [[ -n "${MAIN_PREFIX:-}" ]]; then
-  echo " → Using provided mainPrefix: $MAIN_PREFIX"
+  echo " → Editor will be accessible at: $MAIN_PREFIX.<your-domain>"
 else
-  echo " → No mainPrefix provided, will use empty value."
+  echo " → Editor will use the same domain as the main site."
 fi
 
-# Optional domain replacement (visible input). Enter = skip
-read -r -p "Enter domain to replace 'yourdomain.com' in {common.env, nginx.conf, settings.json, mqtt-broker.env} [Enter = skip]: " DOMAIN_NEW || true
+# Domain Configuration
+echo ""
+echo "Domain Configuration"
+echo "--------------------"
+echo "Enter your domain name to configure SCLAB Studio for production use."
+echo "This will update configuration files with your domain."
+echo "Leave empty to keep the default 'yourdomain.com' placeholder."
+echo ""
+read -r -p "Your domain name [Enter = skip]: " DOMAIN_NEW || true
 if [[ -n "${DOMAIN_NEW:-}" ]]; then
-  echo " → Will replace 'yourdomain.com' with the provided domain in the specified files."
+  echo " → Domain will be set to: $DOMAIN_NEW"
 else
-  echo " → Skipping domain change."
+  echo " → Keeping default domain placeholder. Remember to update it later for production."
 fi
 
+# Administrator Account Configuration
+echo ""
+echo "Administrator Account Configuration"
+echo "-----------------------------------"
+echo "Configure the administrator account for SCLAB Studio."
+echo ""
+read -r -p "Admin email address [Enter = admin@sclab.io]: " ADMIN_EMAIL || true
+if [[ -n "${ADMIN_EMAIL:-}" ]]; then
+  echo " → Admin email set to: $ADMIN_EMAIL"
+else
+  ADMIN_EMAIL="admin@sclab.io"
+  echo " → Using default admin email: $ADMIN_EMAIL"
+fi
+
+echo ""
+echo "Admin password configuration:"
+echo "You can either enter your own password or press Enter to auto-generate a secure one."
+read -r -s -p "Admin password [Enter = auto-generate]: " ADMIN_PASSWORD || true
 echo
-echo "Replacing values..."
+if [[ -n "${ADMIN_PASSWORD:-}" ]]; then
+  echo " → Using your custom admin password."
+else
+  ADMIN_PASSWORD="$(gen_secret)"
+  echo " → Auto-generated secure admin password."
+fi
+
+echo ""
+echo "========================================"
+echo "Applying Configuration"
+echo "========================================"
 
 # Replace secrets across docker-compose.yml, common.env, settings.json
 do_replace_all "changeThisMongoPassword"  "$MONGO_PW"   "MongoDB password"
@@ -238,6 +308,25 @@ fi
 # Replace LICENSE CODE HERE only in settings.json (required)
 do_replace_license_only "$LICENSE_PLACEHOLDER" "$LICENSE_KEY" "license key"
 
+# Update admin credentials in settings.json
+if [[ -f "settings.json" ]]; then
+  echo " - Updating administrator credentials in settings.json..."
+  # Escape special characters in the replacement strings
+  ADMIN_EMAIL_ESC="$(printf '%s' "${ADMIN_EMAIL}" | sed -e 's/[\\/&]/\\&/g')"
+  ADMIN_PASSWORD_ESC="$(printf '%s' "${ADMIN_PASSWORD}" | sed -e 's/[\\/&]/\\&/g')"
+  
+  # Replace adminEmail value
+  sed -i.bak -e 's/"adminEmail"[[:space:]]*:[[:space:]]*"[^"]*"/"adminEmail": "'"$ADMIN_EMAIL_ESC"'"/g' "settings.json"
+  
+  # Replace adminPassword value
+  sed -i.bak -e 's/"adminPassword"[[:space:]]*:[[:space:]]*"[^"]*"/"adminPassword": "'"$ADMIN_PASSWORD_ESC"'"/g' "settings.json"
+  
+  rm -f "settings.json.bak"
+  echo " - settings.json: updated admin credentials"
+else
+  echo " ! Warning: settings.json not found; could not update admin credentials."
+fi
+
 # Create .init (no secrets stored)
 umask 077
 {
@@ -248,22 +337,27 @@ umask 077
 } > "$INIT_FILE"
 
 echo
-echo "✅ Initialization complete! (.init created)"
-echo "To re-run, delete .init and execute this script again."
+echo "✅ Configuration completed successfully!"
+echo ""
+echo "Configuration has been saved. To reconfigure, delete the .init file and run this script again."
 
-echo "Make JWT and SSL key files"
+echo ""
+echo "Generating security keys..."
+echo "Creating JWT tokens and SSL certificates for secure communication..."
 docker compose -f gen.yml run --rm key-generator
 
-echo "Install AWS CLI"
+echo ""
+echo "Installing AWS CLI..."
+echo "AWS CLI is required for S3 storage functionality..."
 if ! command -v aws >/dev/null 2>&1; then
   TMP="$(mktemp -d)"
-  # 삭제 보장
+  # Ensure cleanup on exit
   trap 'rm -rf "$TMP"' EXIT
 
-  # 다운로드(권한 문제 회피: /tmp 사용)
+  # Download to temp directory to avoid permission issues
   curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$TMP/awscliv2.zip"
 
-  # unzip 없으면 설치(우분투)
+  # Install unzip if not available (Ubuntu/Debian)
   if ! command -v unzip >/dev/null 2>&1; then
     echo "[Info] 'unzip' not found; installing..."
     apt-get update -y && apt-get install -y unzip
@@ -276,10 +370,41 @@ else
   echo "[Info] AWS CLI already installed: $(aws --version)"
 fi
 
-echo "Create sclab-network"
+echo ""
+echo "Creating Docker network..."
+echo "Setting up internal network for container communication..."
 docker network create sclab-network || true
 
-echo "Installation complete."
-echo "To start SCLAB : sudo ./run.sh"
-echo "To stop SCLAB   : sudo ./stop.sh"
-echo "Display logs    : sudo ./logs.sh"
+echo ""
+echo "========================================"
+echo "🎉 Installation Complete!"
+echo "========================================"
+echo ""
+echo "SCLAB Studio has been successfully configured."
+echo ""
+echo "Next steps:"
+echo "  1. Start SCLAB Studio:  sudo ./run.sh"
+echo "  2. Stop SCLAB Studio:   sudo ./stop.sh"
+echo "  3. View logs:           sudo ./logs.sh"
+echo ""
+echo "After starting, access SCLAB Studio at:"
+if [[ -n "${DOMAIN_NEW:-}" ]]; then
+  echo "  - Main site: https://$DOMAIN_NEW"
+  if [[ -n "${MAIN_PREFIX:-}" ]]; then
+    echo "  - Editor: https://$MAIN_PREFIX.$DOMAIN_NEW"
+  fi
+else
+  echo "  - http://localhost (update domain for production use)"
+fi
+echo ""
+echo "========================================"
+echo "Administrator Login Credentials"
+echo "========================================"
+echo "Email:    $ADMIN_EMAIL"
+echo "Password: $ADMIN_PASSWORD"
+echo ""
+echo "⚠️  IMPORTANT: Please change your password after first login!"
+echo "   The password is stored in settings.json which could be exposed."
+echo "   For security, update your password through the admin interface."
+echo "========================================"
+echo ""
