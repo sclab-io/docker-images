@@ -470,6 +470,7 @@ sudo docker logs sclab-agent
 - ex) MAIL_URL=smtps://yourname@gmail.com:abcdwxyz1234pqrs@smtp.gmail.com:465
 - Change the public.supportEmail value in the settings.json as follows.
 - supportEmail: "yourname@gmail.com"
+- restart: sudo ./restart.sh
 
 # License
 
