@@ -7,6 +7,7 @@
 #   - changeThisMongoPassword
 #   - changeThisRedisPassword
 #   - changeThisQdrantApiKey
+#   - openAiApiKeyHere (optional; Enter = empty)
 #   - yourdomain.com  (optional; Enter = skip)
 #   - LICENSE CODE HERE (required; abort if empty)
 
@@ -149,6 +150,15 @@ prompt_secret MONGO_PW   "Enter MongoDB root password [Enter = auto-generate]: "
 prompt_secret REDIS_PW   "Enter Redis password [Enter = auto-generate]: "
 prompt_secret QDRANT_KEY "Enter Qdrant API key [Enter = auto-generate]: "
 
+# 2) Ask for OpenAI API key (Enter = empty)
+read -r -s -p "Enter OpenAI API Key for common.env [Enter = empty]: " OPENAI_KEY || true
+echo
+if [[ -n "${OPENAI_KEY:-}" ]]; then
+  echo " → Using provided OpenAI API key."
+else
+  echo " → No OpenAI API key provided, will use empty value."
+fi
+
 # 2) Optional domain replacement (visible input). Enter = skip
 read -r -p "Enter domain to replace 'yourdomain.com' in {common.env, nginx.conf, settings.json, mqtt-broker.env} [Enter = skip]: " DOMAIN_NEW || true
 if [[ -n "${DOMAIN_NEW:-}" ]]; then
@@ -164,6 +174,29 @@ echo "Replacing values..."
 do_replace_all "changeThisMongoPassword"  "$MONGO_PW"   "MongoDB password"
 do_replace_all "changeThisRedisPassword"  "$REDIS_PW"   "Redis password"
 do_replace_all "changeThisQdrantApiKey"   "$QDRANT_KEY" "Qdrant API key"
+
+# Replace OpenAI API key in common.env
+OPENAI_REPLACEMENT="${OPENAI_KEY:-}"
+do_replace_all "openAiApiKeyHere" "$OPENAI_REPLACEMENT" "OpenAI API key"
+
+# If OpenAI API key is provided, update settings.json
+if [[ -n "${OPENAI_KEY:-}" ]]; then
+  echo " - Updating settings.json for OpenAI configuration..."
+  
+  # Update sqlModel to GPT5_MINI
+  if [[ -f "settings.json" ]]; then
+    # Replace sqlModel value
+    sed -i.bak -e 's/"sqlModel"[[:space:]]*:[[:space:]]*"[^"]*"/"sqlModel": "GPT5_MINI"/g' "settings.json"
+    
+    # Replace hub.llmAPI value
+    sed -i.bak -e 's/"llmAPI"[[:space:]]*:[[:space:]]*"[^"]*"/"llmAPI": "openai"/g' "settings.json"
+    
+    rm -f "settings.json.bak"
+    echo " - settings.json: updated sqlModel to 'GPT5_MINI' and hub.llmAPI to 'openai'."
+  else
+    echo " ! Warning: settings.json not found; could not update AI configuration."
+  fi
+fi
 
 # 4) Replace domain only in specified files
 if [[ -n "${DOMAIN_NEW:-}" ]]; then
