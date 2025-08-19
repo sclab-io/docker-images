@@ -73,6 +73,13 @@ If you want to get one, please contact us. [support@sclab.io](mailto://support@s
 git clone https://github.com/sclab-io/docker-images.git
 ~~~
 
+## Step 3. Run install script
+```bash
+cd docker-images
+sudo ./install.sh
+```
+
+### File list
 | File Name          | Description                  |
 |:-------------------|:-----------------------------|
 | common.env         | Common Environment           |
@@ -85,46 +92,11 @@ git clone https://github.com/sclab-io/docker-images.git
 | db-agent.env       | Environment for SCLAB Agent  |
 | docker-compose.yml | Docker Compose YAML          |
 | nginx.conf         | Nginx config                 |
-| redis.conf         | Redis config                 |
 | settings.json      | sclab settings               |
 | run.sh             | run script                   |
+| stop.sh            | stop script                  |
 | down.sh            | down script                  |
 | logs.sh            | logs script                  |
-
-## Step 3. Modify config files from this source
-
-### edit common.env (required)
-
-- ROOT_URL in common.env
-- If you don't have domain for sclab, you need to add your custom domain to /etc/hosts file.
-- ex) 127.0.0.1 yourdomain.com
-- ROOT_URL=<http://yourdomain.com>
-
-```bash
-vi common.env
-```
-
-### edit settings.json (required)
-
-- public.siteDomain from settings.json
-- ex) yourdomain.com
-- edit siteDomain
-- "public.siteDomain" : "yourdomain.com"
-- **`private.license`: `your license code`**  
-- ***`(*** lICENSE CODE IS REQUIRED ***)`***
-
-```bash
-vi settings.json
-```
-
-### edit mqtt-broker.env (optional - If you're using our mqtt broker with your domain)
-
-- edit SERVER_DOMAIN
-- SERVER_DOMAIN=yourdomain.com
-
-```bash
-vi mqtt-broker.env
-```
 
 ### common.env
 
@@ -298,46 +270,7 @@ vi mqtt-broker.env
 | redisOplog.mutationDefaults.pushToRedis              | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-## Step 4. create key files for mqtt-broker, sclab-db-agent, sclab-api, sclab-db-agent
-
-~~~bash
-docker compose -f gen.yml run --rm key-generator
-~~~
-
-## Step 5. Install AWS CLI
-
-[https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-
-### linux install
-
-~~~bash
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-~~~
-
-~~~bash
-unzip awscliv2.zip
-~~~
-
-~~~bash
-sudo ./aws/install
-~~~
-
-## Step 6. AWS Configure
-
-- add AWS Access Key ID and AWS Secret Access Key from SCLAB
-
-~~~bash
-sudo aws configure
-~~~
-
-## Step 7. running instances
-
-### create network
-
-```bash
-sudo docker network create sclab-network
-```
-
+## Script
 ### running daemon mode
 
 ```bash
@@ -352,7 +285,7 @@ You can change your admin password from web page, don't need to change settings.
 ## Stop Running instance
 
 ```bash
-sudo ./down.sh
+sudo ./stop.sh
 ```
 
 ## Display logs

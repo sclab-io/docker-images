@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
 # alias for run.sh
-./down.sh
+./stop.sh
 ./run.sh

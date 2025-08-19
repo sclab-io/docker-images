@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-mkdir -p ./data/logs
 export METEOR_SETTINGS=$(cat ./settings.json)
 docker compose logs > ./data/logs/sclab-compose-logs-$(date +%F_%H%M).log
-docker compose down
+docker compose stop
