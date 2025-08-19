@@ -52,32 +52,78 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 You cannot use this image without a LICENSE KEY.
 If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
 
-### OS
+### System Requirements
 
-- os.linux.x86_64 (linux, windows, macos - intel)
-- docker
-- docker-compose
+#### Hardware
+- Memory: 8GB minimum
+- Storage: 40GB free space minimum
+- Architecture: x86_64 (AMD64) or aarch64 (ARM64)
 
-### Minimum system requirements
+#### Software
+- Docker with Compose plugin (or docker-compose)
+- sudo/root access
+- Basic Unix tools (sed, grep, curl or wget)
+- Linux OS (see compatibility below)
 
-- Memory 8GB
-- 40GB Free space
+### Compatibility
 
-## Step 1. Install docker
+The installation script is compatible with all major Linux distributions:
 
-- docker - [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+- **Ubuntu/Debian** and derivatives (Mint, Pop!_OS, etc.)
+- **RHEL/CentOS/Fedora** and derivatives (Rocky Linux, AlmaLinux)
+- **SUSE/openSUSE**
+- **Arch Linux/Manjaro**
+- **Alpine Linux**
+- Other Linux distributions
+
+## Step 1. Install Docker
+
+Install Docker following the official documentation:
+- [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+
+Make sure Docker Compose is also installed (usually included with Docker Desktop or as a plugin).
 
 ## Step 2. Download files
 
-~~~bash
-git clone https://github.com/sclab-io/docker-images.git
-~~~
-
-## Step 3. Run install script
 ```bash
+git clone https://github.com/sclab-io/docker-images.git
 cd docker-images
+```
+
+## Step 3. Run installation script
+
+```bash
 sudo ./install.sh
 ```
+
+The installation script will:
+
+1. **Check system compatibility** and requirements
+2. **Prompt for configuration**:
+   - License key (required)
+   - Database passwords (auto-generated if not provided)
+   - OpenAI API key (optional - leave empty to use local Ollama models)
+   - Editor subdomain prefix (optional - for hosting editor on separate subdomain)
+   - Domain name (optional - leave empty for localhost)
+   - Administrator email and password
+3. **Configure all services** by updating configuration files
+4. **Generate security keys** (JWT tokens and SSL certificates)
+5. **Install dependencies** (AWS CLI for S3 storage)
+6. **Create Docker network** for container communication
+
+### Security Notes
+
+- Auto-generated passwords are 32 characters, alphanumeric
+- Admin password is stored in plain text in settings.json
+- **⚠️ IMPORTANT: Change your admin password after first login!**
+
+### Troubleshooting
+
+If you encounter issues:
+- Ensure you're running with sudo: `sudo ./install.sh`
+- Make script executable if needed: `chmod +x install.sh`
+- Check Docker is properly installed: `docker --version`
+- For package manager issues, the script automatically detects and uses the appropriate one
 
 ### File list
 | File Name              | Description                                |
@@ -287,48 +333,121 @@ sudo ./install.sh
 | redisOplog.mutationDefaults.pushToRedis              | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-## running daemon mode
+## Running SCLAB Studio
+
+### Quick Command Reference
+
+| Script          | Description                            | Usage                   |
+|:----------------|:---------------------------------------|:------------------------|
+| `install.sh`    | Initial installation and configuration | `sudo ./install.sh`     |
+| `run.sh`        | Start all services                     | `sudo ./run.sh`         |
+| `stop.sh`       | Stop all services (data preserved)     | `sudo ./stop.sh`        |
+| `restart.sh`    | Restart all services                   | `sudo ./restart.sh`     |
+| `logs.sh`       | View real-time logs                    | `sudo ./logs.sh`        |
+| `down.sh`       | Stop and remove containers             | `sudo ./down.sh`        |
+| `up.sh`         | Alternative start command              | `sudo ./up.sh`          |
+| `pull.sh`       | Download latest images                 | `sudo ./pull.sh`        |
+| `update.sh`     | Update webapp only                     | `sudo ./update.sh`      |
+| `update-all.sh` | Update all services                    | `sudo ./update-all.sh`  |
+
+### Start services
 
 ```bash
 sudo ./run.sh
 ```
 
-Now you can access SCLAB Studio at <http://yourdomain.com/> from your host system.  
-After access SCLAB web page you have to login using admin account.  
-Default account information is [admin@sclab.io / admin] from settings.json private.adminEmail, private.adminPassword.  
-You can change your admin password from web page, don't need to change settings.json file private.adminPassword.  
+### Access SCLAB Studio
 
-## Stop Running instance
+After starting, you can access SCLAB Studio at:
+- **Local development**: https://127.0.0.1
+- **Production**: https://yourdomain.com (or the domain you configured)
+- **Editor** (if mainPrefix configured): https://editor.yourdomain.com
+
+### Login
+
+Use the administrator credentials that were displayed at the end of the installation:
+- **Email**: The email you configured (default: admin@sclab.io)
+- **Password**: The password you set or the auto-generated one
+
+**⚠️ Important**: Change your password immediately after first login through the admin interface for security.  
+
+## Managing SCLAB Studio
+
+### Stop services
 
 ```bash
 sudo ./stop.sh
 ```
 
-## Display logs
+Stops all running SCLAB Studio containers while preserving data.
+
+### Restart services
+
+```bash
+sudo ./restart.sh
+```
+
+Restarts all SCLAB Studio services (equivalent to stop.sh followed by run.sh).
+
+### View logs
 
 ```bash
 sudo ./logs.sh
 ```
 
-## Download new images
+Displays real-time logs from all services. Press `Ctrl+C` to exit.
+
+### Completely shutdown services
+
+```bash
+sudo ./down.sh
+```
+
+Stops and removes all containers. Data volumes are preserved.
+
+### Start services (alternative)
+
+```bash
+sudo ./up.sh
+```
+
+Alternative to `run.sh`. Starts all services in detached mode.
+
+## Updating SCLAB Studio
+
+### Download latest images
 
 ```bash
 sudo ./pull.sh
 ```
 
-## Update all images
+Downloads the latest versions of all SCLAB Studio Docker images without stopping services.
+
+### Update webapp only
+
+```bash
+sudo ./update.sh
+```
+
+Updates only the webapp service:
+1. Pulls the latest webapp image
+2. Stops the webapp container
+3. Restarts with the new image
+
+Use this for quick webapp updates without affecting other services.
+
+### Update all services
 
 ```bash
 sudo ./update-all.sh
 ```
 
-## Update images and restart webapp
+Updates all SCLAB Studio services:
+1. Pulls all latest images
+2. Stops all services
+3. Restarts with new images
 
-If any service other than the webapp is updated, please use "./update-all.sh".
-
-```bash
-sudo ./update.sh
-```
+Use this when multiple services need updating or for major version upgrades.
 
 ## get db agent API token
 
