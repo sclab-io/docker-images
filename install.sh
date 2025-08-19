@@ -51,10 +51,122 @@ install_package() {
   fi
 }
 
+# Install Docker if not present
+install_docker() {
+  echo "Installing Docker..."
+  
+  # Detect distribution for Docker installation
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    case "$ID" in
+      ubuntu|debian)
+        # Install prerequisites
+        apt-get update
+        apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        
+        # Add Docker's official GPG key
+        curl -fsSL "https://download.docker.com/linux/$ID/gpg" | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        
+        # Set up the stable repository
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$ID $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        
+        # Install Docker Engine
+        apt-get update
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        ;;
+        
+      fedora)
+        # Install prerequisites
+        dnf -y install dnf-plugins-core
+        
+        # Set up the repository
+        dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+        
+        # Install Docker Engine
+        dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        
+        # Start Docker
+        systemctl start docker
+        systemctl enable docker
+        ;;
+        
+      centos|rhel|rocky|almalinux)
+        # Install prerequisites
+        yum install -y yum-utils
+        
+        # Set up the repository
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        
+        # Install Docker Engine
+        yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        
+        # Start Docker
+        systemctl start docker
+        systemctl enable docker
+        ;;
+        
+      suse|opensuse*)
+        # Install Docker using zypper
+        zypper install -y docker docker-compose
+        
+        # Start Docker
+        systemctl start docker
+        systemctl enable docker
+        ;;
+        
+      arch|manjaro)
+        # Install Docker using pacman
+        pacman -Sy --noconfirm docker docker-compose
+        
+        # Start Docker
+        systemctl start docker
+        systemctl enable docker
+        ;;
+        
+      alpine)
+        # Install Docker using apk
+        apk add --no-cache docker docker-compose
+        
+        # Start Docker
+        rc-update add docker boot
+        service docker start
+        ;;
+        
+      *)
+        echo "[Error] Automatic Docker installation not supported for distribution: $ID"
+        echo "Please install Docker manually: https://docs.docker.com/engine/install/"
+        echo ""
+        echo "Detected distribution: $ID"
+        echo "You can find installation instructions at:"
+        echo "https://docs.docker.com/engine/install/#server"
+        exit 1
+        ;;
+    esac
+    
+    # Add current user to docker group (if not root)
+    if [ -n "${SUDO_USER:-}" ]; then
+      usermod -aG docker "$SUDO_USER"
+      echo "[Info] Added user $SUDO_USER to docker group. You may need to log out and back in."
+    fi
+    
+    # Start Docker service
+    if command_exists systemctl; then
+      systemctl start docker
+      systemctl enable docker
+    elif command_exists service; then
+      service docker start
+    fi
+    
+    echo "✓ Docker installed successfully"
+  else
+    echo "[Error] Cannot determine distribution. Please install Docker manually."
+    echo "Visit: https://docs.docker.com/engine/install/"
+    exit 1
+  fi
+}
+
 # Check for required commands
 check_requirements() {
-  local missing=0
-  
   echo "Checking system requirements..."
   
   # Check if running as root
@@ -64,25 +176,22 @@ check_requirements() {
     exit 1
   fi
   
-  # Check for required commands
-  local required_commands="docker curl sed grep"
-  for cmd in $required_commands; do
-    if ! command_exists "$cmd"; then
-      echo "[Warning] Required command not found: $cmd"
-      case "$cmd" in
-        curl)
-          if command_exists wget; then
-            echo "[Info] wget is available as an alternative to curl"
-          else
-            missing=1
-          fi
-          ;;
-        *)
-          missing=1
-          ;;
-      esac
-    fi
-  done
+  # Check for Docker
+  if ! command_exists docker; then
+    echo "[Warning] Docker is not installed."
+    echo ""
+    read -r -p "Would you like to install Docker now? [Y/n]: " INSTALL_DOCKER
+    case "${INSTALL_DOCKER:-Y}" in
+      [Yy]* )
+        install_docker
+        ;;
+      * )
+        echo "[Error] Docker is required. Please install it manually."
+        echo "Visit: https://docs.docker.com/engine/install/"
+        exit 1
+        ;;
+    esac
+  fi
   
   # Check for docker compose
   if command_exists docker; then
@@ -91,18 +200,63 @@ check_requirements() {
     elif command_exists docker-compose; then
       DOCKER_COMPOSE="docker-compose"
     else
-      echo "[Error] Docker Compose not found. Please install Docker with Compose plugin."
-      exit 1
+      echo "[Warning] Docker Compose not found."
+      # Try to install docker-compose-plugin
+      case "$DISTRO_ID" in
+        ubuntu|debian)
+          apt-get update && apt-get install -y docker-compose-plugin
+          ;;
+        fedora)
+          dnf install -y docker-compose-plugin
+          ;;
+        centos|rhel|rocky|almalinux)
+          yum install -y docker-compose-plugin
+          ;;
+        suse|opensuse*)
+          zypper install -y docker-compose
+          ;;
+        arch|manjaro)
+          pacman -Sy --noconfirm docker-compose
+          ;;
+        alpine)
+          apk add --no-cache docker-compose
+          ;;
+        *)
+          echo "[Error] Please install Docker Compose plugin manually."
+          echo "Visit: https://docs.docker.com/compose/install/"
+          exit 1
+          ;;
+      esac
+      
+      if docker compose version >/dev/null 2>&1; then
+        DOCKER_COMPOSE="docker compose"
+      else
+        echo "[Error] Failed to install Docker Compose."
+        exit 1
+      fi
     fi
-  else
-    echo "[Error] Docker not found. Please install Docker first."
-    exit 1
   fi
   
-  if [ $missing -eq 1 ]; then
-    echo "[Error] Some required commands are missing. Please install them first."
-    exit 1
-  fi
+  # Check for other required commands
+  local required_commands="curl sed grep"
+  for cmd in $required_commands; do
+    if ! command_exists "$cmd"; then
+      echo "[Warning] Required command not found: $cmd"
+      case "$cmd" in
+        curl)
+          if command_exists wget; then
+            echo "[Info] wget is available as an alternative to curl"
+          else
+            # Try to install curl
+            install_package curl
+          fi
+          ;;
+        *)
+          install_package "$cmd"
+          ;;
+      esac
+    fi
+  done
   
   echo "✓ All requirements satisfied"
 }
@@ -554,6 +708,52 @@ main() {
     echo "[Info] AWS CLI installed: $(aws --version)"
   else
     echo "[Info] AWS CLI already installed: $(aws --version)"
+  fi
+
+  # Check AWS credentials
+  echo ""
+  echo "Checking AWS credentials..."
+  
+  # Check if credentials file exists and has content
+  AWS_CREDS_FILE="${HOME}/.aws/credentials"
+  if [ "$SUDO_USER" ]; then
+    AWS_CREDS_FILE="/home/$SUDO_USER/.aws/credentials"
+  fi
+  
+  if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
+    echo "✓ AWS credentials found"
+  else
+    echo "AWS credentials not found."
+    echo "AWS credentials are required to download SCLAB docker images."
+    echo ""
+    read -r -p "Would you like to configure AWS credentials now? [Y/n]: " CONFIGURE_AWS
+    case "${CONFIGURE_AWS:-Y}" in
+      [Yy]* )
+        echo ""
+        echo "Please enter your AWS credentials:"
+        echo "(These will be provided by SCLAB support)"
+        
+        # Run aws configure as the sudo user if available
+        if [ "$SUDO_USER" ]; then
+          sudo -u "$SUDO_USER" aws configure
+        else
+          aws configure
+        fi
+        
+        # Verify credentials were configured
+        if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
+          echo "✓ AWS credentials configured successfully"
+        else
+          echo "[Warning] AWS credentials were not configured properly."
+          echo "You may need to configure them manually later using: aws configure"
+        fi
+        ;;
+      * )
+        echo "[Warning] Skipping AWS configuration."
+        echo "You will need to configure AWS credentials manually later using: aws configure"
+        echo "Without AWS credentials, you won't be able to download SCLAB docker images."
+        ;;
+    esac
   fi
   
   # Create Docker network

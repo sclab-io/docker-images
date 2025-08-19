@@ -52,6 +52,12 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 You cannot use this image without a LICENSE KEY.
 If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
 
+### AWS Credentials
+
+AWS credentials are required to download SCLAB docker images.
+These will be provided by SCLAB support along with your license key.
+The installation script will prompt you to configure them.
+
 ### System Requirements
 
 #### Hardware
@@ -60,10 +66,10 @@ If you want to get one, please contact us. [support@sclab.io](mailto://support@s
 - Architecture: x86_64 (AMD64) or aarch64 (ARM64)
 
 #### Software
-- Docker with Compose plugin (or docker-compose)
-- sudo/root access
-- Basic Unix tools (sed, grep, curl or wget)
 - Linux OS (see compatibility below)
+- sudo/root access
+- Basic Unix tools (automatically installed if missing)
+- Docker (automatically installed if missing)
 
 ### Compatibility
 
@@ -76,21 +82,14 @@ The installation script is compatible with all major Linux distributions:
 - **Alpine Linux**
 - Other Linux distributions
 
-## Step 1. Install Docker
-
-Install Docker following the official documentation:
-- [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-
-Make sure Docker Compose is also installed (usually included with Docker Desktop or as a plugin).
-
-## Step 2. Download files
+## Step 1. Download files
 
 ```bash
 git clone https://github.com/sclab-io/docker-images.git
 cd docker-images
 ```
 
-## Step 3. Run installation script
+## Step 2. Run installation script
 
 ```bash
 sudo ./install.sh
@@ -99,6 +98,8 @@ sudo ./install.sh
 The installation script will:
 
 1. **Check system compatibility** and requirements
+   - Automatically installs Docker if not present (with your permission)
+   - Installs missing dependencies (curl, sed, grep)
 2. **Prompt for configuration**:
    - License key (required)
    - Database passwords (auto-generated if not provided)
@@ -109,7 +110,8 @@ The installation script will:
 3. **Configure all services** by updating configuration files
 4. **Generate security keys** (JWT tokens and SSL certificates)
 5. **Install dependencies** (AWS CLI for S3 storage)
-6. **Create Docker network** for container communication
+6. **Configure AWS credentials** (required for downloading SCLAB docker images)
+7. **Create Docker network** for container communication
 
 ### Security Notes
 
