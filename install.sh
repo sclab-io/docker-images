@@ -144,7 +144,7 @@ echo "SCLAB STUDIO Installation process start."
 echo "Tip: For secrets, press Enter to auto-generate a secure 32-character default."
 echo
 
-# 0) REQUIRED: License key (treat whitespace-only as empty)
+# REQUIRED: License key (treat whitespace-only as empty)
 read -r -s -p "Enter License Key for settings.json (REQUIRED): " LICENSE_KEY || true
 echo
 if [[ ! "$LICENSE_KEY" =~ [^[:space:]] ]]; then
@@ -152,12 +152,12 @@ if [[ ! "$LICENSE_KEY" =~ [^[:space:]] ]]; then
   exit 1
 fi
 
-# 1) Ask for each secret (Enter = auto-generate)
+# Ask for each secret (Enter = auto-generate)
 prompt_secret MONGO_PW   "Enter MongoDB root password [Enter = auto-generate]: "
 prompt_secret REDIS_PW   "Enter Redis password [Enter = auto-generate]: "
 prompt_secret QDRANT_KEY "Enter Qdrant API key [Enter = auto-generate]: "
 
-# 2) Ask for OpenAI API key (Enter = empty)
+# Ask for OpenAI API key (Enter = empty)
 read -r -s -p "Enter OpenAI API Key for common.env [Enter = empty]: " OPENAI_KEY || true
 echo
 if [[ -n "${OPENAI_KEY:-}" ]]; then
@@ -166,7 +166,19 @@ else
   echo " → No OpenAI API key provided, will use empty value."
 fi
 
-# 2) Optional domain replacement (visible input). Enter = skip
+# Ask for mainPrefix (Enter = empty)
+echo
+echo "mainPrefix is used to set a different domain for the editor instead of using siteDomain."
+echo "Example: If siteDomain is 'example.com' and mainPrefix is 'editor', editor will be at 'editor.example.com'"
+read -r -p "Enter mainPrefix for settings.json [Enter = empty]: " MAIN_PREFIX || true
+echo
+if [[ -n "${MAIN_PREFIX:-}" ]]; then
+  echo " → Using provided mainPrefix: $MAIN_PREFIX"
+else
+  echo " → No mainPrefix provided, will use empty value."
+fi
+
+# Optional domain replacement (visible input). Enter = skip
 read -r -p "Enter domain to replace 'yourdomain.com' in {common.env, nginx.conf, settings.json, mqtt-broker.env} [Enter = skip]: " DOMAIN_NEW || true
 if [[ -n "${DOMAIN_NEW:-}" ]]; then
   echo " → Will replace 'yourdomain.com' with the provided domain in the specified files."
@@ -177,7 +189,7 @@ fi
 echo
 echo "Replacing values..."
 
-# 3) Replace secrets across docker-compose.yml, common.env, settings.json
+# Replace secrets across docker-compose.yml, common.env, settings.json
 do_replace_all "changeThisMongoPassword"  "$MONGO_PW"   "MongoDB password"
 do_replace_all "changeThisRedisPassword"  "$REDIS_PW"   "Redis password"
 do_replace_all "changeThisQdrantApiKey"   "$QDRANT_KEY" "Qdrant API key"
@@ -205,15 +217,28 @@ if [[ -n "${OPENAI_KEY:-}" ]]; then
   fi
 fi
 
-# 4) Replace domain only in specified files
+# Replace domain only in specified files
 if [[ -n "${DOMAIN_NEW:-}" ]]; then
   do_replace_domain_only "yourdomain.com" "$DOMAIN_NEW" "domain" "yourdomain\\.com"
 fi
 
-# 5) Replace LICENSE CODE HERE only in settings.json (required)
+# Update mainPrefix in settings.json
+if [[ -f "settings.json" ]]; then
+  echo " - Updating mainPrefix in settings.json..."
+  # Escape special characters in the replacement string
+  MAIN_PREFIX_ESC="$(printf '%s' "${MAIN_PREFIX:-}" | sed -e 's/[\\/&]/\\&/g')"
+  # Replace mainPrefix value
+  sed -i.bak -e 's/"mainPrefix"[[:space:]]*:[[:space:]]*"[^"]*"/"mainPrefix": "'"$MAIN_PREFIX_ESC"'"/g' "settings.json"
+  rm -f "settings.json.bak"
+  echo " - settings.json: updated mainPrefix to '${MAIN_PREFIX:-}'"
+else
+  echo " ! Warning: settings.json not found; could not update mainPrefix."
+fi
+
+# Replace LICENSE CODE HERE only in settings.json (required)
 do_replace_license_only "$LICENSE_PLACEHOLDER" "$LICENSE_KEY" "license key"
 
-# 6) Create .init (no secrets stored)
+# Create .init (no secrets stored)
 umask 077
 {
   echo "initialized_at=$(date '+%Y-%m-%dT%H:%M:%S%z')"

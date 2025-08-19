@@ -16,7 +16,7 @@ SCLAB Docker images
 
 # What is SCLAB?
 
-Provides a platform to quickly build data visualizations by integrating all data into an all-in-one
+SCLAB provides a platform to quickly build data visualizations by integrating all data into an all-in-one solution
 
 > [www.sclab.io](https://www.sclab.io/)
 
@@ -49,7 +49,7 @@ Provides a platform to quickly build data visualizations by integrating all data
 
 ### License code
 
-You can not use this image without LICENSE KEY.
+You cannot use this image without a LICENSE KEY.
 If you want to get one, please contact us. [support@sclab.io](mailto://support@sclab.io)
 
 ### OS
@@ -80,64 +80,81 @@ sudo ./install.sh
 ```
 
 ### File list
-| File Name          | Description                  |
-|:-------------------|:-----------------------------|
-| common.env         | Common Environment           |
-| webapp.env         | Environment for webapp       |
-| gis-process.env    | Environment for GIS Process  |
-| mqtt-client.env    | Environment for MQTT Client  |
-| mqtt-broker.env    | Environment for MQTT Broker  |
-| kafka-client.env   | Environment for Kafka Client |
-| ai-service.env     | Environment for AI service   |
-| db-agent.env       | Environment for SCLAB Agent  |
-| docker-compose.yml | Docker Compose YAML          |
-| nginx.conf         | Nginx config                 |
-| settings.json      | sclab settings               |
-| run.sh             | run script                   |
-| stop.sh            | stop script                  |
-| down.sh            | down script                  |
-| logs.sh            | logs script                  |
+| File Name              | Description                                |
+|:-----------------------|:-------------------------------------------|
+| common.env             | Common Environment                         |
+| webapp.env             | Environment for webapp                     |
+| gis-process.env        | Environment for GIS Process                |
+| mqtt-client.env        | Environment for MQTT Client                |
+| mqtt-broker.env        | Environment for MQTT Broker                |
+| kafka-client.env       | Environment for Kafka Client               |
+| ai-service.env         | Environment for AI service                 |
+| node-vm-service.env    | Environment for Node VM service            |
+| db-agent.env           | Environment for SCLAB Agent                |
+| docker-compose.yml     | Docker Compose YAML                        |
+| gen.yml                | Docker Compose YAML for key generation     |
+| nginx.conf             | Nginx config                               |
+| mongod.conf            | MongoDB configuration                      |
+| settings.json          | SCLAB settings                             |
+| install.sh             | Installation script                        |
+| run.sh                 | Run script                                 |
+| stop.sh                | Stop script                                |
+| down.sh                | Down script                                |
+| logs.sh                | Logs script                                |
+| pull.sh                | Pull images script                         |
+| update.sh              | Update webapp script                       |
+| update-all.sh          | Update all services script                 |
+| restart.sh             | Restart script                             |
+| up.sh                  | Up script (alternative to run.sh)          |
+| run.bat                | Windows run script                         |
+| stop.bat               | Windows stop script                        |
+| down.bat               | Windows down script                        |
+| logs.bat               | Windows logs script                        |
+| pull.bat               | Windows pull images script                 |
+| update.bat             | Windows update webapp script               |
+| update-all.bat         | Windows update all services script         |
+| restart.bat            | Windows restart script                     |
 
 ### common.env
 
 | var                      | description                                                                                                                                                                                               |
 |:-------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ROOT_URL                 | root url with your domain                                                                                                                                                                                 |
-| HTTP_FORWARDED_COUNT     | The number of procedure servers in front of the service to properly check the IP address of the accessor.                                                                                                 |
-| LOG_PATH                 | It is a log file path, and it does not need to be changed because it is an address to be used in the Docker image.                                                                                        |
+| HTTP_FORWARDED_COUNT     | The number of proxy servers in front of the service to properly check the IP address of the client.                                                                                                       |
+| LOG_PATH                 | Log file path. It does not need to be changed because it is an internal path used within the Docker image.                                                                                                |
 | LOG_LEVEL                | Display log levels [error, warn, info, debug]                                                                                                                                                             |
-| USE_FILE_LOG             | If you don't want to save log file set empty                                                                                                                                                              |
+| USE_FILE_LOG             | If you don't want to save log files, set to empty                                                                                                                                                         |
 | LOG_FILE_COUNT           | A log file is created daily, and if set to 31, logs will be retained for 31 days.                                                                                                                         |
 | PORT                     | This is the default port number of the service, but it does not need to be changed because it is the port to be used within the Docker image. To change the actual port, change it in docker-compose.yml. |
-| NODE_ENV                 | node js execution environment variable                                                                                                                                                                    |
+| NODE_ENV                 | Node.js execution environment variable                                                                                                                                                                    |
 | MONGO_URL                | Connection string for MongoDB                                                                                                                                                                             |
 | MONGO_DB_READ_PREFERENCE | Read Preference for MongoDB                                                                                                                                                                               |
 | MONGO_DB_POOL_SIZE       | Size of MongoDB connection pool                                                                                                                                                                           |
-| METEORD_NODE_OPTIONS     | Options when running node. [nodejs options](https://nodejs.org/api/cli.html#cli_options)                                                                                                                  |
-| MAIL_URL                 | Send mail server connection url (SMTP)                                                                                                                                                                    |
-| QDRANT_CLUSTER_URL       | QDRANT vector database cluster url                                                                                                                                                                        |
-| QDRANT_API_KEY           | QDRANT vector database API Key                                                                                                                                                                            |
-| OPENAI_KEY               | OpenAI api key                                                                                                                                                                                            |
-| OLLAMA_API_HOST          | Ollama api host url (<http://host:11434>)                                                                                                                                                                 |
+| METEORD_NODE_OPTIONS     | Options when running Node.js. [Node.js options](https://nodejs.org/api/cli.html#cli_options)                                                                                                              |
+| MAIL_URL                 | Mail server connection URL (SMTP)                                                                                                                                                                         |
+| QDRANT_CLUSTER_URL       | Qdrant vector database cluster URL                                                                                                                                                                        |
+| QDRANT_API_KEY           | Qdrant vector database API key                                                                                                                                                                            |
+| OPENAI_KEY               | OpenAI API key                                                                                                                                                                                            |
+| OLLAMA_API_HOST          | Ollama API host URL (<http://host:11434>)                                                                                                                                                                 |
 
 ### webapp.env
 
 | var                | description                                        |
 |:-------------------|:---------------------------------------------------|
 | SERVER_ID          | ID used to distinguish when using multiple servers |
-| ADD_INDEX          | Setting up mongodb index creation (1 - create)     |
+| ADD_INDEX          | Setting up MongoDB index creation (1 - create)     |
 | IOT_JWT_KEY        | IOT JWT PRIVATE KEY file path                      |
 | IOT_JWT_PUB_KEY    | IOT JWT PUBLIC KEY file path                       |
 | API_JWT_KEY        | API JWT PRIVATE KEY file path                      |
 | API_JWT_PUB_KEY    | API JWT PUBLIC KEY file path                       |
-| SERVER_FILE_URL    | read file path for server side                     |
+| SERVER_FILE_URL    | Read file path for server side                     |
 
 ### gis-process.env
 
 | var             | description                                                                                                                                          |
 |:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | SERVER_ID       | Server ID is an ID used when parsing GIS files and storing them in DB. When duplicating using multiple servers, each server must use a different ID. |
-| SERVER_FILE_URL | read file path for server side                                                                                                                       |
+| SERVER_FILE_URL | Read file path for server side                                                                                                                       |
 
 ### mqtt-client.env
 
@@ -146,8 +163,8 @@ sudo ./install.sh
 | SERVER_NAME   | MQTT client server name   |
 | SERVER_DOMAIN | MQTT client server domain |
 | SERVER_REGION | MQTT client server region |
-| PUBLIC_IP     | public IP address         |
-| PRIVATE_IP    | private IP address        |
+| PUBLIC_IP     | Public IP address         |
+| PRIVATE_IP    | Private IP address        |
 
 ### mqtt-broker.env
 
@@ -156,11 +173,11 @@ sudo ./install.sh
 | SERVER_NAME     | MQTT broker server name         |
 | SERVER_DOMAIN   | MQTT broker server domain       |
 | SERVER_REGION   | MQTT broker server region       |
-| PUBLIC_IP       | public IP address               |
-| PRIVATE_IP      | private IP address              |
+| PUBLIC_IP       | Public IP address               |
+| PRIVATE_IP      | Private IP address              |
 | JWT_KEY         | MQTT JWT Key file path (RS256)  |
-| TLS_CERT        | certification file path for SSL |
-| TLS_PRIVATE_KEY | private key file path for SSL   |
+| TLS_CERT        | Certificate file path for SSL   |
+| TLS_PRIVATE_KEY | Private key file path for SSL   |
 
 ### kafka-client.env
 
@@ -186,59 +203,59 @@ sudo ./install.sh
 | USE_AGENT_SERVICE_SCHEDULER | AI Agent Service Scheduler flag ("1" / "")                                              |
 | USE_MCP_SERVICE             | MCP Service flag ("1" / "")                                                             |
 | SERVER_FILE_URL             | read file path for server side                                                          |
-| NODE_OPTIONS                | node options                                                                            |
-| ORIGIN                      | cors orgin                                                                              |
-| CREDENTIALS                 | CREDENTIALS flag ("true" / "")                                                          |
+| NODE_OPTIONS                | Node.js options                                                                         |
+| ORIGIN                      | CORS origin                                                                             |
+| CREDENTIALS                 | Credentials flag ("true" / "")                                                          |
 | PORT                        | AI Service REST API web service port                                                    |
-| NODE_ENV                    | node environment                                                                        |
-| HIDE_JSON                   | hide JSON from chat message ("1" / "")                                                  |
+| NODE_ENV                    | Node.js environment                                                                     |
+| HIDE_JSON                   | Hide JSON from chat message ("1" / "")                                                  |
 
 ### node-vm-service.env
 
 | var                    | description              |
 |:-----------------------|:-------------------------|
-| LOG_DIR                | log path                 |
-| PORT                   | port for node-vm-service |
-| NODE_ENV               | node environment         |
-| LOG_LEVEL              | log level                |
-| ISOLATED_VM_TIMEOUT    | timeout seconds          |
-| ISOLATED_VM_MAX_MEMORY | max memory MB            |
+| LOG_DIR                | Log path                 |
+| PORT                   | Port for node-vm-service |
+| NODE_ENV               | Node.js environment      |
+| LOG_LEVEL              | Log level                |
+| ISOLATED_VM_TIMEOUT    | Timeout seconds          |
+| ISOLATED_VM_MAX_MEMORY | Max memory MB            |
 
 ### db-agent.env
 
 | var                           | description                       |
 |:------------------------------|:----------------------------------|
-| LOG_DIR                       | log path                          |
-| PORT                          | port for node-vm-service          |
-| NODE_ENV                      | node environment                  |
-| LOG_LEVEL                     | log level                         |
-| SECRET_KEY                    | secret key                        |
+| LOG_DIR                       | Log path                          |
+| PORT                          | Port for SCLAB Agent              |
+| NODE_ENV                      | Node.js environment               |
+| LOG_LEVEL                     | Log level                         |
+| SECRET_KEY                    | Secret key                        |
 | JWT_PRIVATE_KEY_PATH          | JWT Private key path              |
 | JWT_PUBLIC_KEY_PATH           | JWT public key path               |
 | TLS_CERT                      | SSL public key file path          |
 | TLS_KEY                       | SSL private key file path         |
-| AGENT_DB_PATH                 | agent.db file path                |
+| AGENT_DB_PATH                 | Agent database file path          |
 | USE_MYBATIS                   | Use mybatis mapper                |
 | ORACLE_CLIENT_DIR             | ORACLE Client DIR                 |
 | MSSQL_IDLE_TIMEOUT_MS         | SQL Server idle time out ms       |
-| TUNNEL_KEEP_ALIVE_INTERVAL_MS | ssh tunnel keep alive interval ms |
+| TUNNEL_KEEP_ALIVE_INTERVAL_MS | SSH tunnel keep alive interval ms |
 
 ### settings.json
 
 | var                                                  | description                                                                                                                                                                                                                                                                                                             |
 |:-----------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| public                                               | public settings (can access client and server)                                                                                                                                                                                                                                                                          |
-| public.siteName                                      | site name                                                                                                                                                                                                                                                                                                               |
-| public.siteDescription                               | site description                                                                                                                                                                                                                                                                                                        |
-| public.defaultLanguage                               | default language (en, ko, es, hi, pt)                                                                                                                                                                                                                                                                                   |
-| public.storagePath                                   | storage file path                                                                                                                                                                                                                                                                                                       |
-| public.pageSize                                      | default page size for single page                                                                                                                                                                                                                                                                                       |
-| public.noImg                                         | no image url                                                                                                                                                                                                                                                                                                            |
-| public.themeDefaultImg                               | theme default image url                                                                                                                                                                                                                                                                                                 |
-| public.staticFilePath                                | static file path                                                                                                                                                                                                                                                                                                        |
-| public.supportName                                   | support name for email                                                                                                                                                                                                                                                                                                  |
-| public.supportEmail                                  | support email address                                                                                                                                                                                                                                                                                                   |
-| public.siteDomain                                    | site domain (ex) yourdomain.com                                                                                                                                                                                                                                                                                         |
+| public                                               | Public settings (can access client and server)                                                                                                                                                                                                                                                                          |
+| public.siteName                                      | Site name                                                                                                                                                                                                                                                                                                               |
+| public.siteDescription                               | Site description                                                                                                                                                                                                                                                                                                        |
+| public.defaultLanguage                               | Default language (en, ko, es, hi, pt)                                                                                                                                                                                                                                                                                   |
+| public.storagePath                                   | Storage file path                                                                                                                                                                                                                                                                                                       |
+| public.pageSize                                      | Default page size for single page                                                                                                                                                                                                                                                                                       |
+| public.noImg                                         | No image URL                                                                                                                                                                                                                                                                                                            |
+| public.themeDefaultImg                               | Theme default image URL                                                                                                                                                                                                                                                                                                 |
+| public.staticFilePath                                | Static file path                                                                                                                                                                                                                                                                                                        |
+| public.supportName                                   | Support name for email                                                                                                                                                                                                                                                                                                  |
+| public.supportEmail                                  | Support email address                                                                                                                                                                                                                                                                                                   |
+| public.siteDomain                                    | Site domain (e.g., yourdomain.com)                                                                                                                                                                                                                                                                                      |
 | public.mainPrefix                                    | used when the main prefix exists separately.<br />For example, if sclab.io is the domain and the editor domain is app.sclab.io<br />If the mainPrefix value is set to app, app.sclab.io becomes the main It becomes a domain<br /> and this address must match the domain used in ROOT_URL in the environment settings. |
 | public.sso                                           | string array what you want to use. (google, facebook, kakao, naver)                                                                                                                                                                                                                                                     |
 | public.useForceSSL                                   | force redirect http to https                                                                                                                                                                                                                                                                                            |
@@ -270,8 +287,7 @@ sudo ./install.sh
 | redisOplog.mutationDefaults.pushToRedis              | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                                     | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-## Script
-### running daemon mode
+## running daemon mode
 
 ```bash
 sudo ./run.sh
