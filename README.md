@@ -452,7 +452,7 @@ Use this when multiple services need updating or for major version upgrades.
 ## get db agent API token
 
 ```bash
-docker logs sclab-agent
+sudo docker logs sclab-agent
 ```
 
 ## install ollama
