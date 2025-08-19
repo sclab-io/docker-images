@@ -13,6 +13,13 @@
 
 set -euo pipefail
 
+# Check if running with sudo
+if [[ $EUID -ne 0 ]]; then
+   echo "[Error] This script must be run with sudo privileges."
+   echo "Please run: sudo ./install.sh"
+   exit 1
+fi
+
 INIT_FILE=".init"
 FILES=("docker-compose.yml" "common.env" "settings.json" "ai-service.env")
 DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env")
