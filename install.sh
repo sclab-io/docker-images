@@ -735,9 +735,9 @@ main() {
         
         # Run aws configure as the sudo user if available
         if [ "$SUDO_USER" ]; then
-          sudo -u "$SUDO_USER" aws configure
+          sudo -u "$SUDO_USER" /usr/local/bin/aws configure
         else
-          aws configure
+          /usr/local/bin/aws configure
         fi
         
         # Verify credentials were configured
