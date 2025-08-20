@@ -63,13 +63,14 @@ The installation script will prompt you to configure them.
 #### Hardware
 - Memory: 8GB minimum
 - Storage: 40GB free space minimum
-- Architecture: x86_64 (AMD64) or aarch64 (ARM64)
+- Architecture: x86_64 (AMD64)
 
 #### Software
 - Linux OS (see compatibility below)
 - sudo/root access
 - Basic Unix tools (automatically installed if missing)
 - Docker (automatically installed if missing)
+- AWS CLI (automatically installed if missing)
 
 ### Compatibility
 
@@ -109,7 +110,7 @@ The installation script will:
    - Administrator email and password
 3. **Configure all services** by updating configuration files
 4. **Generate security keys** (JWT tokens and SSL certificates)
-5. **Install dependencies** (AWS CLI for S3 storage)
+5. **Install dependencies** (AWS CLI for AWS ECR)
 6. **Configure AWS credentials** (required for downloading SCLAB docker images)
 7. **Create Docker network** for container communication
 
