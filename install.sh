@@ -730,10 +730,7 @@ main() {
   
   # Check if credentials file exists and has content
   AWS_CREDS_FILE="${HOME}/.aws/credentials"
-  if [ "$SUDO_USER" ]; then
-    AWS_CREDS_FILE="/home/$SUDO_USER/.aws/credentials"
-  fi
-  
+
   if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
     echo "✓ AWS credentials found"
   else
@@ -747,21 +744,7 @@ main() {
         echo "Please enter your AWS credentials:"
         echo "(These will be provided by SCLAB support)"
         
-        # Run aws configure as the sudo user if available
-        if [ "$SUDO_USER" ]; then
-          # Create .aws directory for the user
-          USER_HOME="/home/$SUDO_USER"
-          mkdir -p "$USER_HOME/.aws"
-          chown "$SUDO_USER:$SUDO_USER" "$USER_HOME/.aws"
-          
-          # Run aws configure with HOME set to user's directory
-          HOME="$USER_HOME" /usr/local/bin/aws configure
-          
-          # Fix ownership of created files
-          chown -R "$SUDO_USER:$SUDO_USER" "$USER_HOME/.aws"
-        else
-          /usr/local/bin/aws configure
-        fi
+        /usr/local/bin/aws configure
         
         # Verify credentials were configured
         if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
