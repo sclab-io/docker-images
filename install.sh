@@ -706,9 +706,18 @@ main() {
     unzip -q "$TMP/awscliv2.zip" -d "$TMP"
     "$TMP/aws/install" -i /usr/local/aws -b /usr/local/bin
     
-    # Fix permissions for AWS CLI
+    # Fix permissions for AWS CLI - ensure all files are accessible
+    chmod -R 755 /usr/local/aws
     chmod +x /usr/local/bin/aws
-    chmod +x /usr/local/aws/v2/current/bin/aws
+    
+    # Find and fix the actual aws binary
+    if [ -L /usr/local/aws/v2/current/bin/aws ]; then
+      # Follow symlinks to find the actual binary
+      AWS_ACTUAL=$(readlink -f /usr/local/aws/v2/current/bin/aws)
+      if [ -f "$AWS_ACTUAL" ]; then
+        chmod +x "$AWS_ACTUAL"
+      fi
+    fi
     
     echo "[Info] AWS CLI installed: $(/usr/local/bin/aws --version)"
   else
@@ -740,7 +749,16 @@ main() {
         
         # Run aws configure as the sudo user if available
         if [ "$SUDO_USER" ]; then
-          sudo -u "$SUDO_USER" /usr/local/bin/aws configure
+          # Create .aws directory for the user
+          USER_HOME="/home/$SUDO_USER"
+          mkdir -p "$USER_HOME/.aws"
+          chown "$SUDO_USER:$SUDO_USER" "$USER_HOME/.aws"
+          
+          # Run aws configure with HOME set to user's directory
+          HOME="$USER_HOME" /usr/local/bin/aws configure
+          
+          # Fix ownership of created files
+          chown -R "$SUDO_USER:$SUDO_USER" "$USER_HOME/.aws"
         else
           /usr/local/bin/aws configure
         fi
