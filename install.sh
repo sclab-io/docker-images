@@ -705,7 +705,12 @@ main() {
     
     unzip -q "$TMP/awscliv2.zip" -d "$TMP"
     "$TMP/aws/install" -i /usr/local/aws -b /usr/local/bin
-    echo "[Info] AWS CLI installed: $(aws --version)"
+    
+    # Fix permissions for AWS CLI
+    chmod +x /usr/local/bin/aws
+    chmod +x /usr/local/aws/v2/current/bin/aws
+    
+    echo "[Info] AWS CLI installed: $(/usr/local/bin/aws --version)"
   else
     echo "[Info] AWS CLI already installed: $(aws --version)"
   fi
