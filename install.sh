@@ -493,6 +493,101 @@ main() {
       exit 1
       ;;
   esac
+
+  # Install AWS CLI
+  echo ""
+  echo "Installing AWS CLI..."
+  echo "AWS CLI is required for S3 storage functionality..."
+  if ! command_exists aws; then
+    # Create temp directory
+    TMP=$(mktemp -d 2>/dev/null || mktemp -d -t sclab.XXXXXX || echo "/tmp/sclab-$$")
+    mkdir -p "$TMP"
+
+    # Ensure cleanup on exit
+    cleanup() {
+      [ -d "$TMP" ] && rm -rf "$TMP"
+    }
+    trap cleanup EXIT INT TERM
+
+    # Download AWS CLI
+    case "$ARCH_NORMALIZED" in
+      x86_64)
+        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+        ;;
+      aarch64)
+        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
+        ;;
+      *)
+        echo "[Warning] AWS CLI might not be available for architecture: $ARCH_NORMALIZED"
+        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+        ;;
+    esac
+
+    download_file "$AWS_URL" "$TMP/awscliv2.zip"
+
+    # Install unzip if needed
+    if ! command_exists unzip; then
+      install_package unzip
+    fi
+
+    unzip -q "$TMP/awscliv2.zip" -d "$TMP"
+    "$TMP/aws/install" -i /usr/local/aws -b /usr/local/bin
+
+    # Fix permissions for AWS CLI - ensure all files are accessible
+    chmod -R 755 /usr/local/aws
+    chmod +x /usr/local/bin/aws
+
+    # Find and fix the actual aws binary
+    if [ -L /usr/local/aws/v2/current/bin/aws ]; then
+      # Follow symlinks to find the actual binary
+      AWS_ACTUAL=$(readlink -f /usr/local/aws/v2/current/bin/aws)
+      if [ -f "$AWS_ACTUAL" ]; then
+        chmod +x "$AWS_ACTUAL"
+      fi
+    fi
+
+    echo "[Info] AWS CLI installed: $(/usr/local/bin/aws --version)"
+  else
+    echo "[Info] AWS CLI already installed: $(aws --version)"
+  fi
+
+  # Check AWS credentials
+  echo ""
+  echo "Checking AWS credentials..."
+
+  # Check if credentials file exists and has content
+  AWS_CREDS_FILE="${HOME}/.aws/credentials"
+
+  if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
+    echo "✓ AWS credentials found"
+  else
+    echo "AWS credentials not found."
+    echo "AWS credentials are required to download SCLAB docker images."
+    echo ""
+    read -r -p "Would you like to configure AWS credentials now? [Y/n]: " CONFIGURE_AWS
+    case "${CONFIGURE_AWS:-Y}" in
+      [Yy]* )
+        echo ""
+        echo "Please enter your AWS credentials:"
+        echo "(These will be provided by SCLAB support)"
+
+        /usr/local/bin/aws configure
+
+        # Verify credentials were configured
+        if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
+          echo "✓ AWS credentials configured successfully"
+        else
+          echo "[Warning] AWS credentials were not configured properly."
+          echo "You may need to configure them manually later using: aws configure"
+        fi
+        ;;
+      * )
+        echo "[Warning] Skipping AWS configuration."
+        echo "You will need to configure AWS credentials manually later using: aws configure"
+        echo "Without AWS credentials, you won't be able to download SCLAB docker images."
+        ;;
+    esac
+  fi
   
   # Database and Service Passwords
   echo ""
@@ -644,6 +739,9 @@ main() {
   else
     echo " ! Warning: settings.json not found; could not update admin credentials."
   fi
+
+  # Create log folder
+  mkdir -p ./data/logs
   
   # Create .init file
   umask 077
@@ -666,101 +764,6 @@ main() {
   echo "Generating security keys..."
   echo "Creating JWT tokens and SSL certificates for secure communication..."
   $DOCKER_COMPOSE -f gen.yml run --rm key-generator
-  
-  # Install AWS CLI
-  echo ""
-  echo "Installing AWS CLI..."
-  echo "AWS CLI is required for S3 storage functionality..."
-  if ! command_exists aws; then
-    # Create temp directory
-    TMP=$(mktemp -d 2>/dev/null || mktemp -d -t sclab.XXXXXX || echo "/tmp/sclab-$$")
-    mkdir -p "$TMP"
-    
-    # Ensure cleanup on exit
-    cleanup() {
-      [ -d "$TMP" ] && rm -rf "$TMP"
-    }
-    trap cleanup EXIT INT TERM
-    
-    # Download AWS CLI
-    case "$ARCH_NORMALIZED" in
-      x86_64)
-        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
-        ;;
-      aarch64)
-        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
-        ;;
-      *)
-        echo "[Warning] AWS CLI might not be available for architecture: $ARCH_NORMALIZED"
-        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
-        ;;
-    esac
-    
-    download_file "$AWS_URL" "$TMP/awscliv2.zip"
-    
-    # Install unzip if needed
-    if ! command_exists unzip; then
-      install_package unzip
-    fi
-    
-    unzip -q "$TMP/awscliv2.zip" -d "$TMP"
-    "$TMP/aws/install" -i /usr/local/aws -b /usr/local/bin
-    
-    # Fix permissions for AWS CLI - ensure all files are accessible
-    chmod -R 755 /usr/local/aws
-    chmod +x /usr/local/bin/aws
-    
-    # Find and fix the actual aws binary
-    if [ -L /usr/local/aws/v2/current/bin/aws ]; then
-      # Follow symlinks to find the actual binary
-      AWS_ACTUAL=$(readlink -f /usr/local/aws/v2/current/bin/aws)
-      if [ -f "$AWS_ACTUAL" ]; then
-        chmod +x "$AWS_ACTUAL"
-      fi
-    fi
-    
-    echo "[Info] AWS CLI installed: $(/usr/local/bin/aws --version)"
-  else
-    echo "[Info] AWS CLI already installed: $(aws --version)"
-  fi
-
-  # Check AWS credentials
-  echo ""
-  echo "Checking AWS credentials..."
-  
-  # Check if credentials file exists and has content
-  AWS_CREDS_FILE="${HOME}/.aws/credentials"
-
-  if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
-    echo "✓ AWS credentials found"
-  else
-    echo "AWS credentials not found."
-    echo "AWS credentials are required to download SCLAB docker images."
-    echo ""
-    read -r -p "Would you like to configure AWS credentials now? [Y/n]: " CONFIGURE_AWS
-    case "${CONFIGURE_AWS:-Y}" in
-      [Yy]* )
-        echo ""
-        echo "Please enter your AWS credentials:"
-        echo "(These will be provided by SCLAB support)"
-        
-        /usr/local/bin/aws configure
-        
-        # Verify credentials were configured
-        if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
-          echo "✓ AWS credentials configured successfully"
-        else
-          echo "[Warning] AWS credentials were not configured properly."
-          echo "You may need to configure them manually later using: aws configure"
-        fi
-        ;;
-      * )
-        echo "[Warning] Skipping AWS configuration."
-        echo "You will need to configure AWS credentials manually later using: aws configure"
-        echo "Without AWS credentials, you won't be able to download SCLAB docker images."
-        ;;
-    esac
-  fi
   
   # Create Docker network
   echo ""
