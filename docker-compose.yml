@@ -233,8 +233,6 @@ services:
       options:
         max-size: "20m"
         max-file: "10"
-    ports:
-      - "80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
