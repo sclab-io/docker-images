@@ -43,25 +43,19 @@ services:
   redis:
     container_name: redis
     hostname: redis
-    image: "bitnami/redis:7.4.1"
+    image: "redis:8.2.1"
     restart: always
     user: "0:0"
-    entrypoint:
-      - /bin/sh
-      - -lc
-      - |
-        set -e
-        mkdir -p /bitnami/redis/logs || true
-        touch /bitnami/redis/logs/redis-server.log || true
-        chmod 0777 /bitnami/redis/logs || true
-        chmod 0666 /bitnami/redis/logs/redis-server.log || true
-        exec /opt/bitnami/scripts/redis/entrypoint.sh /opt/bitnami/scripts/redis/run.sh
+    command: >
+      sh -c '
+        mkdir -p /data/logs &&
+        touch /data/logs/redis-server.log &&
+        chmod 0777 /data/logs &&
+        chmod 0666 /data/logs/redis-server.log &&
+        redis-server /usr/local/etc/redis/redis.conf
+      '
     environment:
-      - ALLOW_EMPTY_PASSWORD=no
-      #- REDIS_ALLOW_REMOTE_CONNECTIONS=yes
       - REDIS_PASSWORD=changeThisRedisPassword
-      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
-      - REDIS_EXTRA_FLAGS=--logfile /bitnami/redis/logs/redis-server.log --loglevel notice
     logging:
       driver: "json-file"
       options:
@@ -70,7 +64,9 @@ services:
     networks:
       - sclab-network
     volumes:
-      - ./data/redis/logs:/bitnami/redis/logs
+      - ./data/redis/logs:/data/logs
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./data/redis/data:/data
 
   qdrant:
     container_name: qdrant
