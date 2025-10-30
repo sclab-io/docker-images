@@ -33,6 +33,7 @@
           "label": "mxbai-embed-large"
         }
       ],
+      "ocrModels": [],
       "sqlModel": "OLLAMA_gpt-oss:20b"
     },
     "hub": {
