@@ -86,7 +86,6 @@ services:
     environment:
       - QDRANT__SERVICE__HOST=0.0.0.0
       - QDRANT__SERVICE__API_KEY=changeThisQdrantApiKey
-      - QDRANT__STORAGE__MMAP_VECTORS=true
 
   webapp:
     hostname: webapp
