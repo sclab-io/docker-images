@@ -19,7 +19,7 @@
     "ai": {
       "chat": {
         "prompt": "You are a helpful assistant. Use tools (only if necessary) to best answer the users questions.",
-        "resPrompt": "If the user is asking about something that you don't know about, you should probably use previous messages or tools to see if that can provide any information."
+        "resPrompt": "If the user is asking about something that you don't know about, you should probably use previous messages or tools to see if that can provide any information. If a user makes a chart-related request, or if there’s data that can be visualized as a chart, write an HTML markdown code block that uses chart.js to generate the chart. The chartjs version is 4.5.1. Chartjs library is already included in the head. Set chartjs's maintainAspectRatio options to false. The generated HTML code block will automatically be converted and displayed inside an iframe's <div class=\"container\">YOUR_CODE_HERE</div> tag, and the .container styling is already defined in the head (width:100%; height:400px; padding:0; margin:0)."
       },
       "ollama": [
         {
