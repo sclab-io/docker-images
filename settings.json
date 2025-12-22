@@ -21,18 +21,128 @@
         "prompt": "You are a helpful assistant. Use tools (only if necessary) to best answer the users questions.",
         "resPrompt": "If the user is asking about something that you don't know about, you should probably use previous messages or tools to see if that can provide any information. If a user makes a chart-related request, or if there’s data that can be visualized as a chart, write an HTML markdown code block that uses chart.js to generate the chart. The chartjs version is 4.5.1. Chartjs library is already included in the head. Set chartjs's maintainAspectRatio options to false. The generated HTML code block will automatically be converted and displayed inside an iframe's <div class=\"container\">YOUR_CODE_HERE</div> tag, and the .container styling is already defined in the head (width:100%; height:400px; padding:0; margin:0)."
       },
-      "ollama": [
-        {
-          "model": "OLLAMA_gpt-oss:20b",
-          "label": "OpenAI GPT OSS 20B"
-        }
-      ],
-      "ollamaEmbedModel": [
-        {
-          "model": "mxbai-embed-large",
-          "label": "mxbai-embed-large"
-        }
-      ],
+      "openai": {
+        "llm": [
+          {
+            "model": "GPT5_MINI",
+            "label": "GPT5 mini"
+          },
+          {
+            "model": "GPT5_NANO",
+            "label": "GPT5 nano"
+          },
+          {
+            "model": "GPT5",
+            "label": "GPT5"
+          },
+          {
+            "model": "GPT5.2",
+            "label": "GPT5.2"
+          },
+          {
+            "model": "GPT4.1_MINI",
+            "label": "GPT4.1 mini"
+          },
+          {
+            "model": "GPT4.1_NANO",
+            "label": "GPT4.1 nano"
+          },
+          {
+            "model": "GPT4.1",
+            "label": "GPT4.1"
+          },
+          {
+            "model": "GPT4o_MINI_SEARCH",
+            "label": "GPT-4o mini search"
+          },
+          {
+            "model": "GPT4o_SEARCH",
+            "label": "GPT-4o search"
+          }
+        ],
+        "embed": [
+          {
+            "model": "text-embedding-3-large",
+            "label": "text-embedding-3-large (OPENAI)"
+          },
+          {
+            "model": "text-embedding-3-small",
+            "label": "text-embedding-3-small (OPENAI)"
+          },
+          {
+            "model": "text-embedding-ada-002",
+            "label": "text-embedding-ada-002 (OPENAI)"
+          }
+        ]
+      },
+      "gemini": {
+        "llm": [
+          {
+            "model": "GEMINI_gemini-3-pro-preview",
+            "label": "Gemini 3 PRO"
+          },
+          {
+            "model": "GEMINI_gemini-3-flash-preview",
+            "label": "Gemini 3 Flash"
+          }
+        ],
+        "embed": [
+          {
+            "model": "GEMINI_gemini-embedding-001",
+            "label": "gemini-embedding-001 (Gemini)"
+          }
+        ]
+      },
+      "ollama": {
+        "llm": [
+          {
+            "model": "OLLAMA_qwq:latest",
+            "label": "QwQ 32B"
+          },
+          {
+            "model": "OLLAMA_phi4:latest",
+            "label": "phi4 14B"
+          },
+          {
+            "model": "OLLAMA_deepseek-r1:14b",
+            "label": "Deepseek R1 14B"
+          },
+          {
+            "model": "OLLAMA_mistral:latest",
+            "label": "mistral 7B"
+          },
+          {
+            "model": "OLLAMA_llama3.3:latest",
+            "label": "Llama3.3 70B"
+          },
+          {
+            "model": "OLLAMA_llama3.1:latest",
+            "label": "Llama3.1 8B"
+          },
+          {
+            "model": "OLLAMA_llama3:latest",
+            "label": "Llama3 8B"
+          },
+          {
+            "model": "OLLAMA_gemma2:latest",
+            "label": "Gemma2 9B"
+          },
+          {
+            "model": "OLLAMA_gemma3:1b",
+            "label": "Gemma3 1B"
+          },
+          {
+            "model": "OLLAMA_gemma3:4b",
+            "label": "Gemma3 4B"
+          }
+        ],
+        "embed": [
+          {
+            "model": "mxbai-embed-large",
+            "label": "mxbai-embed-large (OLLAMA)"
+          }
+        ]
+      },
       "ocrModels": [],
       "sqlModel": "OLLAMA_gpt-oss:20b"
     },

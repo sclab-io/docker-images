@@ -299,6 +299,10 @@ safe_sed_inplace() {
   local file="$1"
   local search="$2"
   local replace="$3"
+  local escaped_replace
+  
+  # Escape replacement for sed (@ delimiter, and & backrefs)
+  escaped_replace=$(printf '%s' "$replace" | sed -e 's/[\\&@]/\\&/g')
   
   # Create backup
   cp "$file" "${file}.bak"
@@ -306,16 +310,16 @@ safe_sed_inplace() {
   # Use sed with proper escaping
   if sed --version 2>&1 | grep -q "GNU sed"; then
     # GNU sed
-    sed -i "s@${search}@${replace}@g" "$file"
+    sed -i "s@${search}@${escaped_replace}@g" "$file"
   else
     # BSD/other sed - try different approaches
-    if sed -i'' "s@${search}@${replace}@g" "$file" 2>/dev/null; then
+    if sed -i'' "s@${search}@${escaped_replace}@g" "$file" 2>/dev/null; then
       :
-    elif sed -i '' "s@${search}@${replace}@g" "$file" 2>/dev/null; then
+    elif sed -i '' "s@${search}@${escaped_replace}@g" "$file" 2>/dev/null; then
       :
     else
       # Fallback: use temp file
-      sed "s@${search}@${replace}@g" "${file}.bak" > "$file"
+      sed "s@${search}@${escaped_replace}@g" "${file}.bak" > "$file"
     fi
   fi
   
@@ -498,6 +502,7 @@ main() {
   echo ""
   echo "Installing AWS CLI..."
   echo "AWS CLI is required for S3 storage functionality..."
+  AWS_CMD="aws"
   if ! command_exists aws; then
     # Create temp directory
     TMP=$(mktemp -d 2>/dev/null || mktemp -d -t sclab.XXXXXX || echo "/tmp/sclab-$$")
@@ -546,9 +551,11 @@ main() {
       fi
     fi
 
-    echo "[Info] AWS CLI installed: $(/usr/local/bin/aws --version)"
+    AWS_CMD="$(command -v aws 2>/dev/null || echo /usr/local/bin/aws)"
+    echo "[Info] AWS CLI installed: $("$AWS_CMD" --version)"
   else
-    echo "[Info] AWS CLI already installed: $(aws --version)"
+    AWS_CMD="$(command -v aws)"
+    echo "[Info] AWS CLI already installed: $("$AWS_CMD" --version)"
   fi
 
   # Check AWS credentials
@@ -571,7 +578,7 @@ main() {
         echo "Please enter your AWS credentials:"
         echo "(These will be provided by SCLAB support)"
 
-        /usr/local/bin/aws configure
+        "$AWS_CMD" configure
 
         # Verify credentials were configured
         if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
@@ -604,12 +611,23 @@ main() {
   echo "AI Service Configuration"
   echo "------------------------"
   echo "If you have an OpenAI API key, enter it to use GPT models."
-  echo "Leave empty to use local Ollama models instead."
+  echo "Leave empty to skip OpenAI."
   read_password "OpenAI API Key [Enter = skip]: " OPENAI_KEY
   if [ -n "${OPENAI_KEY:-}" ]; then
     echo " → OpenAI API key configured. GPT models will be available."
   else
-    echo " → No OpenAI API key provided. Will use local Ollama models."
+    echo " → No OpenAI API key provided."
+  fi
+  echo ""
+  echo "If you have a Gemini API key, enter it to use Gemini models."
+  read_password "Gemini API Key [Enter = skip]: " GEMINI_API_KEY
+  if [ -n "${GEMINI_API_KEY:-}" ]; then
+    echo " → Gemini API key configured. Gemini models will be available."
+  else
+    echo " → No Gemini API key provided."
+  fi
+  if [ -z "${OPENAI_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ]; then
+    echo " → No OpenAI/Gemini API key provided. Will use local Ollama models."
   fi
 
   # Domain Configuration
@@ -685,14 +703,26 @@ main() {
   # Replace OpenAI API key
   OPENAI_REPLACEMENT="${OPENAI_KEY:-}"
   do_replace_all "openAiApiKeyHere" "$OPENAI_REPLACEMENT" "OpenAI API key"
+  # Replace Gemini API key
+  GEMINI_REPLACEMENT="${GEMINI_API_KEY:-}"
+  do_replace_all "geminiApiKeyHere" "$GEMINI_REPLACEMENT" "Gemini API key"
   
-  # Update AI configuration if OpenAI key provided
+  # Update AI configuration based on provided API keys
   if [ -n "${OPENAI_KEY:-}" ]; then
     echo " - Updating settings.json for OpenAI configuration..."
     if [ -f "settings.json" ]; then
       safe_sed_inplace "settings.json" '"sqlModel"[[:space:]]*:[[:space:]]*"[^"]*"' '"sqlModel": "GPT5_MINI"'
       safe_sed_inplace "settings.json" '"llmAPI"[[:space:]]*:[[:space:]]*"[^"]*"' '"llmAPI": "openai"'
       echo " - settings.json: updated sqlModel to 'GPT5_MINI' and hub.llmAPI to 'openai'."
+    else
+      echo " ! Warning: settings.json not found; could not update AI configuration."
+    fi
+  elif [ -n "${GEMINI_API_KEY:-}" ]; then
+    echo " - Updating settings.json for Gemini configuration..."
+    if [ -f "settings.json" ]; then
+      safe_sed_inplace "settings.json" '"sqlModel"[[:space:]]*:[[:space:]]*"[^"]*"' '"sqlModel": "GEMINI_gemini-3-pro-preview"'
+      safe_sed_inplace "settings.json" '"llmAPI"[[:space:]]*:[[:space:]]*"[^"]*"' '"llmAPI": "gemini"'
+      echo " - settings.json: updated sqlModel to 'GEMINI_gemini-3-pro-preview' and hub.llmAPI to 'gemini'."
     else
       echo " ! Warning: settings.json not found; could not update AI configuration."
     fi
