@@ -327,6 +327,20 @@ safe_sed_inplace() {
   rm -f "${file}.bak"
 }
 
+# Ensure default domain resolves locally when user skips custom domain
+add_hosts_entry() {
+  local entry_ip="127.0.0.1"
+  local entry_host="sclab-onprem"
+  local hosts_file="/etc/hosts"
+
+  if grep -qE "^[[:space:]]*${entry_ip//./\\.}[[:space:]]+${entry_host}([[:space:]]|$)" "$hosts_file"; then
+    echo " - /etc/hosts already contains '${entry_ip} ${entry_host}'."
+  else
+    echo "${entry_ip} ${entry_host}" >> "$hosts_file"
+    echo " - Added '${entry_ip} ${entry_host}' to /etc/hosts."
+  fi
+}
+
 # Safe password input
 read_password() {
   local prompt="$1"
@@ -636,13 +650,14 @@ main() {
   echo "--------------------"
   echo "Enter your domain name to configure SCLAB Studio for production use."
   echo "This will update configuration files with your domain."
-  echo "Leave empty to keep the default 'yourdomain.com' placeholder."
+  echo "Leave empty to keep the default 'sclab-onprem' placeholder."
   echo ""
   read -r -p "Your domain name [Enter = skip]: " DOMAIN_NEW || true
   if [ -n "${DOMAIN_NEW:-}" ]; then
     echo " → Domain will be set to: $DOMAIN_NEW"
   else
     echo " → Keeping default domain placeholder. Remember to update it later for production."
+    add_hosts_entry
   fi
 
   # Editor Subdomain Configuration
@@ -730,7 +745,7 @@ main() {
   
   # Replace domain
   if [ -n "${DOMAIN_NEW:-}" ]; then
-    do_replace_domain_only "yourdomain.com" "$DOMAIN_NEW" "domain" "yourdomain\\.com"
+    do_replace_domain_only "sclab-onprem" "$DOMAIN_NEW" "domain" "sclab-onprem"
   fi
   
   # Update mainPrefix
@@ -820,7 +835,7 @@ main() {
       echo "  - Editor: https://$MAIN_PREFIX.$DOMAIN_NEW"
     fi
   else
-    echo "  - https://yourdomain.com (update domain for production use)"
+    echo "  - https://sclab-onprem (update domain for production use)"
   fi
   echo ""
   echo "========================================"
