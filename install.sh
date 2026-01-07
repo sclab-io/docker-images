@@ -820,7 +820,7 @@ main() {
       echo "  - Editor: https://$MAIN_PREFIX.$DOMAIN_NEW"
     fi
   else
-    echo "  - https://127.0.0.1 (update domain for production use)"
+    echo "  - https://yourdomain.com (update domain for production use)"
   fi
   echo ""
   echo "========================================"
