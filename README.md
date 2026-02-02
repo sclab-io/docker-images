@@ -189,16 +189,18 @@ If you encounter issues:
 
 ### webapp.env
 
-| var                         | description                                        |
-|:----------------------------|:---------------------------------------------------|
-| SERVER_ID                   | ID used to distinguish when using multiple servers |
-| ADD_INDEX                   | Setting up MongoDB index creation (1 - create)     |
-| IOT_JWT_KEY                 | IOT JWT PRIVATE KEY file path                      |
-| IOT_JWT_PUB_KEY             | IOT JWT PUBLIC KEY file path                       |
-| API_JWT_KEY                 | API JWT PRIVATE KEY file path                      |
-| API_JWT_PUB_KEY             | API JWT PUBLIC KEY file path                       |
-| SERVER_FILE_URL             | Read file path for server side                     |
-| AUTO_PHOTO_SERVICE_INTERVAL | Photo service interval seconds (3600 = 1 Hour)     |
+| var                         | description                                               |
+|:----------------------------|:----------------------------------------------------------|
+| SERVER_ID                   | ID used to distinguish when using multiple servers        |
+| ADD_INDEX                   | Setting up MongoDB index creation (1 - create)            |
+| IOT_JWT_KEY                 | IOT JWT PRIVATE KEY file path                             |
+| IOT_JWT_PUB_KEY             | IOT JWT PUBLIC KEY file path                              |
+| API_JWT_KEY                 | API JWT PRIVATE KEY file path                             |
+| API_JWT_PUB_KEY             | API JWT PUBLIC KEY file path                              |
+| SERVER_FILE_URL             | Read file path for server side                            |
+| AUTO_PHOTO_SERVICE_INTERVAL | Photo service interval seconds (3600 = 1 Hour)            |
+| TRANSCRIPTIONS_API_HOST     | transcription api host (default = https://api.openai.com) |
+| TRANSCRIPTIONS_MODEL        | transcription model (default = whisper-1)                 |
 
 ### gis-process.env
 
