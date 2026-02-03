@@ -262,6 +262,9 @@ If you encounter issues:
 | PORT                        | AI Service REST API web service port                                                    |
 | NODE_ENV                    | Node.js environment                                                                     |
 | HIDE_JSON                   | Hide JSON from chat message ("1" / "")                                                  |
+| CODE_EXECUTOR_TYPE          | node-vm or daytona                                                                      |
+| CODE_EXECUTOR_API_URL       | API KEY for CODE EXECUTOR                                                               |
+| JWT_PUBLIC_KEY_PATH         | API JWT PUBLIC KEY file path                                                            |
 
 ### node-vm-service.env
 

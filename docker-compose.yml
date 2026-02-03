@@ -243,8 +243,11 @@ services:
     hostname: ai-service
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-ai-service:latest"
     restart: always
+    ports:
+      - "80"
     volumes:
       - ./data/ai-service/logs:/data/logs
+      - ./jwt:/data/jwt
     env_file:
       - ./common.env
       - ./ai-service.env
