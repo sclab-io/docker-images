@@ -263,7 +263,8 @@ If you encounter issues:
 | NODE_ENV                    | Node.js environment                                                                     |
 | HIDE_JSON                   | Hide JSON from chat message ("1" / "")                                                  |
 | CODE_EXECUTOR_TYPE          | node-vm or daytona                                                                      |
-| CODE_EXECUTOR_API_URL       | API KEY for CODE EXECUTOR                                                               |
+| CODE_EXECUTOR_API_URL       | API URL for CODE EXECUTOR (http://node-vm-service or https://app.daytona.io/api)        |
+| CODE_EXECUTOR_API_KEY       | API KEY for CODE EXECUTOR                                                               |
 | JWT_PUBLIC_KEY_PATH         | API JWT PUBLIC KEY file path                                                            |
 
 ### node-vm-service.env
