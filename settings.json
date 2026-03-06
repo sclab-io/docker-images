@@ -32,12 +32,8 @@
             "label": "GPT5 nano"
           },
           {
-            "model": "GPT5",
-            "label": "GPT5"
-          },
-          {
-            "model": "GPT5.2",
-            "label": "GPT5.2"
+            "model": "GPT5.4",
+            "label": "GPT5.4"
           },
           {
             "model": "GPT4.1_MINI",
