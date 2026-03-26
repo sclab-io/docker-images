@@ -24,36 +24,16 @@
       "openai": {
         "llm": [
           {
-            "model": "GPT5_MINI",
-            "label": "GPT5 mini"
-          },
-          {
-            "model": "GPT5_NANO",
-            "label": "GPT5 nano"
-          },
-          {
             "model": "GPT5.4",
             "label": "GPT5.4"
           },
           {
-            "model": "GPT4.1_MINI",
-            "label": "GPT4.1 mini"
+            "model": "GPT5.4_MINI",
+            "label": "GPT5.4 MINI"
           },
           {
-            "model": "GPT4.1_NANO",
-            "label": "GPT4.1 nano"
-          },
-          {
-            "model": "GPT4.1",
-            "label": "GPT4.1"
-          },
-          {
-            "model": "GPT4o_MINI_SEARCH",
-            "label": "GPT-4o mini search"
-          },
-          {
-            "model": "GPT4o_SEARCH",
-            "label": "GPT-4o search"
+            "model": "GPT5.4_NANO",
+            "label": "GPT5.4 NANO"
           }
         ],
         "embed": [
