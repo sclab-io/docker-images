@@ -377,7 +377,7 @@ sudo ./run.sh
 After starting, you can access SCLAB Studio at:
 - **Local development**: https://127.0.0.1
 - **Production**: https://sclab-onprem (or the domain you configured)
-- **Editor** (if mainPrefix configured): https://editor.yourdomain.com
+- **Editor** (if mainPrefix configured): https://editor.sclab-onprem
 
 ### Login
 
