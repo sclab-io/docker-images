@@ -10,7 +10,7 @@
     "staticFilePath": "/static",
     "supportName": "Support Team",
     "supportEmail": "support@sclab.io",
-    "siteDomain": "yourdomain.com",
+    "siteDomain": "sclab-onprem",
     "mainPrefix": "",
     "sso": [],
     "useForceSSL": false,
