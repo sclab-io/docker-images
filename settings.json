@@ -72,6 +72,14 @@
       "ollama": {
         "llm": [
           {
+            "model": "OLLAMA_gemma4:31b",
+            "label": "Gemma4 31B"
+          },
+          {
+            "model": "OLLAMA_gemma4:e4b",
+            "label": "Gemma4 E4B"
+          },
+          {
             "model": "OLLAMA_qwq:latest",
             "label": "QwQ 32B"
           },
