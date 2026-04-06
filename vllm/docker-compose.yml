@@ -4,7 +4,9 @@ services:
     container_name: vllm-server
     runtime: nvidia
     ports:
-      - "8000:8000"
+      - "8000"
+    networks:
+      - sclab-network
     volumes:
       # Mount the HuggingFace cache directory to prevent downloading models repeatedly.
       - ~/.cache/huggingface:/root/.cache/huggingface
@@ -32,6 +34,8 @@ services:
     # Remove external port exposure since ports will be unified through nginx.
     expose:
       - "8000"
+    networks:
+      - sclab-network
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
     environment:
@@ -51,9 +55,15 @@ services:
     image: nginx:alpine
     container_name: vllm-nginx-proxy
     ports:
-      - "8080:80"
+      - "8000:80"
+    networks:
+      - sclab-network
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - vllm
       - vllm-embed
+
+networks:
+  sclab-network:
+    external: true
