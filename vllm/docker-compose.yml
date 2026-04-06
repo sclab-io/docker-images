@@ -1,0 +1,59 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-server
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the HuggingFace cache directory to prevent downloading models repeatedly.
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      # You can add the HuggingFace token to the .env file if needed.
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+      - VLLM_NO_USAGE_STATS=1
+    # Overwrite entrypoint to fix gemma4 recognition issue due to missing latest transformers in vLLM
+    entrypoint: /bin/bash
+    command: -c "apt-get update && apt-get install -y git curl && pip install git+https://github.com/huggingface/transformers.git && vllm serve --model ${MODEL_ID:-Qwen/Qwen2.5-1.5B-Instruct} --api-key ${VLLM_API_KEY:-} --trust-remote-code --tensor-parallel-size 1 --max-model-len 1024 --enforce-eager --gpu-memory-utilization 0.4 --enable-auto-tool-choice --tool-call-parser pythonic"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # vLLM may use a lot of shared memory, so we use the host's ipc.
+    ipc: host
+
+  vllm-embed:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-embed-server
+    runtime: nvidia
+    # Remove external port exposure since ports will be unified through nginx.
+    expose:
+      - "8000"
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+      - VLLM_NO_USAGE_STATS=1
+    command: --model ${EMBED_MODEL_ID:-mixedbread-ai/mxbai-embed-large-v1} --api-key ${VLLM_API_KEY:-} --trust-remote-code --tensor-parallel-size 1 --enforce-eager --gpu-memory-utilization 0.1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ipc: host
+
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: vllm-nginx-proxy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - vllm
+      - vllm-embed
