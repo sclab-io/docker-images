@@ -51,7 +51,7 @@ services:
               capabilities: [gpu]
     ipc: host
 
-  nginx-proxy:
+  vllm-nginx-proxy:
     image: nginx:alpine
     container_name: vllm-nginx-proxy
     ports:
