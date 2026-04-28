@@ -74,7 +74,7 @@ rm -rf mongo-a mongo-b mongo-arbiter
 ```yaml
 services:
   mongo-a:
-    image: mongo:7
+    image: mongo:8.2.7
     container_name: mongo-a
     restart: unless-stopped
     hostname: mongo-a
@@ -94,7 +94,7 @@ services:
       - "mongo-arbiter:192.168.0.10"
 
   mongo-arbiter:
-    image: mongo:7
+    image: mongo:8.2.7
     container_name: mongo-arbiter
     restart: unless-stopped
     hostname: mongo-arbiter
