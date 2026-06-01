@@ -640,8 +640,16 @@ main() {
   else
     echo " → No Gemini API key provided."
   fi
-  if [ -z "${OPENAI_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ]; then
-    echo " → No OpenAI/Gemini API key provided. Will use local Ollama models."
+  echo ""
+  echo "If you have a DeepSeek API key, enter it to use DeepSeek models."
+  read_password "DeepSeek API Key [Enter = skip]: " DEEPSEEK_API_KEY
+  if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+    echo " → DeepSeek API key configured. DeepSeek models will be available."
+  else
+    echo " → No DeepSeek API key provided."
+  fi
+  if [ -z "${OPENAI_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+    echo " → No OpenAI/Gemini/DeepSeek API key provided. Will use local Ollama models."
   fi
 
   # Domain Configuration
@@ -721,6 +729,9 @@ main() {
   # Replace Gemini API key
   GEMINI_REPLACEMENT="${GEMINI_API_KEY:-}"
   do_replace_all "geminiApiKeyHere" "$GEMINI_REPLACEMENT" "Gemini API key"
+  # Replace DeepSeek API key
+  DEEPSEEK_REPLACEMENT="${DEEPSEEK_API_KEY:-}"
+  do_replace_all "deepseekApiKeyHere" "$DEEPSEEK_REPLACEMENT" "DeepSeek API key"
   
   # Update AI configuration based on provided API keys
   if [ -n "${OPENAI_KEY:-}" ]; then

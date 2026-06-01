@@ -21,46 +21,22 @@
     "editorHosts": ["ip1", "ip2"],
     "ai": {
       "chat": {
-        "prompt": "Use the following pieces of context to answer the question at the end. If you do not know the answer, just say that you do not know, do not try to make up an answer.",
-        "resPrompt": "Within the fused documents, as much as possible, That is a very detailed, helpful answer."
+        "prompt": "You are a helpful assistant. Use tools (only if necessary) to best answer the users questions.",
+        "resPrompt": "If the user is asking about something that you don't know about, you should probably use previous messages or tools to see if that can provide any information. If a user makes a chart-related request, or if there’s data that can be visualized as a chart, write an HTML markdown code block that uses chart.js to generate the chart. The chartjs version is 4.5.1. Chartjs library is already included in the head. Set chartjs's maintainAspectRatio options to false. The generated HTML code block will automatically be converted and displayed inside an iframe's <div class=\"container\">YOUR_CODE_HERE</div> tag, and the .container styling is already defined in the head (width:100%; height:400px; padding:0; margin:0)."
       },
       "openai": {
         "llm": [
           {
-            "model": "GPT5_MINI",
-            "label": "GPT5 mini"
+            "model": "GPT5.4",
+            "label": "GPT5.4"
           },
           {
-            "model": "GPT5_NANO",
-            "label": "GPT5 nano"
+            "model": "GPT5.4_MINI",
+            "label": "GPT5.4 MINI"
           },
           {
-            "model": "GPT5",
-            "label": "GPT5"
-          },
-          {
-            "model": "GPT5.2",
-            "label": "GPT5.2"
-          },
-          {
-            "model": "GPT4.1_MINI",
-            "label": "GPT4.1 mini"
-          },
-          {
-            "model": "GPT4.1_NANO",
-            "label": "GPT4.1 nano"
-          },
-          {
-            "model": "GPT4.1",
-            "label": "GPT4.1"
-          },
-          {
-            "model": "GPT4o_MINI_SEARCH",
-            "label": "GPT-4o mini search"
-          },
-          {
-            "model": "GPT4o_SEARCH",
-            "label": "GPT-4o search"
+            "model": "GPT5.4_NANO",
+            "label": "GPT5.4 NANO"
           }
         ],
         "embed": [
@@ -98,6 +74,14 @@
       },
       "ollama": {
         "llm": [
+          {
+            "model": "OLLAMA_gemma4:31b",
+            "label": "Gemma4 31B"
+          },
+          {
+            "model": "OLLAMA_gemma4:e4b",
+            "label": "Gemma4 E4B"
+          },
           {
             "model": "OLLAMA_qwq:latest",
             "label": "QwQ 32B"
@@ -146,10 +130,33 @@
           }
         ]
       },
-      "sqlModel": "GPT4"
+      "vllm": {
+        "llm": [
+          {
+            "model": "VLLM_Qwen/Qwen2.5-1.5B-Instruct",
+            "label": "Qwen2.5-1.5B (vLLM)"
+          }
+        ],
+        "embed": [
+          {
+            "model": "VLLM_mixedbread-ai/mxbai-embed-large-v1",
+            "label": "mxbai-embed-large (vLLM)"
+          }
+        ]
+      },
+      "deepseek": {
+        "llm": [
+          {
+            "model": "DEEPSEEK_deepseek-v4-pro",
+            "label": "DeepSeek V4 Pro"
+          }
+        ]
+      },
+      "ocrModels": [],
+      "sqlModel": "OLLAMA_gpt-oss:20b"
     },
     "hub": {
-      "llmAPI": "openai"
+      "llmAPI": "ollama"
     }
   },
   "private": {

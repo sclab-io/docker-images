@@ -104,7 +104,7 @@ The installation script will:
 2. **Prompt for configuration**:
    - License key (required)
    - Database passwords (auto-generated if not provided)
-   - OpenAI API key (optional - leave empty to use local Ollama models)
+   - OpenAI / Gemini / DeepSeek API keys (optional - leave empty to use local Ollama models)
    - Editor subdomain prefix (optional - for hosting editor on separate subdomain)
    - Domain name (optional - leave empty for localhost)
    - Administrator email and password
@@ -186,6 +186,9 @@ If you encounter issues:
 | OPENAI_KEY               | OpenAI API key                                                                                                                                                                                            |
 | GEMINI_API_KEY           | Gemini API key                                                                                                                                                                                            |
 | OLLAMA_API_HOST          | Ollama API host URL (<http://host:11434>)                                                                                                                                                                 |
+| VLLM_API_HOST            | vLLM API host URL (<http://host:8000>)                                                                                                                                                                    |
+| VLLM_API_KEY             | vLLM API key                                                                                                                                                                                              |
+| DEEPSEEK_API_KEY         | DeepSeek API key                                                                                                                                                                                          |
 
 ### webapp.env
 
@@ -327,6 +330,7 @@ If you encounter issues:
 | public.ai.ollama.embed                  | Ollama embedding model list array [{"model": "mxbai-embed-large","label": "mxbai-embed-large (OLLAMA)"}] current support model ("mxbai-embed-large")                                                                                                                                                                    |
 | public.ai.vllm.llm                      | vLLM LLM list array [{"model": "VLLM_Qwen/Qwen2.5-1.5B-Instruct","label": "Qwen2.5-1.5B (vLLM)"}] you can use any vLLM models with prefix "VLLM_"                                                                                                                                                                       |
 | public.ai.vllm.embed                    | vLLM embedding model list array [{"model": "VLLM_mixedbread-ai/mxbai-embed-large-v1","label": "mxbai-embed-large (vLLM)"}] current support model ("mxbai-embed-large")                                                                                                                                                  |
+| public.ai.deepseek.llm                  | DeepSeek LLM list array [{"model": "DEEPSEEK_deepseek-v4-pro","label": "DeepSeek V4 Pro"}] you can use any DeepSeek models with prefix "DEEPSEEK_"                                                                                                                                                                      |
 | public.ai.ocrModels                     | ollama vlm model list array ["OLLAMA_qwen2.5vl:72b"] current support model ("qwen2.5")                                                                                                                                                                                                                                  |
 | public.ai.sqlModel                      | model for SQL generation (e.g., "GPT5", "GPT4.1", "GEMINI_gemini-3-pro-preview", "OLLAMA_gemma2:latest")                                                                                                                                                                                                                |
 | public.hub.llmAPI                       | "openai" (default), "gemini", "ollama"                                                                                                                                                                                                                                                                                  |

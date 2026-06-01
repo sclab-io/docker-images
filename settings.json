@@ -127,6 +127,28 @@
           }
         ]
       },
+      "vllm": {
+        "llm": [
+          {
+            "model": "VLLM_Qwen/Qwen2.5-1.5B-Instruct",
+            "label": "Qwen2.5-1.5B (vLLM)"
+          }
+        ],
+        "embed": [
+          {
+            "model": "VLLM_mixedbread-ai/mxbai-embed-large-v1",
+            "label": "mxbai-embed-large (vLLM)"
+          }
+        ]
+      },
+      "deepseek": {
+        "llm": [
+          {
+            "model": "DEEPSEEK_deepseek-v4-pro",
+            "label": "DeepSeek V4 Pro"
+          }
+        ]
+      },
       "ocrModels": [],
       "sqlModel": "OLLAMA_gpt-oss:20b"
     },
