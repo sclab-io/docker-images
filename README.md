@@ -319,7 +319,6 @@ If you encounter issues:
 | public.mainPrefix                       | used when the main prefix exists separately.<br />For example, if sclab.io is the domain and the editor domain is app.sclab.io<br />If the mainPrefix value is set to app, app.sclab.io becomes the main It becomes a domain<br /> and this address must match the domain used in ROOT_URL in the environment settings. |
 | public.sso                              | string array what you want to use. (google, facebook, kakao, naver)                                                                                                                                                                                                                                                     |
 | public.ldap.enabled                     | enable the LDAP login form on the login page (true/false). The server is configured in private.sso.ldap                                                                                                                                                                                                                 |
-| public.ad.enabled                       | enable the Active Directory login form on the login page (true/false). The server is configured in private.sso.ad                                                                                                                                                                                                       |
 | public.useForceSSL                      | force redirect http to https                                                                                                                                                                                                                                                                                            |
 | public.uploadMaxMB                      | max upload file size (MB)                                                                                                                                                                                                                                                                                               |
 | public.editorHosts                      | editor host array                                                                                                                                                                                                                                                                                                       |
@@ -356,13 +355,6 @@ If you encounter issues:
 | private.sso.ldap.searchFilter           | user search filter; "#{username}" is replaced (e.g., "(uid=#{username})")                                                                                                                                                                                                                                               |
 | private.sso.ldap.defaultDomain          | email domain appended when the directory entry has no mail attribute                                                                                                                                                                                                                                                    |
 | private.sso.ldap.createNewUser          | auto-create the SCLAB user on first successful login (true/false)                                                                                                                                                                                                                                                       |
-| private.sso.ad.url                      | Active Directory server URL (e.g., "ldap://dc.example.com")                                                                                                                                                                                                                                                             |
-| private.sso.ad.searchDN                 | AD service-account DN used to search for the user                                                                                                                                                                                                                                                                       |
-| private.sso.ad.searchCredentials        | AD service-account password                                                                                                                                                                                                                                                                                             |
-| private.sso.ad.base                     | search base DN (e.g., "DC=example,DC=com")                                                                                                                                                                                                                                                                              |
-| private.sso.ad.searchFilter             | user search filter (default "(sAMAccountName=#{username})")                                                                                                                                                                                                                                                             |
-| private.sso.ad.defaultDomain            | email domain; "user@domain" or "DOMAIN\user" logins are also accepted                                                                                                                                                                                                                                                   |
-| private.sso.ad.createNewUser            | auto-create the SCLAB user on first successful login (true/false)                                                                                                                                                                                                                                                       |
 | private.cors                            | CORS header ("Access-Control-Allow-Origin")                                                                                                                                                                                                                                                                             |
 | redisOplog                              | redis connection information (only for server)                                                                                                                                                                                                                                                                          |
 | redisOplog.redis.port                   | redis port                                                                                                                                                                                                                                                                                                              |
@@ -373,13 +365,13 @@ If you encounter issues:
 | redisOplog.mutationDefaults.pushToRedis | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                        | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
 
-#### LDAP / Active Directory login
+#### LDAP login
 
-SCLAB Studio can authenticate users against a corporate **LDAP** or **Active Directory** server in addition to the built-in ID/password login. When enabled, a matching login form is shown on the login page, and on the first successful login the user is created automatically in SCLAB (`createNewUser`). Only the username/password are sent from the browser — all connection details stay on the server.
+SCLAB Studio can authenticate users against a corporate **LDAP** server in addition to the built-in ID/password login. When enabled, an LDAP login form is shown on the login page, and on the first successful login the user is created automatically in SCLAB (`createNewUser`). Only the username/password are sent from the browser — all connection details stay on the server.
 
-Enable the form with `public.ldap.enabled` / `public.ad.enabled` and configure the server under `private.sso.ldap` / `private.sso.ad`.
+Enable the form with `public.ldap.enabled` and configure the server under `private.sso.ldap`.
 
-**LDAP example** (direct bind):
+**Example** (direct bind):
 
 ```json
 "public": { "ldap": { "enabled": true } },
@@ -398,27 +390,7 @@ Enable the form with `public.ldap.enabled` / `public.ad.enabled` and configure t
 }
 ```
 
-**Active Directory example** (search then bind with a service account):
-
-```json
-"public": { "ad": { "enabled": true } },
-"private": {
-  "sso": {
-    "ad": {
-      "url": "ldap://dc.example.com",
-      "port": "389",
-      "base": "DC=example,DC=com",
-      "searchDN": "CN=svc-sclab,OU=Service Accounts,DC=example,DC=com",
-      "searchCredentials": "service-account-password",
-      "searchFilter": "(sAMAccountName=#{username})",
-      "defaultDomain": "example.com",
-      "createNewUser": true
-    }
-  }
-}
-```
-
-> For `ldaps://`, set `port` to `636`. If the server certificate is not issued by a public CA, provide the CA certificate (PEM string) via `private.sso.ldap.ldapsCertificate` / `private.sso.ad.ldapsCertificate`.
+> For `ldaps://`, set `port` to `636`. If the server certificate is not issued by a public CA, provide the CA certificate (PEM string) via `private.sso.ldap.ldapsCertificate`.
 
 ## Running SCLAB Studio
 
