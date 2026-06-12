@@ -16,11 +16,12 @@ services:
         chown -R "$$uid:$$gid" /var/log/mongodb
         chmod 775 /var/log/mongodb
         chmod 664 /var/log/mongodb/mongod.log
+        chmod 644 /etc/mongod.conf
         exec docker-entrypoint.sh mongod --config /etc/mongod.conf
     volumes:
       - ./data/mongo/db:/data/db
       - ./data/mongo/logs:/var/log/mongodb
-      - ./mongod.conf:/etc/mongod.conf:ro
+      - ./mongod.conf:/etc/mongod.conf
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=changeThisMongoPassword
