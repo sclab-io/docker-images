@@ -619,6 +619,10 @@ main() {
   prompt_secret MONGO_PW   "MongoDB root password [Enter = auto-generate]: "
   prompt_secret REDIS_PW   "Redis password [Enter = auto-generate]: "
   prompt_secret QDRANT_KEY "Qdrant API key [Enter = auto-generate]: "
+  # Vector DB credential encryption key (auto-generated; encrypts vector DB
+  # API keys/passwords saved via the admin UI). Shared by webapp and ai-service.
+  VECTOR_DB_ENC_KEY="$(gen_secret)"
+  echo " → Auto-generated vector DB encryption key."
   
   # AI Service Configuration
   echo ""
@@ -722,6 +726,7 @@ main() {
   do_replace_all "changeThisMongoPassword"  "$MONGO_PW"   "MongoDB password"
   do_replace_all "changeThisRedisPassword"  "$REDIS_PW"   "Redis password"
   do_replace_all "changeThisQdrantApiKey"   "$QDRANT_KEY" "Qdrant API key"
+  do_replace_all "changeThisVectorDBEncryptionKey" "$VECTOR_DB_ENC_KEY" "Vector DB encryption key"
   
   # Replace OpenAI API key
   OPENAI_REPLACEMENT="${OPENAI_KEY:-}"
