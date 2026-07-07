@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 업데이트: 최신 이미지 pull 후 롤링 재기동. (ECR이면 사전 docker login 필요)
+# Update: pull latest images, then recreate containers. ECR registries require docker login first.
 set -euo pipefail
 cd "$(cd "$(dirname "$0")" && pwd)"
 . ./_dc.sh

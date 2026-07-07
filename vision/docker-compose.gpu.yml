@@ -2,10 +2,10 @@
 #   .env에  COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml  이 설정되면 자동 적용
 #   (install.sh가 GPU 선택 시 기록). 수동: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 #
-# 전제: Linux GPU 호스트 + nvidia-container-toolkit 설치. aio 이미지를 CUDA(aio-gpu)로 교체하고 GPU를 예약한다.
+# Requires a Linux GPU host with nvidia-container-toolkit. Swaps aio for aio-gpu and reserves a GPU.
 services:
   vision-aio:
-    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio-gpu:${VISION_TAG:-latest}"
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio-gpu:${VISION_TAG:-0.1.1}"
     deploy:
       resources:
         reservations:

@@ -1,4 +1,4 @@
-# 공통(source 전용): DC 변수에 올바른 docker compose 명령을 설정한다(sudo 필요 시 자동).
+# Shared helper. Sets DC to the right docker compose command, using sudo when needed.
 # .env의 COMPOSE_FILE(gpu 오버레이)·COMPOSE_PROFILES(db/s3)는 docker compose가 알아서 읽는다.
 SUDO=""
 if ! docker info >/dev/null 2>&1; then

@@ -33,6 +33,9 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 - sclabio/kafka-client
 - sclabio/node-vm-service
 - sclabio/ai-service
+- sclabio/vision-aio
+- sclabio/vision-aio-gpu
+- sclabio/vision-console
 - [sclabio/sclab-agent](https://hub.docker.com/r/sclabio/sclab-agent)
 
 ## Other image list for running SCLAB images
@@ -128,6 +131,110 @@ If you encounter issues:
 - Check Docker is properly installed: `docker --version`
 - For package manager issues, the script automatically detects and uses the appropriate one
 
+# SCLAB Vision
+
+SCLAB Vision is deployed from the `vision/` directory. It is separate from the main SCLAB Studio installer, but it shares the same Docker network and data services.
+
+The default Vision stack contains:
+
+- `vision-aio`: all-in-one Vision backend
+- `vision-console`: Vision web console
+- existing `mongo`, `redis`, and `qdrant` containers from the main SCLAB stack on `sclab-network`
+
+Vision does not start its own MongoDB, Redis, or Qdrant containers. Start the main SCLAB stack first, then install Vision.
+
+## Vision quick install
+
+```bash
+cd vision
+./install.sh
+```
+
+Press Enter at each prompt to use the defaults. For unattended installation with defaults:
+
+```bash
+cd vision
+./install.sh -y
+```
+
+The Vision installer will:
+
+1. Check Docker and Docker Compose, and offer to install Docker on common Linux distributions.
+2. Create `sclab-network` if it does not already exist.
+3. Ask for accelerator, shared service endpoints, recording mode, ports, image tag, and secrets.
+4. Generate `vision/.env`.
+5. Create Vision-owned directories under `vision/data/vision/`.
+6. Pull images from ECR and start `vision-aio` and `vision-console`.
+
+The default Vision image tag is `0.1.1`. The installer writes it to `vision/.env` as:
+
+```env
+VISION_TAG=0.1.1
+```
+
+## Vision shared service defaults
+
+These defaults match this repository's root `docker-compose.yml`:
+
+```env
+VISION_MONGO_URL=mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin
+VISION_MONGO_DB=sclab
+VISION_REDIS_URL=redis://:changeThisRedisPassword@redis:6379
+VISION_QDRANT_URL=http://qdrant:6333
+VISION_QDRANT_API_KEY=changeThisQdrantApiKey
+```
+
+If you changed the MongoDB, Redis, or Qdrant credentials in the main stack, enter the same values during `vision/install.sh` or edit `vision/.env` and run `vision/up.sh`.
+
+## Vision ports and URLs
+
+Default host ports:
+
+- Console web UI: `http://<host>:8890`
+- Control API: `http://<host>:8090`
+- HLS gateway: `http://<host>:8080`
+
+Change these in `vision/.env`:
+
+```env
+VISION_CONSOLE_PORT=8890
+VISION_CONTROL_PORT=8090
+VISION_GATEWAY_PORT=8080
+```
+
+## Vision GPU mode
+
+Choose GPU mode in `vision/install.sh`, or set this in `vision/.env`:
+
+```env
+COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml
+```
+
+GPU mode uses `sclabio/vision-aio-gpu` and requires a Linux host with NVIDIA drivers and `nvidia-container-toolkit`.
+
+## Vision recording
+
+Vision stores all Vision-owned files under `vision/data/vision/`.
+
+- `vision/data/vision/recordings`: DVR hot segments
+- `vision/data/vision/rustfs`: optional RustFS S3-compatible cold-tier storage
+
+Recording is disabled by default. Enable disk or disk + S3 recording during `vision/install.sh`, or edit `VISION_RECORD_DEFAULT` and S3 values in `vision/.env`.
+
+## Vision operations
+
+```bash
+cd vision
+./up.sh        # start
+./down.sh      # stop and remove containers; data remains
+./logs.sh      # follow logs, e.g. ./logs.sh vision-aio
+./pull.sh      # pull images
+./restart.sh   # restart
+./update.sh    # pull + recreate
+```
+
+See `vision/README.md` for the full Vision-specific guide.
+
 ### File list
 | File Name              | Description                                |
 |:-----------------------|:-------------------------------------------|
@@ -163,6 +270,17 @@ If you encounter issues:
 | update.bat             | Windows update webapp script               |
 | update-all.bat         | Windows update all services script         |
 | restart.bat            | Windows restart script                     |
+| vision/                | SCLAB Vision Docker Compose deployment     |
+| vision/install.sh      | Vision step-by-step installer              |
+| vision/docker-compose.yml | Vision compose stack (`vision-aio` + `vision-console`) |
+| vision/docker-compose.gpu.yml | Vision GPU compose override          |
+| vision/.env.example    | Vision environment variable example        |
+| vision/up.sh           | Start Vision                               |
+| vision/down.sh         | Stop Vision                                |
+| vision/logs.sh         | Follow Vision logs                         |
+| vision/pull.sh         | Pull Vision images                         |
+| vision/update.sh       | Pull and recreate Vision containers        |
+| vision/restart.sh      | Restart Vision                             |
 
 ### common.env
 

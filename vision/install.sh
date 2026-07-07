@@ -125,11 +125,12 @@ ensure_network
 
 # defaults
 DEF_REGISTRY="873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio"
-GPU=0; DB_MODE="dedicated"; REC_MODE="off"
-VISION_STUDIO_SHARED="false"
-VISION_MONGO_URL="mongodb://vision-mongo:27017"; VISION_MONGO_DB="vision"; VISION_REDIS_URL="redis://vision-redis:6379"
+GPU=0; REC_MODE="off"
+VISION_STUDIO_SHARED="true"
+VISION_MONGO_URL="mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin"; VISION_MONGO_DB="sclab"; VISION_REDIS_URL="redis://:changeThisRedisPassword@redis:6379"
+VISION_QDRANT_URL="http://qdrant:6333"; VISION_QDRANT_API_KEY="changeThisQdrantApiKey"; VISION_QDRANT_COLLECTION="sv-VisionAnalysisVector"
 VISION_CONSOLE_PORT="8890"; VISION_CONTROL_PORT="8090"; VISION_GATEWAY_PORT="8080"
-VISION_REGISTRY="$DEF_REGISTRY"; VISION_TAG="latest"
+VISION_REGISTRY="$DEF_REGISTRY"; VISION_TAG="0.1.1"
 VISION_S3_BUCKET=""; VISION_RECORD_DEFAULT="off"; VISION_HLS_CORS_ORIGINS="*"
 
 echo; info "You'll be asked a few questions. ${C_Y}Press Enter to accept the default${C_0} shown in [brackets]."
@@ -138,17 +139,16 @@ echo; info "You'll be asked a few questions. ${C_Y}Press Enter to accept the def
 echo; printf "%b\n" "${C_B}[1/6] Accelerator${C_0}"
 if ask_yn "Use an NVIDIA GPU? (default: CPU; requires nvidia-container-toolkit)" n; then GPU=1; fi
 
-# 2) database
-echo; printf "%b\n" "${C_B}[2/6] Database (Mongo/Redis)${C_0}"
-echo "  1) Run Vision's own Mongo/Redis (default, self-contained)"
-echo "  2) Share SCLAB Studio's mongo/redis (the mongo·redis already on sclab-network)"
-db_choice="$(ask "Choose (1/2)" "1")"
-if [ "$db_choice" = "2" ]; then
-  DB_MODE="shared"; VISION_STUDIO_SHARED="true"
-  VISION_MONGO_URL="$(ask "Mongo URL" "mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin")"
-  VISION_MONGO_DB="$(ask "Mongo DB name (usually 'sclab' when shared)" "sclab")"
-  VISION_REDIS_URL="$(ask "Redis URL" "redis://:changeThisRedisPassword@redis:6379")"
-fi
+# 2) shared services
+echo; printf "%b\n" "${C_B}[2/6] Shared services (MongoDB / Redis / Qdrant)${C_0}"
+echo "  Vision uses the existing mongo, redis, and qdrant containers on sclab-network."
+echo "  Press Enter unless you changed the passwords or service names in the main SCLAB stack."
+VISION_MONGO_URL="$(ask "Mongo URL" "$VISION_MONGO_URL")"
+VISION_MONGO_DB="$(ask "Mongo DB name" "$VISION_MONGO_DB")"
+VISION_REDIS_URL="$(ask "Redis URL" "$VISION_REDIS_URL")"
+VISION_QDRANT_URL="$(ask "Qdrant URL" "$VISION_QDRANT_URL")"
+VISION_QDRANT_API_KEY="$(ask "Qdrant API key" "$VISION_QDRANT_API_KEY")"
+VISION_QDRANT_COLLECTION="$(ask "Qdrant collection" "$VISION_QDRANT_COLLECTION")"
 
 # 3) recording (DVR)
 echo; printf "%b\n" "${C_B}[3/6] Recording (DVR)${C_0}"
@@ -185,7 +185,6 @@ fi
 
 # ── assemble profiles / COMPOSE_FILE ──
 PROFILES=""
-[ "$DB_MODE" = "dedicated" ] && PROFILES="db"
 [ "$REC_MODE" = "s3" ] && PROFILES="${PROFILES:+$PROFILES,}s3"
 COMPOSE_FILE_LINE=""
 DC_FILES=(-f "$COMPOSE_FILE_BASE")
@@ -210,6 +209,9 @@ VISION_MONGO_URL=${VISION_MONGO_URL}
 VISION_MONGO_DB=${VISION_MONGO_DB}
 VISION_REDIS_URL=${VISION_REDIS_URL}
 VISION_STUDIO_SHARED=${VISION_STUDIO_SHARED}
+VISION_QDRANT_URL=${VISION_QDRANT_URL}
+VISION_QDRANT_API_KEY=${VISION_QDRANT_API_KEY}
+VISION_QDRANT_COLLECTION=${VISION_QDRANT_COLLECTION}
 VISION_INTERNAL_TOKEN=${VISION_INTERNAL_TOKEN}
 VISION_ADMIN_JWT_SECRET=${VISION_ADMIN_JWT_SECRET}
 VISION_SIGNING_KEY=${VISION_SIGNING_KEY}
@@ -232,7 +234,6 @@ ok ".env written"
 # ── data directories ──
 info "Creating data directories under ./data/vision/"
 mkdir -p data/vision/recordings
-[ "$DB_MODE" = "dedicated" ] && mkdir -p data/vision/mongo data/vision/redis
 [ "$REC_MODE" = "s3" ] && mkdir -p data/vision/rustfs
 ok "Directories ready"
 
@@ -269,6 +270,7 @@ printf "  Control API    : http://%s:%s\n" "$HOSTIP" "$VISION_CONTROL_PORT"
 printf "  HLS gateway    : http://%s:%s\n" "$HOSTIP" "$VISION_GATEWAY_PORT"
 [ "$REC_MODE" = "s3" ] && printf "  RustFS console : http://%s:9001 (rustfsadmin/rustfsadmin)\n" "$HOSTIP"
 printf "%b\n" "${C_G}────────────────────────────────────────────${C_0}"
-echo   "  Setup: aio+console · $( [ "$GPU" = 1 ] && echo GPU || echo CPU ) · db=${DB_MODE} · recording=${REC_MODE}"
+echo   "  Setup: aio+console · $( [ "$GPU" = 1 ] && echo GPU || echo CPU ) · recording=${REC_MODE}"
+echo   "  Data services: shared mongo/redis/qdrant on sclab-network"
 echo   "  Status: ${DC# } ps    Logs: ./logs.sh    Stop: ./down.sh"
-[ "$DB_MODE" = "shared" ] && warn "Shared DB mode: mongo/redis must already be running on sclab-network."
+warn "Shared service mode: mongo, redis, and qdrant must already be running on sclab-network."

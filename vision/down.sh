@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 중지(컨테이너 제거, 데이터/볼륨 유지). 완전 삭제는 ./down.sh -v (주의: ./data/vision는 바인드마운트라 유지됨).
+# Stop and remove containers while keeping data. ./down.sh -v also removes named volumes; ./data/vision bind mounts remain.
 set -euo pipefail
 cd "$(cd "$(dirname "$0")" && pwd)"
 . ./_dc.sh
