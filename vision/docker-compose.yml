@@ -1,0 +1,166 @@
+# SCLAB Vision — 배포 스택 (aio + console 기본).
+#
+#   설치:   ./install.sh          (단계별 질문 — 전부 Enter면 기본값으로 설치)
+#   기동:   ./up.sh   또는   docker compose up -d
+#   중지:   ./down.sh
+#
+# 구성(compose profiles — .env의 COMPOSE_PROFILES로 선택):
+#   (기본)      vision-aio + vision-console            ← 항상 실행
+#   profile db  vision-mongo + vision-redis            ← Vision 전용 DB(공유 안 할 때)
+#   profile s3  rustfs + rustfs-init                   ← DVR 녹화 cold tier(S3 호환 저장)
+#   GPU         docker-compose.gpu.yml 오버레이(COMPOSE_FILE) — aio를 aio-gpu로 교체
+#
+# 네트워크: sclab-network(external, 형제 스택과 공유). 볼륨: 전부 ./data/vision/* 바인드마운트.
+name: sclab-vision
+
+services:
+  # ────────────────────────────── 기본(항상) ──────────────────────────────
+  vision-aio:
+    container_name: vision-aio
+    hostname: vision-aio
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio:${VISION_TAG:-latest}"
+    restart: always
+    environment:
+      # ── 상태(Mongo/Redis). 전용(profile db)이면 vision-mongo/vision-redis, 공유면 .env에서 URL 지정 ──
+      VISION_MONGO_URL: "${VISION_MONGO_URL:-mongodb://vision-mongo:27017}"
+      VISION_MONGO_DB: "${VISION_MONGO_DB:-vision}"
+      VISION_REDIS_URL: "${VISION_REDIS_URL:-redis://vision-redis:6379}"
+      VISION_STUDIO_SHARED: "${VISION_STUDIO_SHARED:-false}"   # true=SCLAB Studio 공유 DB(sv- prefix)
+      # ── 시크릿(운영은 install.sh가 랜덤 생성. control 발급/gateway 검증/console 동일 키) ──
+      VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
+      VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
+      VISION_SIGNING_KEY: "${VISION_SIGNING_KEY:-dev-insecure-signing-key}"
+      # ── 바인드 주소(컨테이너 내부). 외부 노출은 아래 ports ──
+      VISION_AIO_CONTROL_ADDR: "0.0.0.0:8090"
+      VISION_AIO_GATEWAY_ADDR: "0.0.0.0:8080"
+      VISION_AIO_EGRESS_ADDR: "127.0.0.1:8088"
+      VISION_HLS_CORS_ORIGINS: "${VISION_HLS_CORS_ORIGINS:-*}"
+      # ── DVR 녹화(선택) — off=녹화안함 / always=상시. hot=디스크(아래 볼륨), cold=S3(profile s3) ──
+      VISION_RECORD_DEFAULT: "${VISION_RECORD_DEFAULT:-off}"
+      VISION_RECORD_DIR: "/var/lib/vision/recordings"
+      VISION_RECORD_DELETE_AFTER: "${VISION_RECORD_DELETE_AFTER:-86400}"
+      # ── S3 cold tier(선택, VISION_S3_BUCKET 비면 디스크만) ──
+      VISION_S3_BUCKET: "${VISION_S3_BUCKET:-}"
+      VISION_S3_ENDPOINT: "${VISION_S3_ENDPOINT:-http://rustfs:9000}"
+      VISION_S3_REGION: "${VISION_S3_REGION:-us-east-1}"
+      VISION_S3_ACCESS_KEY_ID: "${VISION_S3_ACCESS_KEY_ID:-rustfsadmin}"
+      VISION_S3_SECRET_ACCESS_KEY: "${VISION_S3_SECRET_ACCESS_KEY:-rustfsadmin}"
+      VISION_S3_PREFIX: "${VISION_S3_PREFIX:-recordings}"
+      VISION_S3_ALLOW_HTTP: "true"
+      VISION_S3_FORCE_PATH_STYLE: "true"
+      RUST_LOG: "${RUST_LOG:-info}"
+    ports:
+      - "${VISION_CONTROL_PORT:-8090}:8090"   # control(API, HTTP·HTTPS 동시)
+      - "${VISION_GATEWAY_PORT:-8080}:8080"   # gateway(HLS, HTTP·HTTPS 동시)
+    volumes:
+      - ./data/vision/recordings:/var/lib/vision/recordings   # DVR hot 세그먼트
+      # 정식 TLS 인증서 주입(운영, 선택):
+      #   - ./data/vision/certs:/certs:ro   +  VISION_TLS_CERT=/certs/fullchain.pem VISION_TLS_KEY=/certs/privkey.pem
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # 호스트의 RTSP 소스 접근용
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "10" }
+    networks:
+      - sclab-network
+
+  vision-console:
+    container_name: vision-console
+    hostname: vision-console
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-console:${VISION_TAG:-latest}"
+    restart: always
+    depends_on:
+      - vision-aio
+    environment:
+      VISION_API_BASE: "http://vision-aio:8090"
+      VISION_DISCOVERY_BASE: "http://vision-aio:8090"
+      VISION_WIZARD_BASE: "http://vision-aio:8090"
+      VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
+      VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
+      PORT: "3000"
+    ports:
+      - "${VISION_CONSOLE_PORT:-8890}:3000"   # 콘솔 웹 UI
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "10" }
+    networks:
+      - sclab-network
+
+  # ───────────────────── 전용 DB (profile: db — 공유 안 할 때만) ─────────────────────
+  vision-mongo:
+    container_name: vision-mongo
+    hostname: vision-mongo
+    image: "mongo:7"
+    restart: always
+    profiles: ["db"]
+    volumes:
+      - ./data/vision/mongo:/data/db
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "10" }
+    networks:
+      - sclab-network
+
+  vision-redis:
+    container_name: vision-redis
+    hostname: vision-redis
+    image: "redis:7-alpine"
+    restart: always
+    profiles: ["db"]
+    volumes:
+      - ./data/vision/redis:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "10" }
+    networks:
+      - sclab-network
+
+  # ────────────── DVR cold tier 저장 (profile: s3 — 녹화+S3 선택 시) ──────────────
+  # RustFS: 순수 Rust S3 호환 오브젝트 스토어(MinIO 대안). aio가 http://rustfs:9000 으로 붙는다.
+  rustfs:
+    container_name: vision-rustfs
+    hostname: rustfs
+    image: "rustfs/rustfs:latest"
+    restart: always
+    profiles: ["s3"]
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: "${VISION_S3_ACCESS_KEY_ID:-rustfsadmin}"
+      RUSTFS_SECRET_KEY: "${VISION_S3_SECRET_ACCESS_KEY:-rustfsadmin}"
+      RUSTFS_CORS_ALLOWED_ORIGINS: "*"
+    volumes:
+      - ./data/vision/rustfs:/data
+    ports:
+      - "${VISION_S3_API_PORT:-9000}:9000"     # S3 API(디버그/외부도구용 — 내부는 http://rustfs:9000)
+      - "${VISION_S3_CONSOLE_PORT:-9001}:9001"  # RustFS 웹 콘솔
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "10" }
+    networks:
+      - sclab-network
+
+  # 버킷 부트스트랩(1회) — S3는 버킷 자동생성을 안 하므로 사전 생성.
+  rustfs-init:
+    container_name: vision-rustfs-init
+    image: "minio/mc:latest"
+    profiles: ["s3"]
+    depends_on: [rustfs]
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set rustfs http://rustfs:9000 ${VISION_S3_ACCESS_KEY_ID:-rustfsadmin} ${VISION_S3_SECRET_ACCESS_KEY:-rustfsadmin} >/dev/null 2>&1; do
+        echo 'waiting for rustfs...'; sleep 2;
+      done;
+      mc mb --ignore-existing rustfs/${VISION_S3_BUCKET:-sv-recordings};
+      echo 'rustfs bucket ready: ${VISION_S3_BUCKET:-sv-recordings}';
+      "
+    networks:
+      - sclab-network
+
+networks:
+  sclab-network:
+    external: true
