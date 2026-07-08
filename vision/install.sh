@@ -43,6 +43,93 @@ gen_secret() {  # 랜덤 48자 hex 문자열
   elif [ -r /dev/urandom ]; then LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 48
   else echo "sv$(date +%s)$$${RANDOM:-0}${RANDOM:-0}" | head -c 48; fi
 }
+strip_quotes() {
+  local v="${1:-}"
+  v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+  case "$v" in
+    \"*\") v="${v#\"}"; v="${v%\"}" ;;
+    \'*\') v="${v#\'}"; v="${v%\'}" ;;
+  esac
+  printf '%s' "$v"
+}
+env_file_value() {  # $1=KEY $2..=env files
+  local key="$1" file value
+  shift
+  for file in "$@"; do
+    [ -f "$file" ] || continue
+    value="$(awk -v key="$key" '
+      $0 ~ "^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=" {
+        sub("^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=", "")
+        print
+        exit
+      }
+    ' "$file")"
+    [ -n "$value" ] && strip_quotes "$value" && return 0
+  done
+  return 1
+}
+compose_env_value() {  # $1=KEY $2..=compose files
+  local key="$1" file value
+  shift
+  for file in "$@"; do
+    [ -f "$file" ] || continue
+    value="$(awk -v key="$key" '
+      {
+        line=$0
+        sub("^[[:space:]]*-[[:space:]]*", "", line)
+        if (line ~ "^" key "[[:space:]]*=") {
+          sub("^" key "[[:space:]]*=", "", line)
+          print line
+          exit
+        }
+        line=$0
+        sub("^[[:space:]]*", "", line)
+        if (line ~ "^" key "[[:space:]]*:") {
+          sub("^" key "[[:space:]]*:[[:space:]]*", "", line)
+          print line
+          exit
+        }
+      }
+    ' "$file")"
+    [ -n "$value" ] && strip_quotes "$value" && return 0
+  done
+  return 1
+}
+compose_service_field() {  # $1=service $2=field $3..=compose files
+  local svc="$1" field="$2" file value
+  shift 2
+  for file in "$@"; do
+    [ -f "$file" ] || continue
+    value="$(awk -v svc="$svc" -v field="$field" '
+      $0 ~ "^  " svc ":" { in_svc=1; next }
+      in_svc && $0 ~ "^  [A-Za-z0-9_-]+:" { in_svc=0 }
+      in_svc {
+        line=$0
+        sub("^[[:space:]]*", "", line)
+        if (line ~ "^" field "[[:space:]]*:") {
+          sub("^" field "[[:space:]]*:[[:space:]]*", "", line)
+          print line
+          exit
+        }
+      }
+    ' "$file")"
+    [ -n "$value" ] && strip_quotes "$value" && return 0
+  done
+  return 1
+}
+config_value() {  # $1=KEY $2=fallback
+  local key="$1" fallback="$2" value=""
+  value="${!key:-}"
+  [ -n "$value" ] && printf '%s' "$value" && return 0
+  value="$(env_file_value "$key" .env 2>/dev/null || true)"
+  [ -n "$value" ] && printf '%s' "$value" && return 0
+  printf '%s' "$fallback"
+}
+mongo_db_from_url() {
+  local url="${1:-}" db=""
+  db="$(printf '%s' "$url" | sed -n 's#^mongodb://[^/]*/\([^?]*\).*$#\1#p')"
+  [ -n "$db" ] && [ "$db" != "/" ] && printf '%s' "$db"
+}
 base64url_openssl() {
   openssl base64 -A | tr '+/' '-_' | tr -d '='
 }
@@ -168,8 +255,33 @@ ensure_network
 DEF_REGISTRY="873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio"
 GPU=0; REC_MODE="off"
 VISION_STUDIO_SHARED="true"
-VISION_MONGO_URL="mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin"; VISION_MONGO_DB="sclab"; VISION_REDIS_URL="redis://:changeThisRedisPassword@redis:6379"
-VISION_QDRANT_URL="http://qdrant:6333"; VISION_QDRANT_API_KEY="changeThisQdrantApiKey"; VISION_QDRANT_COLLECTION="sv-VisionAnalysisVector"
+ROOT_COMPOSE="../docker-compose.yml"
+ROOT_COMMON_ENV="../common.env"
+ROOT_AI_ENV="../ai-service.env"
+MONGO_HOST="$(compose_service_field mongo hostname "$ROOT_COMPOSE" 2>/dev/null || true)"; MONGO_HOST="${MONGO_HOST:-mongo}"
+REDIS_HOST="$(compose_service_field redis hostname "$ROOT_COMPOSE" 2>/dev/null || true)"; REDIS_HOST="${REDIS_HOST:-redis}"
+QDRANT_HOST="$(compose_service_field qdrant hostname "$ROOT_COMPOSE" 2>/dev/null || true)"; QDRANT_HOST="${QDRANT_HOST:-qdrant}"
+MONGO_ROOT_USERNAME="$(compose_env_value MONGO_INITDB_ROOT_USERNAME "$ROOT_COMPOSE" 2>/dev/null || true)"; MONGO_ROOT_USERNAME="${MONGO_ROOT_USERNAME:-root}"
+MONGO_ROOT_PASSWORD="$(compose_env_value MONGO_INITDB_ROOT_PASSWORD "$ROOT_COMPOSE" 2>/dev/null || true)"; MONGO_ROOT_PASSWORD="${MONGO_ROOT_PASSWORD:-changeThisMongoPassword}"
+REDIS_PASSWORD="$(env_file_value REDIS_PASSWORD "$ROOT_AI_ENV" 2>/dev/null || true)"
+[ -n "$REDIS_PASSWORD" ] || REDIS_PASSWORD="$(compose_env_value REDIS_PASSWORD "$ROOT_COMPOSE" 2>/dev/null || true)"
+REDIS_PASSWORD="${REDIS_PASSWORD:-changeThisRedisPassword}"
+ROOT_MONGO_URL="$(env_file_value MONGO_URL "$ROOT_COMMON_ENV" 2>/dev/null || true)"
+ROOT_REDIS_URL="$(env_file_value REDIS_URL "$ROOT_AI_ENV" 2>/dev/null || true)"
+ROOT_QDRANT_URL="$(env_file_value QDRANT_CLUSTER_URL "$ROOT_COMMON_ENV" 2>/dev/null || true)"
+ROOT_QDRANT_API_KEY="$(env_file_value QDRANT_API_KEY "$ROOT_COMMON_ENV" 2>/dev/null || true)"
+[ -n "$ROOT_QDRANT_API_KEY" ] || ROOT_QDRANT_API_KEY="$(compose_env_value QDRANT__SERVICE__API_KEY "$ROOT_COMPOSE" 2>/dev/null || true)"
+case "$ROOT_REDIS_URL" in
+  redis://:*) ;;
+  redis://*) ROOT_REDIS_URL="$(printf '%s' "$ROOT_REDIS_URL" | sed "s#^redis://#redis://:${REDIS_PASSWORD}@#")" ;;
+  *) ROOT_REDIS_URL="" ;;
+esac
+VISION_MONGO_URL="$(config_value VISION_MONGO_URL "${ROOT_MONGO_URL:-mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@${MONGO_HOST}:27017/?authSource=admin}")"
+VISION_MONGO_DB="$(config_value VISION_MONGO_DB "$(mongo_db_from_url "$VISION_MONGO_URL")")"; VISION_MONGO_DB="${VISION_MONGO_DB:-sclab}"
+VISION_REDIS_URL="$(config_value VISION_REDIS_URL "${ROOT_REDIS_URL:-redis://:${REDIS_PASSWORD}@${REDIS_HOST}:6379}")"
+VISION_QDRANT_URL="$(config_value VISION_QDRANT_URL "${ROOT_QDRANT_URL:-http://${QDRANT_HOST}:6333}")"
+VISION_QDRANT_API_KEY="$(config_value VISION_QDRANT_API_KEY "${ROOT_QDRANT_API_KEY:-changeThisQdrantApiKey}")"
+VISION_QDRANT_COLLECTION="$(config_value VISION_QDRANT_COLLECTION "sv-VisionAnalysisVector")"
 VISION_CONSOLE_PORT="8890"; VISION_CONTROL_PORT="8090"; VISION_GATEWAY_PORT="8080"
 VISION_REGISTRY="$DEF_REGISTRY"; VISION_TAG="latest"
 VISION_VERSION="$VISION_TAG"
