@@ -30,6 +30,7 @@ services:
       VISION_QDRANT_URL: "${VISION_QDRANT_URL:-http://qdrant:6333}"
       VISION_QDRANT_API_KEY: "${VISION_QDRANT_API_KEY:-changeThisQdrantApiKey}"
       VISION_QDRANT_COLLECTION: "${VISION_QDRANT_COLLECTION:-sv-VisionAnalysisVector}"
+      VISION_VERSION: "${VISION_VERSION:-latest}"
       # aio와 console이 공유하는 secret. install.sh가 운영용 랜덤 값을 생성한다.
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
@@ -73,8 +74,10 @@ services:
       - vision-aio
     environment:
       VISION_API_BASE: "http://vision-aio:8090"
+      VISION_GATEWAY_BASE: "http://vision-aio:8080"
       VISION_DISCOVERY_BASE: "http://vision-aio:8090"
       VISION_WIZARD_BASE: "http://vision-aio:8090"
+      VISION_VERSION: "${VISION_VERSION:-latest}"
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       SESSION_SECRET: "${SESSION_SECRET:-sv-dev-admin-jwt-secret}"

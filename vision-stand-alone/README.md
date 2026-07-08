@@ -28,10 +28,11 @@ For unattended default installation:
 The installer will:
 
 1. Check Docker and Docker Compose, and offer to install Docker on common Linux distributions.
-2. Ask setup questions and generate `.env`.
-3. Create local directories under `./data/`.
-4. Generate a self-signed TLS certificate in `./data/vision/certs/` when `cert.pem` and `privkey.pem` are missing.
-5. Log in to ECR when possible, pull images, and run `docker compose up -d`.
+2. Install AWS CLI when it is missing and configure AWS credentials when ECR access is not set up.
+3. Ask setup questions and generate `.env`.
+4. Create local directories under `./data/`.
+5. Generate a self-signed TLS certificate in `./data/vision/certs/` when `cert.pem` and `privkey.pem` are missing.
+6. Log in to ECR when possible, pull images, and run `docker compose up -d`.
 
 ## Operations
 

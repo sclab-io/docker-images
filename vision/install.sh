@@ -172,6 +172,7 @@ VISION_MONGO_URL="mongodb://root:changeThisMongoPassword@mongo:27017/?authSource
 VISION_QDRANT_URL="http://qdrant:6333"; VISION_QDRANT_API_KEY="changeThisQdrantApiKey"; VISION_QDRANT_COLLECTION="sv-VisionAnalysisVector"
 VISION_CONSOLE_PORT="8890"; VISION_CONTROL_PORT="8090"; VISION_GATEWAY_PORT="8080"
 VISION_REGISTRY="$DEF_REGISTRY"; VISION_TAG="latest"
+VISION_VERSION="$VISION_TAG"
 VISION_S3_BUCKET=""; VISION_RECORD_DEFAULT="off"; VISION_HLS_CORS_ORIGINS="*"
 
 echo; info "You'll be asked a few questions. ${C_Y}Press Enter to accept the default${C_0} shown in [brackets]."
@@ -212,6 +213,7 @@ echo "  Console=${VISION_CONSOLE_PORT}, HLS gateway=${VISION_GATEWAY_PORT}, Cont
 echo; printf "%b\n" "${C_B}[5/6] Images${C_0}"
 VISION_REGISTRY="$(ask "Registry" "$VISION_REGISTRY")"
 VISION_TAG="$(ask "Tag" "$VISION_TAG")"
+VISION_VERSION="$VISION_TAG"
 
 # 6) secret
 echo; printf "%b\n" "${C_B}[6/6] Secrets (production security — 3 values shared by aio/console)${C_0}"
@@ -244,6 +246,7 @@ COMPOSE_PROFILES=${PROFILES}
 ${COMPOSE_FILE_LINE}
 VISION_REGISTRY=${VISION_REGISTRY}
 VISION_TAG=${VISION_TAG}
+VISION_VERSION=${VISION_VERSION}
 VISION_CONSOLE_PORT=${VISION_CONSOLE_PORT}
 VISION_CONTROL_PORT=${VISION_CONTROL_PORT}
 VISION_GATEWAY_PORT=${VISION_GATEWAY_PORT}

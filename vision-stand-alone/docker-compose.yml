@@ -86,6 +86,7 @@ services:
       VISION_QDRANT_URL: "${VISION_QDRANT_URL:-http://qdrant:6333}"
       VISION_QDRANT_API_KEY: "${VISION_QDRANT_API_KEY:-changeThisQdrantApiKey}"
       VISION_QDRANT_COLLECTION: "${VISION_QDRANT_COLLECTION:-VisionAnalysisVector}"
+      VISION_VERSION: "${VISION_VERSION:-latest}"
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       VISION_SIGNING_KEY: "${VISION_SIGNING_KEY:-dev-insecure-signing-key}"
@@ -125,8 +126,10 @@ services:
       - vision-aio
     environment:
       VISION_API_BASE: "http://vision-aio:8090"
+      VISION_GATEWAY_BASE: "http://vision-aio:8080"
       VISION_DISCOVERY_BASE: "http://vision-aio:8090"
       VISION_WIZARD_BASE: "http://vision-aio:8090"
+      VISION_VERSION: "${VISION_VERSION:-latest}"
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       SESSION_SECRET: "${SESSION_SECRET:-sv-dev-admin-jwt-secret}"

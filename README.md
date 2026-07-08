@@ -253,11 +253,12 @@ cd vision-stand-alone
 The stand-alone installer will:
 
 1. Check Docker and Docker Compose.
-2. Ask for accelerator, internal service credentials, recording mode, exposed ports, image tag, and secrets.
-3. Generate `vision-stand-alone/.env`.
-4. Create local data directories under `vision-stand-alone/data/`.
-5. Generate a self-signed TLS certificate in `vision-stand-alone/data/vision/certs/` when missing.
-6. Pull images from ECR and start the stand-alone stack.
+2. Install AWS CLI when it is missing and configure AWS credentials when ECR access is not set up.
+3. Ask for accelerator, internal service credentials, recording mode, exposed ports, image tag, and secrets.
+4. Generate `vision-stand-alone/.env`.
+5. Create local data directories under `vision-stand-alone/data/`.
+6. Generate a self-signed TLS certificate in `vision-stand-alone/data/vision/certs/` when missing.
+7. Pull images from ECR and start the stand-alone stack.
 
 Default stand-alone URLs:
 

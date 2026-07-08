@@ -68,6 +68,26 @@ gen_secret() {
   fi
 }
 
+detect_architecture() {
+  ARCH="$(uname -m)"
+  case "$ARCH" in
+    x86_64|amd64) ARCH_NORMALIZED="x86_64" ;;
+    aarch64|arm64) ARCH_NORMALIZED="aarch64" ;;
+    *) ARCH_NORMALIZED="$ARCH" ;;
+  esac
+}
+
+download_file() {
+  local url="$1" output="$2"
+  if command_exists curl; then
+    curl -fsSL "$url" -o "$output"
+  elif command_exists wget; then
+    wget -q "$url" -O "$output"
+  else
+    die "curl or wget is required to download AWS CLI."
+  fi
+}
+
 base64url_openssl() {
   openssl base64 -A | tr '+/' '-_' | tr -d '='
 }
@@ -168,6 +188,77 @@ install_docker() {
   esac
 }
 
+install_aws_cli() {
+  detect_architecture
+  info "Installing AWS CLI (${ARCH_NORMALIZED})..."
+  local tmp aws_url sudocmd=""
+  [ "$(id -u)" -ne 0 ] && command_exists sudo && sudocmd="sudo"
+
+  if ! command_exists unzip; then
+    case "$DISTRO_ID" in
+      ubuntu|debian|raspbian|linuxmint|pop) $sudocmd apt-get update -y && $sudocmd apt-get install -y unzip ;;
+      fedora) $sudocmd dnf install -y unzip ;;
+      centos|rhel|rocky|almalinux) $sudocmd yum install -y unzip ;;
+      opensuse*|sles|suse) $sudocmd zypper install -y unzip ;;
+      arch|manjaro|endeavouros) $sudocmd pacman -Sy --noconfirm unzip ;;
+      alpine) $sudocmd apk add --no-cache unzip ;;
+      *) die "unzip is required to install AWS CLI. Install unzip manually, then re-run." ;;
+    esac
+  fi
+
+  case "$ARCH_NORMALIZED" in
+    x86_64) aws_url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" ;;
+    aarch64) aws_url="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" ;;
+    *) die "AWS CLI automatic install is not supported for architecture: ${ARCH_NORMALIZED}" ;;
+  esac
+
+  tmp="$(mktemp -d 2>/dev/null || mktemp -d -t sclab-aws.XXXXXX)"
+  download_file "$aws_url" "$tmp/awscliv2.zip"
+  unzip -q "$tmp/awscliv2.zip" -d "$tmp"
+  $sudocmd "$tmp/aws/install" --update -i /usr/local/aws -b /usr/local/bin
+  rm -rf "$tmp"
+  ok "AWS CLI installed ($(aws --version 2>/dev/null))"
+}
+
+ensure_aws_cli() {
+  if command_exists aws; then
+    ok "AWS CLI OK ($(aws --version 2>/dev/null))"
+    return 0
+  fi
+
+  warn "AWS CLI is not installed."
+  if ask_yn "Install AWS CLI now?" y; then
+    install_aws_cli
+  else
+    die "AWS CLI is required to log in to ECR and pull private Vision images."
+  fi
+}
+
+ensure_aws_credentials() {
+  local creds_file="${AWS_SHARED_CREDENTIALS_FILE:-$HOME/.aws/credentials}"
+  if [ -f "$creds_file" ] && grep -q "aws_access_key_id" "$creds_file" 2>/dev/null; then
+    ok "AWS credentials found"
+    return 0
+  fi
+
+  warn "AWS credentials not found."
+  if [ "$INTERACTIVE" = "0" ]; then
+    warn "Unattended mode: skipping aws configure. Pull may fail unless credentials are provided by environment/role."
+    return 0
+  fi
+
+  if ask_yn "Configure AWS credentials now? (required for private ECR images)" y; then
+    aws configure
+    if [ -f "$creds_file" ] && grep -q "aws_access_key_id" "$creds_file" 2>/dev/null; then
+      ok "AWS credentials configured"
+    else
+      warn "AWS credentials were not written to ${creds_file}. Pull may fail."
+    fi
+  else
+    warn "Skipping AWS credential configuration. Pull may fail for private images."
+  fi
+}
+
 SUDO=""
 ensure_docker() {
   detect_distro
@@ -211,6 +302,7 @@ GPU=0
 REC_MODE="off"
 VISION_REGISTRY="$DEF_REGISTRY"
 VISION_TAG="latest"
+VISION_VERSION="$VISION_TAG"
 VISION_CONSOLE_PORT="8890"
 VISION_CONTROL_PORT="8090"
 VISION_GATEWAY_PORT="8080"
@@ -264,6 +356,7 @@ echo
 printf "%b\n" "${C_B}[5/6] Images${C_0}"
 VISION_REGISTRY="$(ask "Registry" "$VISION_REGISTRY")"
 VISION_TAG="$(ask "Tag" "$VISION_TAG")"
+VISION_VERSION="$VISION_TAG"
 
 echo
 printf "%b\n" "${C_B}[6/6] Secrets${C_0}"
@@ -302,6 +395,7 @@ COMPOSE_PROFILES=${PROFILES}
 ${COMPOSE_FILE_LINE}
 VISION_REGISTRY=${VISION_REGISTRY}
 VISION_TAG=${VISION_TAG}
+VISION_VERSION=${VISION_VERSION}
 VISION_CONSOLE_PORT=${VISION_CONSOLE_PORT}
 VISION_CONTROL_PORT=${VISION_CONTROL_PORT}
 VISION_GATEWAY_PORT=${VISION_GATEWAY_PORT}
@@ -350,15 +444,13 @@ case "$VISION_REGISTRY" in
   *.dkr.ecr.*.amazonaws.com*)
     region="$(printf '%s' "$VISION_REGISTRY" | sed -n 's/.*\.dkr\.ecr\.\([a-z0-9-]*\)\.amazonaws\.com.*/\1/p')"
     host="$(printf '%s' "$VISION_REGISTRY" | sed -n 's#\(^[0-9]*\.dkr\.ecr\.[a-z0-9-]*\.amazonaws\.com\).*#\1#p')"
-    if command_exists aws; then
-      info "Logging in to ECR (${host})"
-      if aws ecr get-login-password --region "$region" 2>/dev/null | ${SUDO}docker login --username AWS --password-stdin "$host" >/dev/null 2>&1; then
-        ok "ECR login succeeded"
-      else
-        warn "ECR login failed. Continuing if images are already local."
-      fi
+    ensure_aws_cli
+    ensure_aws_credentials
+    info "Logging in to ECR (${host})"
+    if aws ecr get-login-password --region "$region" 2>/dev/null | ${SUDO}docker login --username AWS --password-stdin "$host" >/dev/null 2>&1; then
+      ok "ECR login succeeded"
     else
-      warn "aws CLI not found. Skipping ECR login; pull may fail for private images."
+      warn "ECR login failed. Continuing if images are already local."
     fi
     ;;
 esac
