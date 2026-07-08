@@ -68,6 +68,49 @@ gen_secret() {
   fi
 }
 
+base64url_openssl() {
+  openssl base64 -A | tr '+/' '-_' | tr -d '='
+}
+
+mint_admin_login_token() {
+  local tenant="t_01J9Z3K8QP4R7M2N5V8X1Y6W0A"
+  local max_age="${SESSION_MAX_AGE:-2592000}"
+  if command_exists python3; then
+    SESSION_SECRET="$SESSION_SECRET" ADMIN_TENANT="$tenant" SESSION_MAX_AGE="$max_age" python3 - <<'PY'
+import base64
+import hashlib
+import hmac
+import os
+import time
+
+def b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+now = int(time.time())
+exp = now + int(os.environ["SESSION_MAX_AGE"])
+header = b'{"alg":"HS256"}'
+payload = (
+    '{"tenant_id":"%s","sub":"admin","iat":%d,"exp":%d}'
+    % (os.environ["ADMIN_TENANT"], now, exp)
+).encode("utf-8")
+signing_input = f"{b64url(header)}.{b64url(payload)}"
+sig = hmac.new(os.environ["SESSION_SECRET"].encode("utf-8"), signing_input.encode("ascii"), hashlib.sha256).digest()
+print(f"{signing_input}.{b64url(sig)}")
+PY
+  elif command_exists openssl; then
+    local now exp header payload signing_input sig
+    now="$(date +%s)"
+    exp=$((now + max_age))
+    header='{"alg":"HS256"}'
+    payload="$(printf '{"tenant_id":"%s","sub":"admin","iat":%s,"exp":%s}' "$tenant" "$now" "$exp")"
+    signing_input="$(printf '%s' "$header" | base64url_openssl).$(printf '%s' "$payload" | base64url_openssl)"
+    sig="$(printf '%s' "$signing_input" | openssl dgst -sha256 -hmac "$SESSION_SECRET" -binary | base64url_openssl)"
+    printf '%s.%s\n' "$signing_input" "$sig"
+  else
+    return 1
+  fi
+}
+
 detect_distro() {
   if [ -f /etc/os-release ]; then
     . /etc/os-release
@@ -235,6 +278,8 @@ else
   VISION_SIGNING_KEY="dev-insecure-signing-key"
   warn "Using insecure development secrets."
 fi
+SESSION_SECRET="${VISION_ADMIN_JWT_SECRET}"
+SESSION_MAX_AGE="2592000"
 
 VISION_MONGO_URL="mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin"
 VISION_REDIS_URL="redis://:${REDIS_PASSWORD}@redis:6379"
@@ -272,6 +317,8 @@ VISION_QDRANT_API_KEY=${VISION_QDRANT_API_KEY}
 VISION_QDRANT_COLLECTION=${VISION_QDRANT_COLLECTION}
 VISION_INTERNAL_TOKEN=${VISION_INTERNAL_TOKEN}
 VISION_ADMIN_JWT_SECRET=${VISION_ADMIN_JWT_SECRET}
+SESSION_SECRET=${SESSION_SECRET}
+SESSION_MAX_AGE=${SESSION_MAX_AGE}
 VISION_SIGNING_KEY=${VISION_SIGNING_KEY}
 VISION_HLS_CORS_ORIGINS=${VISION_HLS_CORS_ORIGINS}
 VISION_RECORD_DEFAULT=${VISION_RECORD_DEFAULT}
@@ -336,5 +383,11 @@ printf "  Control API    : https://%s:%s\n" "$HOSTIP" "$VISION_CONTROL_PORT"
 printf "  HLS gateway    : https://%s:%s\n" "$HOSTIP" "$VISION_GATEWAY_PORT"
 [ "$REC_MODE" = "s3" ] && printf "  RustFS console : http://%s:9001 (rustfsadmin/rustfsadmin)\n" "$HOSTIP"
 printf "%b\n" "${C_G}----------------------------------------------${C_0}"
+if ADMIN_LOGIN_TOKEN="$(mint_admin_login_token)"; then
+  printf "  Admin login token:\n"
+  printf "  %s\n" "$ADMIN_LOGIN_TOKEN"
+else
+  warn "Could not generate the admin login token locally. Check the console logs instead."
+fi
 echo "  Setup: stand-alone aio+console+mongo+redis+qdrant; $( [ "$GPU" = 1 ] && echo GPU || echo CPU ); recording=${REC_MODE}"
 echo "  Status: ${DC# } ps    Logs: ./logs.sh    Stop: ./down.sh"

@@ -43,6 +43,47 @@ gen_secret() {  # 랜덤 48자 hex 문자열
   elif [ -r /dev/urandom ]; then LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 48
   else echo "sv$(date +%s)$$${RANDOM:-0}${RANDOM:-0}" | head -c 48; fi
 }
+base64url_openssl() {
+  openssl base64 -A | tr '+/' '-_' | tr -d '='
+}
+mint_admin_login_token() {
+  local tenant="t_01J9Z3K8QP4R7M2N5V8X1Y6W0A"
+  local max_age="${SESSION_MAX_AGE:-2592000}"
+  if command_exists python3; then
+    SESSION_SECRET="$SESSION_SECRET" ADMIN_TENANT="$tenant" SESSION_MAX_AGE="$max_age" python3 - <<'PY'
+import base64
+import hashlib
+import hmac
+import os
+import time
+
+def b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+now = int(time.time())
+exp = now + int(os.environ["SESSION_MAX_AGE"])
+header = b'{"alg":"HS256"}'
+payload = (
+    '{"tenant_id":"%s","sub":"admin","iat":%d,"exp":%d}'
+    % (os.environ["ADMIN_TENANT"], now, exp)
+).encode("utf-8")
+signing_input = f"{b64url(header)}.{b64url(payload)}"
+sig = hmac.new(os.environ["SESSION_SECRET"].encode("utf-8"), signing_input.encode("ascii"), hashlib.sha256).digest()
+print(f"{signing_input}.{b64url(sig)}")
+PY
+  elif command_exists openssl; then
+    local now exp header payload signing_input sig
+    now="$(date +%s)"
+    exp=$((now + max_age))
+    header='{"alg":"HS256"}'
+    payload="$(printf '{"tenant_id":"%s","sub":"admin","iat":%s,"exp":%s}' "$tenant" "$now" "$exp")"
+    signing_input="$(printf '%s' "$header" | base64url_openssl).$(printf '%s' "$payload" | base64url_openssl)"
+    sig="$(printf '%s' "$signing_input" | openssl dgst -sha256 -hmac "$SESSION_SECRET" -binary | base64url_openssl)"
+    printf '%s.%s\n' "$signing_input" "$sig"
+  else
+    return 1
+  fi
+}
 
 # ─────────────────── 배포판 감지 + Docker 설치 ───────────────────
 detect_distro() {
@@ -181,6 +222,8 @@ else
   VISION_INTERNAL_TOKEN="sv-dev-internal-token"; VISION_ADMIN_JWT_SECRET="sv-dev-admin-jwt-secret"; VISION_SIGNING_KEY="dev-insecure-signing-key"
   warn "Using insecure dev secrets — do NOT expose in production."
 fi
+SESSION_SECRET="${VISION_ADMIN_JWT_SECRET}"
+SESSION_MAX_AGE="2592000"
 
 # ── profile / COMPOSE_FILE 조립 ──
 PROFILES=""
@@ -213,6 +256,8 @@ VISION_QDRANT_API_KEY=${VISION_QDRANT_API_KEY}
 VISION_QDRANT_COLLECTION=${VISION_QDRANT_COLLECTION}
 VISION_INTERNAL_TOKEN=${VISION_INTERNAL_TOKEN}
 VISION_ADMIN_JWT_SECRET=${VISION_ADMIN_JWT_SECRET}
+SESSION_SECRET=${SESSION_SECRET}
+SESSION_MAX_AGE=${SESSION_MAX_AGE}
 VISION_SIGNING_KEY=${VISION_SIGNING_KEY}
 VISION_HLS_CORS_ORIGINS=${VISION_HLS_CORS_ORIGINS}
 VISION_RECORD_DEFAULT=${VISION_RECORD_DEFAULT}
@@ -274,6 +319,12 @@ printf "  Control API    : https://%s:%s\n" "$HOSTIP" "$VISION_CONTROL_PORT"
 printf "  HLS gateway    : https://%s:%s\n" "$HOSTIP" "$VISION_GATEWAY_PORT"
 [ "$REC_MODE" = "s3" ] && printf "  RustFS console : http://%s:9001 (rustfsadmin/rustfsadmin)\n" "$HOSTIP"
 printf "%b\n" "${C_G}────────────────────────────────────────────${C_0}"
+if ADMIN_LOGIN_TOKEN="$(mint_admin_login_token)"; then
+  printf "  Admin login token:\n"
+  printf "  %s\n" "$ADMIN_LOGIN_TOKEN"
+else
+  warn "Could not generate the admin login token locally. Check the console logs instead."
+fi
 echo   "  Setup: aio+console · $( [ "$GPU" = 1 ] && echo GPU || echo CPU ) · recording=${REC_MODE}"
 echo   "  Data services: shared mongo/redis/qdrant on sclab-network"
 echo   "  HTTPS proxy: root sclab-proxy on ports ${VISION_CONSOLE_PORT}/${VISION_CONTROL_PORT}/${VISION_GATEWAY_PORT}"

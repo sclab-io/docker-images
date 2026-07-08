@@ -129,6 +129,8 @@ services:
       VISION_WIZARD_BASE: "http://vision-aio:8090"
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
+      SESSION_SECRET: "${SESSION_SECRET:-sv-dev-admin-jwt-secret}"
+      SESSION_MAX_AGE: "${SESSION_MAX_AGE:-2592000}"
       PORT: "3000"
     logging:
       driver: "json-file"
