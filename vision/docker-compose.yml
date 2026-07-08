@@ -1,49 +1,49 @@
-# SCLAB Vision deployment stack (aio + console by default).
+# SCLAB Vision 배포 스택(기본 aio + console).
 #
-#   Install: ./install.sh          (step-by-step; Enter accepts each default)
-#   Start:   ./up.sh   or   docker compose up -d
-#   Stop:    ./down.sh
+#   설치: ./install.sh          (단계별 진행, Enter로 기본값 적용)
+#   시작: ./up.sh   또는   docker compose up -d
+#   중지: ./down.sh
 #
-# Compose profiles are selected by COMPOSE_PROFILES in .env:
-#   default     vision-aio + vision-console
-#               Mongo/Redis/Qdrant are shared from existing mongo/redis/qdrant on sclab-network
-#   profile s3  rustfs for DVR cold-tier S3-compatible storage
-#   GPU         docker-compose.gpu.yml overlay swaps aio for aio-gpu
+# Compose 프로파일은 .env의 COMPOSE_PROFILES로 선택한다:
+#   기본        vision-aio + vision-console
+#               Mongo/Redis/Qdrant는 sclab-network의 기존 mongo/redis/qdrant를 공유한다
+#   profile s3  DVR cold-tier S3 호환 스토리지용 rustfs
+#   GPU         docker-compose.gpu.yml 오버레이가 aio를 aio-gpu로 바꾼다
 #
-# Network: external sclab-network, shared with the sibling stack.
-# Volumes: all Vision-owned data is bind-mounted under ./data/vision/*.
+# 네트워크: 외부 sclab-network, 같은 레벨의 메인 스택과 공유한다.
+# 볼륨: Vision 소유 데이터는 모두 ./data/vision/* 아래에 bind mount된다.
 name: sclab-vision
 
 services:
-  # Base services.
+  # 기본 서비스.
   vision-aio:
     container_name: vision-aio
     hostname: vision-aio
     image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio:${VISION_TAG:-0.1.1}"
     restart: always
     environment:
-      # Shared state services on sclab-network.
+      # sclab-network의 공유 상태 서비스.
       VISION_MONGO_URL: "${VISION_MONGO_URL:-mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin}"
       VISION_MONGO_DB: "${VISION_MONGO_DB:-sclab}"
       VISION_REDIS_URL: "${VISION_REDIS_URL:-redis://:changeThisRedisPassword@redis:6379}"
-      VISION_STUDIO_SHARED: "${VISION_STUDIO_SHARED:-true}"   # true adds sv- prefixes for shared Studio DB usage
+      VISION_STUDIO_SHARED: "${VISION_STUDIO_SHARED:-true}"   # true이면 공유 Studio DB 사용을 위해 sv- 접두사를 추가한다
       VISION_QDRANT_URL: "${VISION_QDRANT_URL:-http://qdrant:6333}"
       VISION_QDRANT_API_KEY: "${VISION_QDRANT_API_KEY:-changeThisQdrantApiKey}"
       VISION_QDRANT_COLLECTION: "${VISION_QDRANT_COLLECTION:-sv-VisionAnalysisVector}"
-      # Shared secrets for aio and console. install.sh generates random production values.
+      # aio와 console이 공유하는 secret. install.sh가 운영용 랜덤 값을 생성한다.
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       VISION_SIGNING_KEY: "${VISION_SIGNING_KEY:-dev-insecure-signing-key}"
-      # Bind addresses inside the container. External exposure is controlled by ports below.
+      # 컨테이너 내부 bind 주소. 외부 노출은 메인 sclab-proxy가 제어한다.
       VISION_AIO_CONTROL_ADDR: "0.0.0.0:8090"
       VISION_AIO_GATEWAY_ADDR: "0.0.0.0:8080"
       VISION_AIO_EGRESS_ADDR: "127.0.0.1:8088"
       VISION_HLS_CORS_ORIGINS: "${VISION_HLS_CORS_ORIGINS:-*}"
-      # Optional DVR recording. hot=disk volume below, cold=S3 profile.
+      # 선택 DVR 녹화. hot은 아래 disk volume, cold는 S3 프로파일을 사용한다.
       VISION_RECORD_DEFAULT: "${VISION_RECORD_DEFAULT:-off}"
       VISION_RECORD_DIR: "/var/lib/vision/recordings"
       VISION_RECORD_DELETE_AFTER: "${VISION_RECORD_DELETE_AFTER:-86400}"
-      # Optional S3 cold tier. Empty VISION_S3_BUCKET means disk-only.
+      # 선택 S3 cold tier. VISION_S3_BUCKET이 비어 있으면 disk-only로 동작한다.
       VISION_S3_BUCKET: "${VISION_S3_BUCKET:-}"
       VISION_S3_ENDPOINT: "${VISION_S3_ENDPOINT:-http://rustfs:9000}"
       VISION_S3_REGION: "${VISION_S3_REGION:-us-east-1}"
@@ -53,15 +53,10 @@ services:
       VISION_S3_ALLOW_HTTP: "true"
       VISION_S3_FORCE_PATH_STYLE: "true"
       RUST_LOG: "${RUST_LOG:-info}"
-    ports:
-      - "${VISION_CONTROL_PORT:-8090}:8090"   # control API
-      - "${VISION_GATEWAY_PORT:-8080}:8080"   # HLS gateway
     volumes:
-      - ./data/vision/recordings:/var/lib/vision/recordings   # DVR hot segments
-      # Optional production TLS certificate mount:
-      #   - ./data/vision/certs:/certs:ro   +  VISION_TLS_CERT=/certs/fullchain.pem VISION_TLS_KEY=/certs/privkey.pem
+      - ./data/vision/recordings:/var/lib/vision/recordings   # DVR hot segment 저장소
     extra_hosts:
-      - "host.docker.internal:host-gateway"   # access RTSP sources on the host
+      - "host.docker.internal:host-gateway"   # 호스트의 RTSP source에 접근한다
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }
@@ -82,16 +77,14 @@ services:
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       PORT: "3000"
-    ports:
-      - "${VISION_CONSOLE_PORT:-8890}:3000"   # console web UI
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }
     networks:
       - sclab-network
 
-  # DVR cold-tier storage (profile: s3).
-  # RustFS is an S3-compatible object store. aio connects to http://rustfs:9000.
+  # DVR cold-tier 스토리지(profile: s3).
+  # RustFS는 S3 호환 object store다. aio는 http://rustfs:9000에 연결한다.
   rustfs:
     container_name: vision-rustfs
     hostname: rustfs
@@ -109,8 +102,8 @@ services:
     volumes:
       - ./data/vision/rustfs:/data
     ports:
-      - "${VISION_S3_API_PORT:-9000}:9000"     # S3 API for external tools/debugging
-      - "${VISION_S3_CONSOLE_PORT:-9001}:9001"  # RustFS web console
+      - "${VISION_S3_API_PORT:-9000}:9000"     # 외부 도구와 디버깅용 S3 API
+      - "${VISION_S3_CONSOLE_PORT:-9001}:9001"  # RustFS 웹 console
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }

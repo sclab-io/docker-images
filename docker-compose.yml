@@ -295,6 +295,9 @@ services:
     ports:
       - '80:80'
       - '443:443'
+      - '8890:8890'
+      - '8090:8090'
+      - '8080:8080'
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./cert:/etc/ssl

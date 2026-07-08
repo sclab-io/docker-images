@@ -133,24 +133,47 @@ If you encounter issues:
 
 # SCLAB Vision
 
-SCLAB Vision is deployed from the `vision/` directory. It is separate from the main SCLAB Studio installer, but it shares the same Docker network and data services.
+This repository now provides two Vision deployment modes.
 
-The default Vision stack contains:
+Use `vision/` when SCLAB Studio is already installed from the repository root and Vision should share the main stack. Use `vision-stand-alone/` when you want to run only SCLAB Vision without the root SCLAB Studio stack.
+
+## Vision With Main SCLAB Stack
+
+The `vision/` directory runs only the Vision application containers:
 
 - `vision-aio`: all-in-one Vision backend
 - `vision-console`: Vision web console
-- existing `mongo`, `redis`, and `qdrant` containers from the main SCLAB stack on `sclab-network`
 
-Vision does not start its own MongoDB, Redis, or Qdrant containers. Start the main SCLAB stack first, then install Vision.
+It does not start MongoDB, Redis, Qdrant, or a dedicated HTTPS proxy. Instead, it uses the root stack:
 
-## Vision quick install
+- shared `mongo`, `redis`, and `qdrant` containers on `sclab-network`
+- root `sclab-proxy` from `docker-compose.yml` for HTTPS access
+- root TLS certificate files in `cert/cert.pem` and `cert/privkey.pem`
+
+The root `sclab-proxy` exposes Vision on these HTTPS ports:
+
+- Console web UI: `https://<host>:8890`
+- Control API: `https://<host>:8090`
+- HLS gateway: `https://<host>:8080`
+
+The root `run.sh` and `update.sh` create a self-signed certificate in `cert/` when `cert.pem` and `privkey.pem` are missing. If you have a production certificate, place it there before starting the root stack.
+
+### Main Stack Vision Install
+
+Start or update the root stack first so `sclab-proxy`, MongoDB, Redis, and Qdrant are available:
+
+```bash
+sudo ./run.sh
+```
+
+Then install Vision:
 
 ```bash
 cd vision
 ./install.sh
 ```
 
-Press Enter at each prompt to use the defaults. For unattended installation with defaults:
+For unattended installation with defaults:
 
 ```bash
 cd vision
@@ -159,22 +182,22 @@ cd vision
 
 The Vision installer will:
 
-1. Check Docker and Docker Compose, and offer to install Docker on common Linux distributions.
+1. Check Docker and Docker Compose.
 2. Create `sclab-network` if it does not already exist.
-3. Ask for accelerator, shared service endpoints, recording mode, ports, image tag, and secrets.
+3. Ask for accelerator, shared service endpoints, recording mode, image tag, and secrets.
 4. Generate `vision/.env`.
 5. Create Vision-owned directories under `vision/data/vision/`.
 6. Pull images from ECR and start `vision-aio` and `vision-console`.
 
-The default Vision image tag is `0.1.1`. The installer writes it to `vision/.env` as:
+If the main stack was already running before this update, recreate the root proxy so the Vision HTTPS ports are published:
 
-```env
-VISION_TAG=0.1.1
+```bash
+docker compose up -d sclab-proxy
 ```
 
-## Vision shared service defaults
+### Shared Service Defaults
 
-These defaults match this repository's root `docker-compose.yml`:
+These defaults match the root `docker-compose.yml`:
 
 ```env
 VISION_MONGO_URL=mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin
@@ -186,45 +209,66 @@ VISION_QDRANT_API_KEY=changeThisQdrantApiKey
 
 If you changed the MongoDB, Redis, or Qdrant credentials in the main stack, enter the same values during `vision/install.sh` or edit `vision/.env` and run `vision/up.sh`.
 
-## Vision ports and URLs
-
-Default host ports:
-
-- Console web UI: `http://<host>:8890`
-- Control API: `http://<host>:8090`
-- HLS gateway: `http://<host>:8080`
-
-Change these in `vision/.env`:
-
-```env
-VISION_CONSOLE_PORT=8890
-VISION_CONTROL_PORT=8090
-VISION_GATEWAY_PORT=8080
-```
-
-## Vision GPU mode
-
-Choose GPU mode in `vision/install.sh`, or set this in `vision/.env`:
-
-```env
-COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml
-```
-
-GPU mode uses `sclabio/vision-aio-gpu` and requires a Linux host with NVIDIA drivers and `nvidia-container-toolkit`.
-
-## Vision recording
-
-Vision stores all Vision-owned files under `vision/data/vision/`.
-
-- `vision/data/vision/recordings`: DVR hot segments
-- `vision/data/vision/rustfs`: optional RustFS S3-compatible cold-tier storage
-
-Recording is disabled by default. Enable disk or disk + S3 recording during `vision/install.sh`, or edit `VISION_RECORD_DEFAULT` and S3 values in `vision/.env`.
-
-## Vision operations
+### Main Stack Vision Operations
 
 ```bash
 cd vision
+./up.sh        # start Vision containers
+./down.sh      # stop and remove Vision containers; data remains
+./logs.sh      # follow logs, e.g. ./logs.sh vision-aio
+./pull.sh      # pull Vision images
+./restart.sh   # restart Vision containers
+./update.sh    # pull + recreate Vision containers
+```
+
+See `vision/README.md` for the full main-stack Vision guide.
+
+## Vision Stand-alone
+
+The `vision-stand-alone/` directory runs SCLAB Vision without the root SCLAB Studio stack. It includes all services Vision needs:
+
+- `mongo`
+- `redis`
+- `qdrant`
+- `vision-aio`
+- `vision-console`
+- `vision-aio-tls` and `vision-console-tls` HTTPS proxies
+
+Container names and the Docker network are prefixed with `vision-stand-alone` to avoid conflicts with the root stack.
+
+### Stand-alone Install
+
+```bash
+cd vision-stand-alone
+./install.sh
+```
+
+For unattended installation with defaults:
+
+```bash
+cd vision-stand-alone
+./install.sh -y
+```
+
+The stand-alone installer will:
+
+1. Check Docker and Docker Compose.
+2. Ask for accelerator, internal service credentials, recording mode, exposed ports, image tag, and secrets.
+3. Generate `vision-stand-alone/.env`.
+4. Create local data directories under `vision-stand-alone/data/`.
+5. Generate a self-signed TLS certificate in `vision-stand-alone/data/vision/certs/` when missing.
+6. Pull images from ECR and start the stand-alone stack.
+
+Default stand-alone URLs:
+
+- Console web UI: `https://<host>:8890`
+- Control API: `https://<host>:8090`
+- HLS gateway: `https://<host>:8080`
+
+### Stand-alone Operations
+
+```bash
+cd vision-stand-alone
 ./up.sh        # start
 ./down.sh      # stop and remove containers; data remains
 ./logs.sh      # follow logs, e.g. ./logs.sh vision-aio
@@ -233,7 +277,35 @@ cd vision
 ./update.sh    # pull + recreate
 ```
 
-See `vision/README.md` for the full Vision-specific guide.
+See `vision-stand-alone/README.md` for the full stand-alone guide.
+
+## Vision GPU Mode
+
+Both Vision modes support GPU mode. Choose GPU mode during install, or set this in the mode-specific `.env` file:
+
+```env
+COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml
+```
+
+GPU mode uses `sclabio/vision-aio-gpu` and requires a Linux host with NVIDIA drivers and `nvidia-container-toolkit`.
+
+## Vision Recording
+
+Recording is disabled by default in both modes. Enable disk or disk + S3 recording during install, or edit `VISION_RECORD_DEFAULT` and S3 values in the relevant `.env`.
+
+Main-stack Vision data:
+
+- `vision/data/vision/recordings`: DVR hot segments
+- `vision/data/vision/rustfs`: optional RustFS S3-compatible cold-tier storage
+
+Stand-alone Vision data:
+
+- `vision-stand-alone/data/mongo`
+- `vision-stand-alone/data/redis`
+- `vision-stand-alone/data/qdrant`
+- `vision-stand-alone/data/vision/recordings`
+- `vision-stand-alone/data/vision/certs`
+- `vision-stand-alone/data/vision/rustfs`
 
 ### File list
 | File Name              | Description                                |
@@ -250,6 +322,7 @@ See `vision/README.md` for the full Vision-specific guide.
 | docker-compose.yml     | Docker Compose YAML                        |
 | gen.yml                | Docker Compose YAML for key generation     |
 | nginx.conf             | Nginx config                               |
+| _tls.sh                | Creates fallback TLS certificates for the root `sclab-proxy` |
 | mongod.conf            | MongoDB configuration                      |
 | settings.json          | SCLAB settings                             |
 | install.sh             | Installation script                        |
@@ -281,6 +354,17 @@ See `vision/README.md` for the full Vision-specific guide.
 | vision/pull.sh         | Pull Vision images                         |
 | vision/update.sh       | Pull and recreate Vision containers        |
 | vision/restart.sh      | Restart Vision                             |
+| vision-stand-alone/    | Stand-alone SCLAB Vision deployment        |
+| vision-stand-alone/install.sh | Stand-alone Vision step-by-step installer |
+| vision-stand-alone/docker-compose.yml | Stand-alone Vision compose stack (`mongo` + `redis` + `qdrant` + Vision + HTTPS proxies) |
+| vision-stand-alone/docker-compose.gpu.yml | Stand-alone Vision GPU compose override |
+| vision-stand-alone/.env.example | Stand-alone Vision environment variable example |
+| vision-stand-alone/up.sh | Start stand-alone Vision                  |
+| vision-stand-alone/down.sh | Stop stand-alone Vision                 |
+| vision-stand-alone/logs.sh | Follow stand-alone Vision logs          |
+| vision-stand-alone/pull.sh | Pull stand-alone Vision images          |
+| vision-stand-alone/update.sh | Pull and recreate stand-alone Vision containers |
+| vision-stand-alone/restart.sh | Restart stand-alone Vision            |
 
 ### common.env
 
