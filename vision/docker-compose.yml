@@ -7,7 +7,7 @@
 # Compose profiles are selected by COMPOSE_PROFILES in .env:
 #   default     vision-aio + vision-console
 #               Mongo/Redis/Qdrant are shared from existing mongo/redis/qdrant on sclab-network
-#   profile s3  rustfs + rustfs-init for DVR cold-tier S3-compatible storage
+#   profile s3  rustfs for DVR cold-tier S3-compatible storage
 #   GPU         docker-compose.gpu.yml overlay swaps aio for aio-gpu
 #
 # Network: external sclab-network, shared with the sibling stack.
@@ -114,24 +114,6 @@ services:
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }
-    networks:
-      - sclab-network
-
-  # One-shot bucket bootstrap. S3 buckets must exist before use.
-  rustfs-init:
-    container_name: vision-rustfs-init
-    image: "minio/mc:latest"
-    profiles: ["s3"]
-    depends_on: [rustfs]
-    restart: "no"
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set rustfs http://rustfs:9000 ${VISION_S3_ACCESS_KEY_ID:-rustfsadmin} ${VISION_S3_SECRET_ACCESS_KEY:-rustfsadmin} >/dev/null 2>&1; do
-        echo 'waiting for rustfs...'; sleep 2;
-      done;
-      mc mb --ignore-existing rustfs/${VISION_S3_BUCKET:-sv-recordings};
-      echo 'rustfs bucket ready: ${VISION_S3_BUCKET:-sv-recordings}';
-      "
     networks:
       - sclab-network
 
