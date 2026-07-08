@@ -130,7 +130,7 @@ VISION_STUDIO_SHARED="true"
 VISION_MONGO_URL="mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin"; VISION_MONGO_DB="sclab"; VISION_REDIS_URL="redis://:changeThisRedisPassword@redis:6379"
 VISION_QDRANT_URL="http://qdrant:6333"; VISION_QDRANT_API_KEY="changeThisQdrantApiKey"; VISION_QDRANT_COLLECTION="sv-VisionAnalysisVector"
 VISION_CONSOLE_PORT="8890"; VISION_CONTROL_PORT="8090"; VISION_GATEWAY_PORT="8080"
-VISION_REGISTRY="$DEF_REGISTRY"; VISION_TAG="0.1.1"
+VISION_REGISTRY="$DEF_REGISTRY"; VISION_TAG="latest"
 VISION_S3_BUCKET=""; VISION_RECORD_DEFAULT="off"; VISION_HLS_CORS_ORIGINS="*"
 
 echo; info "You'll be asked a few questions. ${C_Y}Press Enter to accept the default${C_0} shown in [brackets]."
@@ -223,8 +223,8 @@ VISION_S3_REGION=us-east-1
 VISION_S3_ACCESS_KEY_ID=rustfsadmin
 VISION_S3_SECRET_ACCESS_KEY=rustfsadmin
 VISION_S3_PREFIX=recordings
-VISION_S3_API_PORT=9000
-VISION_S3_CONSOLE_PORT=9001
+VISION_S3_API_PORT=19000
+VISION_S3_CONSOLE_PORT=19001
 RUST_LOG=info
 EOF
 } > .env
@@ -232,8 +232,9 @@ ok ".env written"
 
 # ── 데이터 디렉터리 ──
 info "Creating data directories under ./data/vision/"
-mkdir -p data/vision/recordings
+mkdir -p data/vision/app data/vision/recordings
 [ "$REC_MODE" = "s3" ] && mkdir -p data/vision/rustfs
+chmod 0777 data/vision/app data/vision/recordings
 ok "Directories ready"
 
 # ── ECR 로그인(레지스트리가 ECR인 경우) ──
@@ -260,7 +261,11 @@ info "Starting containers (up -d)"
 ${DC} "${DC_FILES[@]}" up -d
 
 # ── 요약 ──
-HOSTIP="$(hostname -I 2>/dev/null | awk '{print $1}')"; [ -z "$HOSTIP" ] && HOSTIP="localhost"
+HOSTIP=""
+if command_exists hostname && hostname -I >/dev/null 2>&1; then
+  HOSTIP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+fi
+[ -z "$HOSTIP" ] && HOSTIP="localhost"
 echo
 ok "Installation complete!"
 printf "%b\n" "${C_G}────────────────────────────────────────────${C_0}"

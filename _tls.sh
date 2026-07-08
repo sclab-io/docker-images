@@ -17,7 +17,10 @@ ensure_tls_cert() {
   fi
 
   host_name="$(hostname 2>/dev/null || echo localhost)"
-  host_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  host_ip=""
+  if command -v hostname >/dev/null 2>&1 && hostname -I >/dev/null 2>&1; then
+    host_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
   san="DNS:localhost,DNS:sclab-onprem,DNS:${host_name},IP:127.0.0.1"
   case "$host_ip" in
     ''|127.*) ;;

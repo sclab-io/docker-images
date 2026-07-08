@@ -9,7 +9,7 @@ The default stack is:
 - `qdrant`
 - `vision-aio`
 - `vision-console`
-- `vision-aio-tls` and `vision-console-tls` HTTPS proxies
+- `vision-tls`: HTTPS proxy for console, control API, and HLS gateway
 
 Container names and the Docker network are prefixed with `vision-stand-alone` to avoid conflicts with the root `docker-compose.yml`.
 

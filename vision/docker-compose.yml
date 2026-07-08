@@ -19,7 +19,7 @@ services:
   vision-aio:
     container_name: vision-aio
     hostname: vision-aio
-    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio:${VISION_TAG:-0.1.1}"
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio:${VISION_TAG:-latest}"
     restart: always
     environment:
       # sclab-network의 공유 상태 서비스.
@@ -54,6 +54,7 @@ services:
       VISION_S3_FORCE_PATH_STYLE: "true"
       RUST_LOG: "${RUST_LOG:-info}"
     volumes:
+      - ./data/vision/app:/data
       - ./data/vision/recordings:/var/lib/vision/recordings   # DVR hot segment 저장소
     extra_hosts:
       - "host.docker.internal:host-gateway"   # 호스트의 RTSP source에 접근한다
@@ -66,7 +67,7 @@ services:
   vision-console:
     container_name: vision-console
     hostname: vision-console
-    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-console:${VISION_TAG:-0.1.1}"
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-console:${VISION_TAG:-latest}"
     restart: always
     depends_on:
       - vision-aio
@@ -102,8 +103,8 @@ services:
     volumes:
       - ./data/vision/rustfs:/data
     ports:
-      - "${VISION_S3_API_PORT:-9000}:9000"     # 외부 도구와 디버깅용 S3 API
-      - "${VISION_S3_CONSOLE_PORT:-9001}:9001"  # RustFS 웹 console
+      - "${VISION_S3_API_PORT:-19000}:9000"     # 외부 도구와 디버깅용 S3 API
+      - "${VISION_S3_CONSOLE_PORT:-19001}:9001"  # RustFS 웹 console
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }

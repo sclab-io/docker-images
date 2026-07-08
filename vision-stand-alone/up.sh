@@ -4,5 +4,9 @@ set -euo pipefail
 cd "$(cd "$(dirname "$0")" && pwd)"
 . ./_tls.sh
 ensure_tls_cert
+mkdir -p data/vision/app data/vision/recordings
+chmod 0777 data/vision/app data/vision/recordings
 . ./_dc.sh
-exec ${DC} up -d "$@"
+echo "Starting SCLAB Vision stand-alone..."
+${DC} up -d --remove-orphans "$@"
+echo "SCLAB Vision stand-alone started."

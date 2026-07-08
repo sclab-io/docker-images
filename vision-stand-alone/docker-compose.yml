@@ -72,7 +72,7 @@ services:
   vision-aio:
     container_name: vision-stand-alone-aio
     hostname: vision-aio
-    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio:${VISION_TAG:-0.1.1}"
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-aio:${VISION_TAG:-latest}"
     restart: always
     depends_on:
       - mongo
@@ -106,6 +106,7 @@ services:
       VISION_S3_FORCE_PATH_STYLE: "true"
       RUST_LOG: "${RUST_LOG:-info}"
     volumes:
+      - ./data/vision/app:/data
       - ./data/vision/recordings:/var/lib/vision/recordings
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -118,7 +119,7 @@ services:
   vision-console:
     container_name: vision-stand-alone-console
     hostname: vision-console
-    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-console:${VISION_TAG:-0.1.1}"
+    image: "${VISION_REGISTRY:-873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio}/vision-console:${VISION_TAG:-latest}"
     restart: always
     depends_on:
       - vision-aio
@@ -135,36 +136,20 @@ services:
     networks:
       - vision-stand-alone-network
 
-  vision-aio-tls:
-    container_name: vision-stand-alone-aio-tls
-    hostname: vision-aio-tls
+  vision-tls:
+    container_name: vision-stand-alone-tls
+    hostname: vision-tls
     image: "nginx:alpine3.18"
     restart: always
     depends_on:
       - vision-aio
-    ports:
-      - "${VISION_CONTROL_PORT:-8090}:8090"
-      - "${VISION_GATEWAY_PORT:-8080}:8080"
-    volumes:
-      - ./nginx-aio-tls.conf:/etc/nginx/nginx.conf:ro
-      - ./data/vision/certs:/etc/vision-tls:ro
-    logging:
-      driver: "json-file"
-      options: { max-size: "20m", max-file: "10" }
-    networks:
-      - vision-stand-alone-network
-
-  vision-console-tls:
-    container_name: vision-stand-alone-console-tls
-    hostname: vision-console-tls
-    image: "nginx:alpine3.18"
-    restart: always
-    depends_on:
       - vision-console
     ports:
       - "${VISION_CONSOLE_PORT:-8890}:3000"
+      - "${VISION_CONTROL_PORT:-8090}:8090"
+      - "${VISION_GATEWAY_PORT:-8080}:8080"
     volumes:
-      - ./nginx-console-tls.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-tls.conf:/etc/nginx/nginx.conf:ro
       - ./data/vision/certs:/etc/vision-tls:ro
     logging:
       driver: "json-file"
@@ -189,8 +174,8 @@ services:
     volumes:
       - ./data/vision/rustfs:/data
     ports:
-      - "${VISION_S3_API_PORT:-9000}:9000"
-      - "${VISION_S3_CONSOLE_PORT:-9001}:9001"
+      - "${VISION_S3_API_PORT:-19000}:9000"
+      - "${VISION_S3_CONSOLE_PORT:-19001}:9001"
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }

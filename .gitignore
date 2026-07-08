@@ -81,3 +81,7 @@ setup.zip
 **/cert/
 
 data/
+
+# Generated local deployment settings
+vision/.env
+vision-stand-alone/.env

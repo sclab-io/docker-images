@@ -37,7 +37,7 @@ The installer will:
 | 2 Shared services | MongoDB, Redis, Qdrant endpoints | existing `mongo` / `redis` / `qdrant` on `sclab-network` |
 | 3 Recording | disabled, disk, or disk + S3 | disabled |
 | 4 Main HTTPS proxy ports | console 8890, gateway 8080, control 8090 | fixed in the root stack |
-| 5 Images | registry and tag | ECR, `0.1.1` |
+| 5 Images | registry and tag | ECR, `latest` |
 | 6 Secrets | aio/console shared secrets | auto-generated |
 
 ## Operations

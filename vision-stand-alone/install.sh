@@ -167,7 +167,7 @@ DEF_REGISTRY="873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio"
 GPU=0
 REC_MODE="off"
 VISION_REGISTRY="$DEF_REGISTRY"
-VISION_TAG="0.1.1"
+VISION_TAG="latest"
 VISION_CONSOLE_PORT="8890"
 VISION_CONTROL_PORT="8090"
 VISION_GATEWAY_PORT="8080"
@@ -282,16 +282,17 @@ VISION_S3_REGION=us-east-1
 VISION_S3_ACCESS_KEY_ID=rustfsadmin
 VISION_S3_SECRET_ACCESS_KEY=rustfsadmin
 VISION_S3_PREFIX=recordings
-VISION_S3_API_PORT=9000
-VISION_S3_CONSOLE_PORT=9001
+VISION_S3_API_PORT=19000
+VISION_S3_CONSOLE_PORT=19001
 RUST_LOG=info
 EOF
 } > .env
 ok ".env written"
 
 info "Creating data directories under ./data/"
-mkdir -p data/mongo/db data/mongo/configdb data/redis data/qdrant data/vision/recordings data/vision/certs
+mkdir -p data/mongo/db data/mongo/configdb data/redis data/qdrant data/vision/app data/vision/recordings data/vision/certs
 [ "$REC_MODE" = "s3" ] && mkdir -p data/vision/rustfs
+chmod 0777 data/vision/app data/vision/recordings
 ok "Directories ready"
 
 info "Checking TLS certificate"
@@ -321,7 +322,10 @@ ${DC} "${DC_FILES[@]}" pull || warn "Some images failed to pull. Continuing with
 info "Starting containers"
 ${DC} "${DC_FILES[@]}" up -d
 
-HOSTIP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+HOSTIP=""
+if command_exists hostname && hostname -I >/dev/null 2>&1; then
+  HOSTIP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+fi
 [ -z "$HOSTIP" ] && HOSTIP="localhost"
 
 echo

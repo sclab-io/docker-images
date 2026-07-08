@@ -232,7 +232,7 @@ The `vision-stand-alone/` directory runs SCLAB Vision without the root SCLAB Stu
 - `qdrant`
 - `vision-aio`
 - `vision-console`
-- `vision-aio-tls` and `vision-console-tls` HTTPS proxies
+- `vision-tls`: HTTPS proxy for console, control API, and HLS gateway
 
 Container names and the Docker network are prefixed with `vision-stand-alone` to avoid conflicts with the root stack.
 
@@ -356,7 +356,7 @@ Stand-alone Vision data:
 | vision/restart.sh      | Restart Vision                             |
 | vision-stand-alone/    | Stand-alone SCLAB Vision deployment        |
 | vision-stand-alone/install.sh | Stand-alone Vision step-by-step installer |
-| vision-stand-alone/docker-compose.yml | Stand-alone Vision compose stack (`mongo` + `redis` + `qdrant` + Vision + HTTPS proxies) |
+| vision-stand-alone/docker-compose.yml | Stand-alone Vision compose stack (`mongo` + `redis` + `qdrant` + Vision + HTTPS proxy) |
 | vision-stand-alone/docker-compose.gpu.yml | Stand-alone Vision GPU compose override |
 | vision-stand-alone/.env.example | Stand-alone Vision environment variable example |
 | vision-stand-alone/up.sh | Start stand-alone Vision                  |
