@@ -241,6 +241,14 @@ ensure_network() {
     ${SUDO}docker network create sclab-network >/dev/null && ok "sclab-network created"
   fi
 }
+chmod_data_dirs() {
+  chmod 0777 "$@" 2>/dev/null && return 0
+  if [ "$(id -u)" -ne 0 ] && command_exists sudo; then
+    sudo chmod 0777 "$@"
+  else
+    return 1
+  fi
+}
 
 # ═══════════════════════════ 설치 흐름 ═══════════════════════════
 printf "%b\n" "${C_G}╔══════════════════════════════════════════════╗${C_0}"
@@ -396,10 +404,10 @@ info "Creating data directories under ./data/vision/"
 mkdir -p data/vision/app data/vision/recordings
 DATA_DIRS=(data/vision/app data/vision/recordings)
 if [ "$REC_MODE" = "s3" ]; then
-  mkdir -p data/vision/rustfs
-  DATA_DIRS+=(data/vision/rustfs)
+  mkdir -p data/vision/rustfs data/vision/rustfs-logs
+  DATA_DIRS+=(data/vision/rustfs data/vision/rustfs-logs)
 fi
-chmod 0777 "${DATA_DIRS[@]}"
+chmod_data_dirs "${DATA_DIRS[@]}"
 ok "Directories ready"
 
 # ── ECR 로그인(레지스트리가 ECR인 경우) ──

@@ -67,6 +67,14 @@ gen_secret() {
     echo "sv$(date +%s)$$${RANDOM:-0}${RANDOM:-0}" | head -c 48
   fi
 }
+chmod_data_dirs() {
+  chmod 0777 "$@" 2>/dev/null && return 0
+  if [ "$(id -u)" -ne 0 ] && command_exists sudo; then
+    sudo chmod 0777 "$@"
+  else
+    return 1
+  fi
+}
 
 detect_architecture() {
   ARCH="$(uname -m)"
@@ -364,11 +372,13 @@ if ask_yn "Auto-generate Vision secrets?" y; then
   VISION_INTERNAL_TOKEN="$(gen_secret)"
   VISION_ADMIN_JWT_SECRET="$(gen_secret)"
   VISION_SIGNING_KEY="$(gen_secret)"
+  VISION_SECRET_KEY="$(gen_secret)"
   ok "Generated Vision secrets"
 else
   VISION_INTERNAL_TOKEN="sv-dev-internal-token"
   VISION_ADMIN_JWT_SECRET="sv-dev-admin-jwt-secret"
   VISION_SIGNING_KEY="dev-insecure-signing-key"
+  VISION_SECRET_KEY="dev-insecure-secret-key"
   warn "Using insecure development secrets."
 fi
 SESSION_SECRET="${VISION_ADMIN_JWT_SECRET}"
@@ -414,6 +424,7 @@ VISION_ADMIN_JWT_SECRET=${VISION_ADMIN_JWT_SECRET}
 SESSION_SECRET=${SESSION_SECRET}
 SESSION_MAX_AGE=${SESSION_MAX_AGE}
 VISION_SIGNING_KEY=${VISION_SIGNING_KEY}
+VISION_SECRET_KEY=${VISION_SECRET_KEY}
 VISION_HLS_CORS_ORIGINS=${VISION_HLS_CORS_ORIGINS}
 VISION_RECORD_DEFAULT=${VISION_RECORD_DEFAULT}
 VISION_RECORD_DELETE_AFTER=86400
@@ -432,8 +443,12 @@ ok ".env written"
 
 info "Creating data directories under ./data/"
 mkdir -p data/mongo/db data/mongo/configdb data/redis data/qdrant data/vision/app data/vision/recordings data/vision/certs
-[ "$REC_MODE" = "s3" ] && mkdir -p data/vision/rustfs
-chmod 0777 data/vision/app data/vision/recordings
+DATA_DIRS=(data/vision/app data/vision/recordings)
+if [ "$REC_MODE" = "s3" ]; then
+  mkdir -p data/vision/rustfs data/vision/rustfs-logs
+  DATA_DIRS+=(data/vision/rustfs data/vision/rustfs-logs)
+fi
+chmod_data_dirs "${DATA_DIRS[@]}"
 ok "Directories ready"
 
 info "Checking TLS certificate"
