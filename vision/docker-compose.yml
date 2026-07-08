@@ -35,6 +35,7 @@ services:
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       VISION_SIGNING_KEY: "${VISION_SIGNING_KEY:-dev-insecure-signing-key}"
+      VISION_SECRET_KEY: "${VISION_SECRET_KEY:-dev-insecure-secret-key}"
       # 컨테이너 내부 bind 주소. 외부 노출은 메인 sclab-proxy가 제어한다.
       VISION_AIO_CONTROL_ADDR: "0.0.0.0:8090"
       VISION_AIO_GATEWAY_ADDR: "0.0.0.0:8080"

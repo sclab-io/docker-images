@@ -328,12 +328,12 @@ VISION_TAG="$(ask "Tag" "$VISION_TAG")"
 VISION_VERSION="$VISION_TAG"
 
 # 6) secret
-echo; printf "%b\n" "${C_B}[6/6] Secrets (production security — 3 values shared by aio/console)${C_0}"
+echo; printf "%b\n" "${C_B}[6/6] Secrets (production security)${C_0}"
 if ask_yn "Auto-generate secrets? (no = keep insecure dev defaults)" y; then
-  VISION_INTERNAL_TOKEN="$(gen_secret)"; VISION_ADMIN_JWT_SECRET="$(gen_secret)"; VISION_SIGNING_KEY="$(gen_secret)"
-  ok "Generated 3 random secrets"
+  VISION_INTERNAL_TOKEN="$(gen_secret)"; VISION_ADMIN_JWT_SECRET="$(gen_secret)"; VISION_SIGNING_KEY="$(gen_secret)"; VISION_SECRET_KEY="$(gen_secret)"
+  ok "Generated 4 random secrets"
 else
-  VISION_INTERNAL_TOKEN="sv-dev-internal-token"; VISION_ADMIN_JWT_SECRET="sv-dev-admin-jwt-secret"; VISION_SIGNING_KEY="dev-insecure-signing-key"
+  VISION_INTERNAL_TOKEN="sv-dev-internal-token"; VISION_ADMIN_JWT_SECRET="sv-dev-admin-jwt-secret"; VISION_SIGNING_KEY="dev-insecure-signing-key"; VISION_SECRET_KEY="dev-insecure-secret-key"
   warn "Using insecure dev secrets — do NOT expose in production."
 fi
 SESSION_SECRET="${VISION_ADMIN_JWT_SECRET}"
@@ -374,6 +374,7 @@ VISION_ADMIN_JWT_SECRET=${VISION_ADMIN_JWT_SECRET}
 SESSION_SECRET=${SESSION_SECRET}
 SESSION_MAX_AGE=${SESSION_MAX_AGE}
 VISION_SIGNING_KEY=${VISION_SIGNING_KEY}
+VISION_SECRET_KEY=${VISION_SECRET_KEY}
 VISION_HLS_CORS_ORIGINS=${VISION_HLS_CORS_ORIGINS}
 VISION_RECORD_DEFAULT=${VISION_RECORD_DEFAULT}
 VISION_RECORD_DELETE_AFTER=86400
@@ -393,8 +394,12 @@ ok ".env written"
 # ── 데이터 디렉터리 ──
 info "Creating data directories under ./data/vision/"
 mkdir -p data/vision/app data/vision/recordings
-[ "$REC_MODE" = "s3" ] && mkdir -p data/vision/rustfs
-chmod 0777 data/vision/app data/vision/recordings
+DATA_DIRS=(data/vision/app data/vision/recordings)
+if [ "$REC_MODE" = "s3" ]; then
+  mkdir -p data/vision/rustfs
+  DATA_DIRS+=(data/vision/rustfs)
+fi
+chmod 0777 "${DATA_DIRS[@]}"
 ok "Directories ready"
 
 # ── ECR 로그인(레지스트리가 ECR인 경우) ──
