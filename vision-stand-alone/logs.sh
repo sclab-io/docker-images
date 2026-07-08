@@ -3,4 +3,27 @@
 set -euo pipefail
 cd "$(cd "$(dirname "$0")" && pwd)"
 . ./_dc.sh
-exec ${DC} logs -f --tail=200 "$@"
+
+if [ $# -gt 0 ]; then
+  exec ${DC} logs -f --tail=200 "$@"
+fi
+
+echo "Display logs"
+echo "-------------------"
+echo "all"
+echo "vision-aio"
+echo "vision-console"
+echo "vision-tls"
+echo "mongo"
+echo "redis"
+echo "qdrant"
+echo "rustfs"
+echo "-------------------"
+read -p "Choose service [all]: " runEnv
+runEnv=${runEnv:-all}
+
+if [ "$runEnv" = "all" ]; then
+  exec ${DC} logs -f --tail=200
+else
+  exec ${DC} logs -f --tail=200 "$runEnv"
+fi
