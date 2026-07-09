@@ -135,15 +135,15 @@ If you encounter issues:
 
 This repository provides two Vision deployment modes.
 
-- `vision/`: SCLAB Studio의 루트 스택과 MongoDB / Redis / Qdrant를 공유하는 모드
-- `vision-stand-alone/`: Vision만 독립적으로 띄우는 모드
+- `vision/`: shares MongoDB, Redis, and Qdrant with the root SCLAB Studio stack
+- `vision-stand-alone/`: runs Vision as a fully independent stack
 
-자세한 설치 방법, 데이터 위치, 포트, 환경변수 설명은 각각 다음 문서를 참조하세요.
+For installation details, data paths, ports, and environment variables, see the mode-specific documentation:
 
 - [vision/README.md](vision/README.md)
 - [vision-stand-alone/README.md](vision-stand-alone/README.md)
 
-두 모드 모두 GPU 모드와 DVR 녹화를 지원합니다. 어떤 환경변수를 바꿔야 하는지, 어떤 값이 기본값인지, 각 값이 무슨 역할을 하는지는 하위 README에 정리되어 있습니다.
+Both modes support GPU mode and DVR recording. The detailed environment variable descriptions, defaults, and roles are documented in the subfolder READMEs.
 
 ### File list
 | File Name              | Description                                |

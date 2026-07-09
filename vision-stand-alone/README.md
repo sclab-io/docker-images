@@ -1,169 +1,171 @@
 # SCLAB Vision Stand-alone Docker Deployment
 
-이 폴더는 Vision만 단독으로 실행하는 배포 방식입니다. MongoDB / Redis / Qdrant / HTTPS 프록시까지 이 폴더 안의 Compose가 모두 올립니다.
+This folder runs Vision as a completely independent stack. It includes MongoDB, Redis, Qdrant, and the HTTPS proxy it needs.
 
-## 언제 이 모드를 쓰나
+## When to use this mode
 
-- SCLAB Studio 루트 스택을 설치하지 않고 Vision만 쓰고 싶다.
-- 테스트 서버나 소규모 서버에서 Vision을 독립적으로 운영하고 싶다.
-- 공유 DB를 건드리지 않고 Vision 전용 저장소를 쓰고 싶다.
+- You do not want to install the root SCLAB Studio stack.
+- You want Vision to run on a small server or test machine by itself.
+- You want Vision to use its own data services instead of sharing the root stack.
 
-## 스택 구성
+## Stack
 
 - `mongo`
 - `redis`
 - `qdrant`
 - `vision-aio`
 - `vision-console`
-- `vision-tls`: 콘솔, 제어 API, HLS gateway용 HTTPS 프록시
-- 선택 기능: `rustfs` S3 cold tier, GPU 모드
+- `vision-tls`: HTTPS proxy for the console, control API, and HLS gateway
+- Optional features: `rustfs` S3 cold tier and GPU mode
 
-`vision-stand-alone`라는 이름이 붙은 네트워크와 컨테이너 이름을 써서, 루트 SCLAB 스택과 충돌하지 않게 만듭니다.
+The container and network names are prefixed with `vision-stand-alone` so they do not conflict with the root SCLAB stack.
 
-## 설치
+## Installation
 
 ```bash
 cd vision-stand-alone
 ./install.sh
 ```
 
-기본값으로 자동 설치하려면:
+For unattended installation with defaults:
 
 ```bash
 cd vision-stand-alone
 ./install.sh -y
 ```
 
-설치 스크립트가 하는 일:
+The installer:
 
-1. Docker와 Docker Compose가 있는지 확인한다.
-2. AWS CLI가 없으면 설치하고, ECR 접근이 필요하면 AWS 자격 증명도 설정한다.
-3. 내부 서비스 주소, 녹화 방식, 외부 포트, 이미지 태그, 비밀값을 순서대로 묻는다.
-4. `vision-stand-alone/.env`를 만든다.
-5. `vision-stand-alone/data/` 아래에 필요한 디렉터리를 만든다.
-6. `data/vision/certs/`에 인증서가 없으면 자체 서명 TLS 인증서를 생성한다.
-7. ECR에서 이미지를 받아서 스택을 시작한다.
+1. Checks whether Docker and Docker Compose are available.
+2. Installs AWS CLI if needed and configures AWS credentials when ECR access is required.
+3. Prompts for internal service addresses, recording mode, exposed ports, image tag, and secrets.
+4. Generates `vision-stand-alone/.env`.
+5. Creates the required directories under `vision-stand-alone/data/`.
+6. Generates a self-signed TLS certificate in `data/vision/certs/` if one does not exist.
+7. Pulls images from ECR and starts the stack.
 
-## 접속 주소
+## Access URLs
 
-- 콘솔 웹 UI: `https://<host>:8890`
-- 제어 API: `https://<host>:8090`
+- Console web UI: `https://<host>:8890`
+- Control API: `https://<host>:8090`
 - HLS gateway: `https://<host>:8080`
 
-## 데이터 위치
+## Data Layout
 
-- `data/mongo/`: MongoDB 데이터
-- `data/redis/`: Redis 데이터
-- `data/qdrant/`: Qdrant 벡터 데이터
-- `data/vision/app/`: Vision 앱 데이터
-- `data/vision/recordings/`: DVR 녹화의 hot segment
-- `data/vision/certs/`: TLS 인증서 파일(`cert.pem`, `privkey.pem`)
-- `data/vision/rustfs/`: S3 cold tier를 사용할 때만 생성되는 RustFS 저장소
-- `data/vision/rustfs-logs/`: RustFS 로그
+- `data/mongo/`: MongoDB data
+- `data/redis/`: Redis data
+- `data/qdrant/`: Qdrant vector data
+- `data/vision/app/`: Vision app data
+- `data/vision/recordings/`: DVR hot segment storage
+- `data/vision/certs/`: TLS certificate files (`cert.pem`, `privkey.pem`)
+- `data/vision/rustfs/`: RustFS storage used only when the `s3` profile is enabled
+- `data/vision/rustfs-logs/`: RustFS logs
 
-## 운영 명령
+## Operations
 
 ```bash
 cd vision-stand-alone
-./up.sh        # 시작
-./down.sh      # 중지 및 컨테이너 삭제, 데이터는 유지
-./logs.sh      # 로그 보기, 예: ./logs.sh vision-aio
-./pull.sh      # 이미지 받기
-./restart.sh   # 재시작
-./update.sh    # pull + 재생성
+./up.sh        # start
+./down.sh      # stop and remove containers; data stays on disk
+./logs.sh      # view logs, e.g. ./logs.sh vision-aio
+./pull.sh      # pull images
+./restart.sh   # restart
+./update.sh    # pull and recreate
 ```
 
-## 환경 변수 한눈에 보기
+## Environment Variables
 
-`install.sh`가 `vision-stand-alone/.env`를 만들어 줍니다. 아래 표는 초보자도 읽을 수 있게 "무슨 값을 바꾸는지"를 풀어서 적었습니다.
+`install.sh` generates `vision-stand-alone/.env`. The tables below explain what each variable does in plain language.
 
-### 1) 실행, 이미지, 로그
+### 1) Runtime, images, and logs
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_REGISTRY` | `873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio` | 이미지를 내려받는 저장소 주소 | Vision 컨테이너를 어디서 받아올지 정합니다. |
-| `VISION_TAG` | `latest` | 가져올 이미지 태그 | 어떤 버전의 Vision을 쓸지 고릅니다. |
-| `VISION_VERSION` | `VISION_TAG`와 동일 | 콘솔과 백엔드가 함께 보는 버전 표기 | 화면에 보이는 현재 버전 값입니다. |
-| `COMPOSE_PROFILES` | `s3` 선택 시 활성화 | `s3` 기능 켜기/끄기 | S3 cold tier를 쓸 때만 켭니다. |
-| `COMPOSE_FILE` | GPU 선택 시 `docker-compose.yml:docker-compose.gpu.yml` | GPU용 오버레이 적용 | NVIDIA GPU를 쓸 때 추가 설정 파일을 붙입니다. |
-| `RUST_LOG` | `info` | 로그 자세함 정도 | 기본은 `info`, 문제가 있을 때만 `debug`를 씁니다. |
+| `VISION_REGISTRY` | `873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio` | Image registry | Where Docker pulls the Vision images from. |
+| `VISION_TAG` | `latest` | Image tag | Which Vision version to use. |
+| `VISION_VERSION` | same as `VISION_TAG` | Displayed version | A version label shown by the console and backend. |
+| `COMPOSE_PROFILES` | enabled when `s3` is selected | Compose profile selector | Turns the S3 cold-tier service on or off. |
+| `COMPOSE_FILE` | `docker-compose.yml:docker-compose.gpu.yml` when GPU is selected | GPU overlay | Adds the GPU-specific Compose file. |
+| `RUST_LOG` | `info` | Log verbosity | `info` is normal; `debug` is for troubleshooting. |
 
-### 2) 외부 포트
+### 2) External ports
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_CONSOLE_PORT` | `8890` | 콘솔 HTTPS 포트 | 브라우저로 여는 주소의 끝번호입니다. |
-| `VISION_CONTROL_PORT` | `8090` | 제어 API HTTPS 포트 | 관리자용 API가 열리는 포트입니다. |
-| `VISION_GATEWAY_PORT` | `8080` | HLS gateway HTTPS 포트 | 카메라 영상이 재생되는 포트입니다. |
-| `VISION_S3_API_PORT` | `19000` | RustFS S3 API 외부 포트 | S3 호환 저장소를 외부 도구에서 볼 때 쓰는 포트입니다. |
-| `VISION_S3_CONSOLE_PORT` | `19001` | RustFS 웹 콘솔 포트 | RustFS 관리 화면을 여는 포트입니다. |
+| `VISION_CONSOLE_PORT` | `8890` | Console HTTPS port | The port used by the browser. |
+| `VISION_CONTROL_PORT` | `8090` | Control API HTTPS port | The port used by admin API calls. |
+| `VISION_GATEWAY_PORT` | `8080` | HLS gateway HTTPS port | The port used to play camera video. |
+| `VISION_S3_API_PORT` | `19000` | RustFS S3 API port | The external port for S3-compatible access. |
+| `VISION_S3_CONSOLE_PORT` | `19001` | RustFS console port | The external port for the RustFS management UI. |
 
-### 3) 내부 서비스 계정
+### 3) Internal service accounts
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `MONGO_ROOT_USERNAME` | `root` | MongoDB 관리자 아이디 | MongoDB에 처음 들어갈 때 쓰는 관리자 이름입니다. |
-| `MONGO_ROOT_PASSWORD` | 랜덤 생성 | MongoDB 관리자 비밀번호 | MongoDB의 최상위 비밀번호입니다. |
-| `REDIS_PASSWORD` | 랜덤 생성 | Redis 비밀번호 | Redis에 들어갈 때 쓰는 비밀번호입니다. |
-| `VISION_QDRANT_API_KEY` | 랜덤 생성 | Qdrant 비밀번호 | 벡터 DB에 접속할 때 필요한 키입니다. |
+| `MONGO_ROOT_USERNAME` | `root` | MongoDB admin username | The MongoDB administrator account name. |
+| `MONGO_ROOT_PASSWORD` | random | MongoDB admin password | The top-level password for MongoDB. |
+| `REDIS_PASSWORD` | random | Redis password | The password used to access Redis. |
+| `VISION_QDRANT_API_KEY` | random | Qdrant API key | The password used to access Qdrant. |
 
-### 4) Vision 데이터 저장소
+### 4) Vision data storage
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_MONGO_URL` | `mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin` | MongoDB 접속 주소 | Vision이 설정과 상태를 저장하는 데이터베이스 주소입니다. |
-| `VISION_MONGO_DB` | `sclab_vision` | 사용할 MongoDB 데이터베이스 이름 | 같은 MongoDB 안에서 Vision이 쓸 서랍 이름입니다. |
-| `VISION_REDIS_URL` | `redis://:changeThisRedisPassword@redis:6379` | Redis 접속 주소 | 잠금, 상태, 임시 정보를 저장하는 곳입니다. |
-| `VISION_STUDIO_SHARED` | `false` | Studio와 같은 저장소 규칙을 쓸지 여부 | `false`면 Vision 전용 이름과 데이터만 씁니다. |
-| `VISION_QDRANT_URL` | `http://qdrant:6333` | Qdrant 접속 주소 | 분석용 벡터 데이터를 저장하는 검색 엔진 주소입니다. |
-| `VISION_QDRANT_COLLECTION` | `VisionAnalysisVector` | 벡터 컬렉션 이름 | Qdrant 안에서 Vision 데이터가 들어갈 폴더 이름입니다. |
+| `VISION_MONGO_URL` | `mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin` | MongoDB connection string | Where Vision stores configuration and state. |
+| `VISION_MONGO_DB` | `sclab_vision` | MongoDB database name | The MongoDB database Vision uses. |
+| `VISION_REDIS_URL` | `redis://:changeThisRedisPassword@redis:6379` | Redis connection string | Where Vision stores fast, temporary state. |
+| `VISION_STUDIO_SHARED` | `false` | Shared Studio mode flag | When `false`, Vision uses its own collection names and data. |
+| `VISION_QDRANT_URL` | `http://qdrant:6333` | Qdrant URL | Where Vision stores vector data for analysis. |
+| `VISION_QDRANT_COLLECTION` | `VisionAnalysisVector` | Qdrant collection name | The collection that stores Vision vector data. |
 
-`VISION_STUDIO_SHARED=false`가 기본입니다. 즉, stand-alone 모드는 SCLAB Studio와 데이터 이름을 공유하지 않고 독립적으로 동작합니다.
+`VISION_STUDIO_SHARED=false` is the default here. Stand-alone mode does not share database naming with SCLAB Studio.
 
-### 5) 로그인과 내부 비밀값
+### 5) Login and secrets
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_INTERNAL_TOKEN` | `sv-dev-internal-token` | Vision 내부 서비스끼리 확인하는 토큰 | 콘솔과 백엔드가 서로 "우리 편"인지 확인하는 값입니다. |
-| `VISION_ADMIN_JWT_SECRET` | `sv-dev-admin-jwt-secret` | 관리자 로그인 토큰 서명값 | 관리자 로그인 상태가 위조되지 않았는지 확인합니다. |
-| `SESSION_SECRET` | `VISION_ADMIN_JWT_SECRET`와 동일 | 콘솔 세션 쿠키 서명값 | 브라우저 로그인 상태를 유지하는 열쇠입니다. |
-| `SESSION_MAX_AGE` | `2592000` | 세션 유지 시간(초) | 로그인 상태를 얼마나 오래 기억할지 정합니다. |
-| `VISION_SIGNING_KEY` | `dev-insecure-signing-key` | HLS 서명 URL 생성용 키 | 재생 URL에 붙는 서명을 만드는 데 쓰는 비밀값입니다. |
-| `VISION_SECRET_KEY` | `dev-insecure-secret-key` | Vision 내부 암호화/검증용 비밀값 | 앱 내부에서 민감한 값을 다룰 때 쓰는 추가 비밀값입니다. |
+| `VISION_INTERNAL_TOKEN` | `sv-dev-internal-token` | Internal service token | Lets Vision services verify that they belong to the same deployment. |
+| `VISION_ADMIN_JWT_SECRET` | `sv-dev-admin-jwt-secret` | Admin JWT signing secret | Prevents admin login tokens from being forged. |
+| `SESSION_SECRET` | same as `VISION_ADMIN_JWT_SECRET` | Console session secret | Signs browser session cookies. |
+| `SESSION_MAX_AGE` | `2592000` | Session lifetime in seconds | How long the login stays valid. |
+| `VISION_SIGNING_KEY` | `dev-insecure-signing-key` | HLS signing key | Used to sign playback URLs. |
+| `VISION_SECRET_KEY` | `dev-insecure-secret-key` | Internal secret key | Extra secret used for internal encryption or verification. |
 
-기본값에 들어 있는 `sv-dev-*` 값은 개발용입니다. 운영 환경에서는 반드시 `install.sh`가 생성하는 랜덤 값으로 바꾸세요.
+The `sv-dev-*` values are development-only defaults. Replace them with random production secrets.
 
-### 6) HLS와 브라우저 접근
+### 6) HLS and browser access
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_AIO_CONTROL_ADDR` | `0.0.0.0:8090` | 백엔드가 컨테이너 안에서 듣는 제어 API 주소 | 컨테이너 내부에서 관리자 요청을 받는 창구입니다. |
-| `VISION_AIO_GATEWAY_ADDR` | `0.0.0.0:8080` | 백엔드가 컨테이너 안에서 듣는 HLS 주소 | 영상 조각을 주고받는 창구입니다. |
-| `VISION_AIO_EGRESS_ADDR` | `127.0.0.1:8088` | 내부 egress 전용 주소 | 보통 외부에서 직접 쓰지 않는 내부 통로입니다. |
-| `VISION_HLS_CORS_ORIGINS` | `*` | 브라우저에서 HLS를 호출할 수 있는 출처 허용 목록 | 웹페이지가 다른 주소에 있어도 재생할 수 있게 허용합니다. `*`는 모두 허용입니다. |
+| `VISION_AIO_CONTROL_ADDR` | `0.0.0.0:8090` | Backend control API bind address | Where the backend listens inside the container for admin calls. |
+| `VISION_AIO_GATEWAY_ADDR` | `0.0.0.0:8080` | Backend HLS bind address | Where the backend listens for video segment requests. |
+| `VISION_AIO_EGRESS_ADDR` | `127.0.0.1:8088` | Internal egress address | An internal path not normally used from outside. |
+| `VISION_HLS_CORS_ORIGINS` | `*` | Allowed browser origins | Lets browsers from other origins access HLS. `*` means allow all. |
 
-### 7) 녹화와 S3 cold tier
+### 7) Recording and S3 cold tier
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_RECORD_DEFAULT` | `off` | 기본 녹화 여부 | 카메라 영상을 기본적으로 저장할지 정합니다. |
-| `VISION_RECORD_DIR` | `/var/lib/vision/recordings` | 디스크 녹화 저장 경로 | 컨테이너 안에서 녹화 파일이 쌓이는 위치입니다. |
-| `VISION_RECORD_DELETE_AFTER` | `86400` | 녹화 파일 자동 삭제까지 걸리는 시간(초) | 오래된 녹화를 언제 지울지 정합니다. 86400초는 1일입니다. |
-| `VISION_S3_BUCKET` | 비어 있음 | S3 cold tier 버킷 이름 | 이 값이 비어 있으면 S3 저장을 쓰지 않고 디스크만 씁니다. |
-| `VISION_S3_ENDPOINT` | `http://rustfs:9000` | S3 호환 저장소 주소 | S3처럼 보이는 저장소가 어디 있는지 정합니다. 기본값은 RustFS입니다. |
-| `VISION_S3_REGION` | `us-east-1` | S3 리전 이름 | S3 호환 저장소가 위치한 "지역 이름"입니다. |
-| `VISION_S3_ACCESS_KEY_ID` | `rustfsadmin` | S3 접근 키 ID | S3에 들어갈 때 쓰는 아이디입니다. |
-| `VISION_S3_SECRET_ACCESS_KEY` | `rustfsadmin` | S3 비밀 키 | S3에 들어갈 때 쓰는 비밀번호입니다. |
-| `VISION_S3_PREFIX` | `recordings` | S3 안에서 파일을 저장할 접두사 | S3 버킷 안의 폴더 이름처럼 생각하면 됩니다. |
-| `VISION_S3_ALLOW_HTTP` | `true` | HTTP S3 연결 허용 여부 | 로컬 RustFS 같은 환경에서 암호화 없는 HTTP를 허용합니다. |
-| `VISION_S3_FORCE_PATH_STYLE` | `true` | S3 경로 스타일 사용 여부 | 일부 S3 호환 저장소가 필요로 하는 주소 방식입니다. |
+| `VISION_RECORD_DEFAULT` | `off` | Default recording mode | Whether camera video is saved by default. |
+| `VISION_RECORD_DIR` | `/var/lib/vision/recordings` | Local recording directory | Where recording files are stored inside the container. |
+| `VISION_RECORD_DELETE_AFTER` | `86400` | Retention time in seconds | How long to keep recordings before deleting them. `86400` seconds is 1 day. |
+| `VISION_S3_BUCKET` | empty | S3 bucket name | If this is empty, Vision uses disk-only recording. |
+| `VISION_S3_ENDPOINT` | `http://rustfs:9000` | S3-compatible endpoint | Where the S3-compatible storage lives. The default is RustFS. |
+| `VISION_S3_REGION` | `us-east-1` | S3 region name | A region label required by many S3 clients. |
+| `VISION_S3_ACCESS_KEY_ID` | `rustfsadmin` | S3 access key ID | The username used to access S3 storage. |
+| `VISION_S3_SECRET_ACCESS_KEY` | `rustfsadmin` | S3 secret key | The password used to access S3 storage. |
+| `VISION_S3_PREFIX` | `recordings` | S3 key prefix | The folder-like path used inside the bucket. |
+| `VISION_S3_ALLOW_HTTP` | `true` | Allow HTTP for S3 | Lets Vision use plain HTTP for local RustFS setups. |
+| `VISION_S3_FORCE_PATH_STYLE` | `true` | Force path-style S3 URLs | Uses the path-style URL format required by some S3-compatible systems. |
+| `VISION_S3_API_PORT` | `19000` | RustFS S3 API port | The external port for S3-compatible access. |
+| `VISION_S3_CONSOLE_PORT` | `19001` | RustFS console port | The external port for the RustFS management UI. |
 
-`VISION_S3_BUCKET`을 채우고 `COMPOSE_PROFILES=s3`를 켜면 `rustfs` 컨테이너가 함께 올라옵니다.
+If you set `VISION_S3_BUCKET` and enable the `s3` profile, the `rustfs` container starts automatically.
 
-## 초보자용 설정 팁
+## Beginner tips
 
-- Vision을 처음 띄우는 경우에는 `install.sh`의 기본값을 그대로 써도 됩니다.
-- MongoDB / Redis / Qdrant는 이 폴더가 직접 새로 만드는 값이므로, 비밀번호만 잘 보관하면 됩니다.
-- 녹화를 쓰지 않으면 `VISION_RECORD_DEFAULT=off`로 두면 됩니다.
-- 운영 환경에서는 `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, `VISION_SECRET_KEY`를 기본값으로 두지 마세요.
-- GPU가 없다면 `CPU`로 두면 됩니다. GPU 모드는 Linux + NVIDIA drivers + `nvidia-container-toolkit`가 있어야 합니다.
+- Leave the defaults as they are if you are starting Vision for the first time.
+- MongoDB / Redis / Qdrant credentials in this stack are local to this folder, so keep those passwords safe.
+- Leave `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
+- Never keep `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, or `VISION_SECRET_KEY` at their development defaults in production.
+- If you do not have a GPU, leave the mode as CPU. GPU mode requires Linux, NVIDIA drivers, and `nvidia-container-toolkit`.
