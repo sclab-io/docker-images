@@ -1,4 +1,7 @@
 # before start, create data folders using setup.sh
+
+> Korean version: [README-ko.md](README-ko.md)
+
 ```bash
 ./setup.sh
 ```

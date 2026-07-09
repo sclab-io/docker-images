@@ -1,5 +1,7 @@
 # SCLAB Vision Docker Deployment
 
+> Korean version: [README-ko.md](README-ko.md)
+
 This folder runs SCLAB Vision alongside the root SCLAB Studio stack. Vision shares MongoDB, Redis, Qdrant, and the root HTTPS proxy.
 
 ## When to use this mode

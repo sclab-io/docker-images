@@ -1,6 +1,8 @@
 Kubernetes setup
 =================
 
+> Korean version: [README-ko.md](README-ko.md)
+
 ## create secret
 ~~~bash
 $ kubectl create secret docker-registry sclab-ecr-sec \

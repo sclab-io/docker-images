@@ -1,5 +1,7 @@
 # Speaches Docker Setup
 
+> Korean version: [README-ko.md](README-ko.md)
+
 Docker Compose setup for running [Speaches](https://github.com/speaches-ai/speaches), a speech-to-text service compatible with OpenAI's API.
 
 ## Features

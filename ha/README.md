@@ -1,6 +1,8 @@
 SCLAB HA
 ===================
 
+> Korean version: [README-ko.md](README-ko.md)
+
 ## Description
 
 This is an example of an HA configuration.<br />

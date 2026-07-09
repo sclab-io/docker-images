@@ -1,6 +1,8 @@
 SCLAB HA Master
 ===================
 
+> Korean version: [README-ko.md](README-ko.md)
+
 # Installation
 
 ## Pre-requirements

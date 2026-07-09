@@ -1,5 +1,9 @@
 # SCLAB HA SLAVE
 
+> English version: [README.md](README.md)
+
+이 문서는 HA 구성에서 Slave 서버에 들어가는 설정을 정리합니다.
+
 ## 설치 준비
 
 ### 라이선스
@@ -50,3 +54,9 @@ sudo ./run.sh
 ```
 
 이후 브라우저에서 SCLAB Studio에 접속하면 됩니다.
+
+## 참고
+
+- Slave 쪽에는 웹앱 인스턴스가 여러 개 올라갑니다.
+- NFS 클라이언트 설정이 Master와 맞아야 합니다.
+- AWS CLI와 네트워크 설정이 완료되어야 정상적으로 동작합니다.

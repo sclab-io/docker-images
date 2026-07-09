@@ -1,5 +1,7 @@
 # SCLAB Vision Stand-alone Docker Deployment
 
+> English version: [README.md](README.md)
+
 이 폴더는 Vision만 독립적으로 실행하는 배포 방식입니다. MongoDB / Redis / Qdrant / HTTPS 프록시까지 이 폴더 안의 Compose가 모두 올립니다.
 
 ## 언제 이 모드를 쓰나

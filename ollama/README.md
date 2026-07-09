@@ -1,5 +1,7 @@
 # Install ollama
 
+> Korean version: [README-ko.md](README-ko.md)
+
 ## run CPU only
 
 ~~~bash

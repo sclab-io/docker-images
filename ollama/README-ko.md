@@ -1,5 +1,15 @@
 # Ollama 설치
 
+> English version: [README.md](README.md)
+
+이 예시는 Ollama를 Docker로 실행하는 방법을 정리한 문서입니다. CPU만 있는 서버에서도 실행할 수 있고, NVIDIA GPU나 AMD GPU가 있으면 가속도 사용할 수 있습니다.
+
+## 실행 방식 선택
+
+- CPU만 쓸 때는 기본 `docker compose up -d`로 시작합니다.
+- NVIDIA GPU를 쓸 때는 `ollama-gpu-nvidia.yml`을 사용합니다.
+- AMD GPU를 쓸 때는 `ollama-gpu-amd.yml`을 사용합니다.
+
 ## CPU로 실행
 
 ```bash
@@ -49,6 +59,8 @@ docker compose -f ollama-gpu-amd.yml up -d
 ```
 
 ## 모델 받기
+
+자주 쓰는 모델은 컨테이너 안에서 직접 내려받습니다. 아래 예시는 임베딩 모델과 대형 언어 모델, 그리고 동작 확인용 명령입니다.
 
 ```bash
 # embedding model

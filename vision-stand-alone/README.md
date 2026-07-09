@@ -1,5 +1,7 @@
 # SCLAB Vision Stand-alone Docker Deployment
 
+> Korean version: [README-ko.md](README-ko.md)
+
 This folder runs Vision as a completely independent stack. It includes MongoDB, Redis, Qdrant, and the HTTPS proxy it needs.
 
 ## When to use this mode

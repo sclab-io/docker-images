@@ -1,5 +1,9 @@
 # SCLAB HA Master
 
+> English version: [README.md](README.md)
+
+이 문서는 HA 구성에서 Master 서버에 들어가는 설정을 정리합니다.
+
 ## 설치 준비
 
 ### 라이선스
@@ -54,3 +58,9 @@ sudo ./run.sh
 ```
 
 이후 브라우저에서 SCLAB Studio에 접속하면 됩니다.
+
+## 참고
+
+- Master 쪽에는 NFS 서버와 주요 서비스가 올라갑니다.
+- JWT와 SSL 키는 공유 저장소에 두어야 합니다.
+- `settings.json`과 `setup.sh` 수정이 먼저입니다.

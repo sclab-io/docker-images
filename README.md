@@ -1,6 +1,8 @@
 SCLAB Docker images
 ===================
 
+> Korean version: [README-ko.md](README-ko.md)
+
 # Quick reference
 
 - **Maintained by**:  

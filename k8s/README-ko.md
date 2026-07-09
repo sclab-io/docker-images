@@ -1,5 +1,9 @@
 # Kubernetes 설정
 
+> English version: [README.md](README.md)
+
+이 폴더는 SCLAB 계열 서비스를 Kubernetes에 올릴 때 필요한 준비 작업과 샘플 매니페스트를 정리한 곳입니다.
+
 ## Secret 만들기
 
 ```bash
@@ -44,3 +48,9 @@ kubectl apply -f config-ai-service.yaml
 ## PVC / StatefulSet / Deployment / Ingress
 
 각 단계의 예시는 `README.md`를 참고하세요. 이 파일은 핵심 명령만 한국어로 정리했습니다.
+
+## 참고
+
+- Secret, ConfigMap, PVC, StatefulSet, Deployment, Ingress 순서로 배포를 준비합니다.
+- `kubectl cp`는 인증서와 JWT 키를 Pod 안으로 복사할 때 사용합니다.
+- 로드밸런서나 Ingress는 환경에 맞게 별도로 준비해야 합니다.

@@ -1,5 +1,7 @@
 # MongoDB Replica Set (2 Servers, 3 Nodes with Arbiter)
 
+> Korean version: [README-ko.md](README-ko.md)
+
 This guide explains how to set up a MongoDB Replica Set using **2 physical servers** and **3 logical nodes (including an arbiter)** with proper authentication.
 
 ---

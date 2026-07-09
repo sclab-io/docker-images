@@ -1,5 +1,7 @@
 # SCLAB Vision Docker Deployment
 
+> English version: [README.md](README.md)
+
 이 폴더는 루트 SCLAB Studio 스택과 같은 네트워크를 공유하면서 Vision 컨테이너만 추가로 띄우는 배포 방식입니다.
 
 ## 언제 이 모드를 쓰나

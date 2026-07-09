@@ -1,5 +1,7 @@
 # MongoDB Replica Set (2대 서버, 3개 노드 + Arbiter)
 
+> English version: [README.md](README.md)
+
 이 문서는 2대의 물리 서버와 3개의 논리 노드(arbiter 포함)로 MongoDB Replica Set을 구성하는 방법을 설명합니다.
 
 ## 구조
@@ -72,3 +74,9 @@ rs.initiate({
 ```text
 mongodb://root:change-this-password@192.168.0.10:27017,192.168.0.11:27017/admin?replicaSet=rs0
 ```
+
+## 참고
+
+- Arbiter는 데이터는 저장하지 않고 투표만 합니다.
+- Root 사용자는 처음 초기화할 때만 생성됩니다.
+- 호스트 이름과 포트가 정확히 맞아야 Replica Set이 정상 동작합니다.

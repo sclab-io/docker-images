@@ -1,6 +1,8 @@
 # Speaches Docker 설정
 
-OpenAI 호환 API를 제공하는 [Speaches](https://github.com/speaches-ai/speaches)용 Docker Compose 설정입니다.
+> English version: [README.md](README.md)
+
+OpenAI 호환 API를 제공하는 [Speaches](https://github.com/speaches-ai/speaches)용 Docker Compose 설정입니다. 음성 인식 모델을 내려받고, CPU 또는 GPU 환경에서 실행하는 구성을 함께 제공합니다.
 
 ## 기능
 
@@ -30,6 +32,8 @@ OpenAI 호환 API를 제공하는 [Speaches](https://github.com/speaches-ai/spea
 ./download_model.sh
 ```
 
+이 스크립트는 기본적으로 Systran 계열 Whisper 모델을 찾기 쉽도록 도와줍니다.
+
 특정 모델을 바로 받으려면:
 
 ```bash
@@ -50,6 +54,12 @@ OpenAI 호환 API를 제공하는 [Speaches](https://github.com/speaches-ai/spea
 - `compose.cpu.yaml`: CPU 설정
 - `compose.gpu.yaml`: GPU 설정
 - `data/`: 다운로드한 모델 저장소
+
+## 참고
+
+- GPU가 없으면 CPU 설정으로 자동 전환됩니다.
+- `data` 아래에 저장된 모델은 다시 내려받지 않아도 재사용됩니다.
+- `sclab-network`는 다른 SCLAB 예시와 네트워크를 공유할 때 사용합니다.
 
 ## 문제 해결
 
