@@ -2,25 +2,21 @@
 
 > English version: [README.md](README.md)
 
-이 예시는 Ollama를 Docker로 실행하는 방법을 정리한 문서입니다. CPU만 있는 서버에서도 실행할 수 있고, NVIDIA GPU나 AMD GPU가 있으면 가속도 사용할 수 있습니다.
+## CPU 전용 실행
 
-## 실행 방식 선택
-
-- CPU만 쓸 때는 기본 `docker compose up -d`로 시작합니다.
-- NVIDIA GPU를 쓸 때는 `ollama-gpu-nvidia.yml`을 사용합니다.
-- AMD GPU를 쓸 때는 `ollama-gpu-amd.yml`을 사용합니다.
-
-## CPU로 실행
+CPU만 사용하는 경우에는 아래 명령으로 바로 실행할 수 있습니다.
 
 ```bash
 docker compose up -d
 ```
 
-## GPU로 실행
+## GPU 실행
+
+GPU를 사용하려면 먼저 NVIDIA Container Toolkit을 설치해야 합니다.
 
 ### NVIDIA Container Toolkit 설치
 
-#### APT 기반 배포판
+#### NVIDIA GPU 설치 - APT 기반
 
 ```bash
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
@@ -35,7 +31,7 @@ sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 ```
 
-#### Yum/Dnf 기반 배포판
+#### NVIDIA GPU 설치 - Yum 또는 Dnf 기반
 
 ```bash
 curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo \
@@ -46,7 +42,7 @@ sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 ```
 
-### NVIDIA로 실행
+### NVIDIA GPU로 실행
 
 ```bash
 docker compose -f ollama-gpu-nvidia.yml up -d
@@ -58,9 +54,9 @@ docker compose -f ollama-gpu-nvidia.yml up -d
 docker compose -f ollama-gpu-amd.yml up -d
 ```
 
-## 모델 받기
+## 모델 내려받기
 
-자주 쓰는 모델은 컨테이너 안에서 직접 내려받습니다. 아래 예시는 임베딩 모델과 대형 언어 모델, 그리고 동작 확인용 명령입니다.
+자주 쓰는 임베딩 모델과 LLM 모델을 컨테이너 안에서 직접 내려받을 수 있습니다.
 
 ```bash
 # embedding model

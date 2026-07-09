@@ -2,76 +2,76 @@
 
 > English version: [README.md](README.md)
 
-OpenAI 호환 API를 제공하는 [Speaches](https://github.com/speaches-ai/speaches)용 Docker Compose 설정입니다. 음성 인식 모델을 내려받고, CPU 또는 GPU 환경에서 실행하는 구성을 함께 제공합니다.
+OpenAI API와 호환되는 음성-텍스트 서비스 [Speaches](https://github.com/speaches-ai/speaches)를 실행하기 위한 Docker Compose 설정입니다.
 
 ## 기능
 
-- GPU가 있으면 GPU 설정 파일을, 없으면 CPU 설정 파일을 자동으로 사용합니다.
+- GPU가 있으면 GPU용 구성(`compose.gpu.yaml`)을 사용하고, 없으면 CPU용 구성(`compose.cpu.yaml`)으로 자동 전환합니다.
 - 모델을 찾아서 내려받는 대화형 스크립트를 제공합니다.
-- 다운로드한 모델은 `./data`에 저장합니다.
-- `sclab-network`를 자동으로 사용합니다.
+- 내려받은 모델은 `./data` 디렉터리에 저장됩니다.
+- `sclab-network` Docker 네트워크를 자동으로 사용합니다.
 
-## 준비물
+## 사전 준비
 
-- Docker
-- Docker Compose
-- GPU를 쓸 경우 NVIDIA 드라이버와 NVIDIA Container Toolkit
-- 모델 다운로드용 `curl`
+- Docker와 Docker Compose가 설치되어 있어야 합니다.
+- GPU를 사용할 경우 NVIDIA 드라이버와 NVIDIA Container Toolkit이 필요합니다.
+- 모델 다운로드 스크립트 실행을 위해 `curl`이 필요합니다.
 
 ## 빠른 시작
 
-1. 서비스 시작
+1. 서비스 실행
 
-```bash
-./run.sh
-```
+   시작 스크립트가 네트워크 생성과 GPU 감지를 자동으로 처리합니다.
+
+   ```bash
+   ./run.sh
+   ```
+
+   - GPU 모드: NVIDIA GPU가 감지되면 GPU 지원 모드로 실행합니다.
+   - CPU 모드: GPU를 찾지 못하면 CPU 모드로 실행합니다.
 
 2. 모델 다운로드
 
-```bash
-./download_model.sh
-```
+   대화형 스크립트로 Whisper 모델을 찾아 내려받을 수 있습니다. 기본적으로 "Systran" 계열 모델만 보여 줍니다.
 
-이 스크립트는 기본적으로 Systran 계열 Whisper 모델을 찾기 쉽도록 도와줍니다.
+   ```bash
+   ./download_model.sh
+   ```
 
-특정 모델을 바로 받으려면:
+   특정 모델을 바로 내려받을 수도 있습니다.
 
-```bash
-./download_model.sh Systran/faster-whisper-small
-```
+   ```bash
+   ./download_model.sh Systran/faster-whisper-small
+   ```
 
-## 접속 주소
+## 사용 상세
+
+### 서비스 엔드포인트
 
 - API Base URL: `http://localhost:8000/v1`
 - Health Check: `http://localhost:8000/health`
 - Swagger UI: `http://localhost:8000/docs`
 
-## 디렉터리
+### 디렉터리 구조
 
-- `run.sh`: GPU 감지와 Docker Compose 실행
-- `download_model.sh`: 모델 검색 및 다운로드
-- `compose.yaml`: 기본 Compose 설정
-- `compose.cpu.yaml`: CPU 설정
-- `compose.gpu.yaml`: GPU 설정
-- `data/`: 다운로드한 모델 저장소
-
-## 참고
-
-- GPU가 없으면 CPU 설정으로 자동 전환됩니다.
-- `data` 아래에 저장된 모델은 다시 내려받지 않아도 재사용됩니다.
-- `sclab-network`는 다른 SCLAB 예시와 네트워크를 공유할 때 사용합니다.
+- `run.sh`: 기본 진입점. 하드웨어를 감지하고 Docker Compose를 시작합니다.
+- `download_model.sh`: 실행 중인 서비스에서 모델을 대화형으로 검색하고 다운로드합니다.
+- `compose.yaml`: 기본 Docker Compose 설정입니다.
+- `compose.cpu.yaml`: CPU 전용 설정 오버레이입니다.
+- `compose.gpu.yaml`: GPU 전용 리소스 예약 설정입니다.
+- `data/`: 내려받은 모델이 저장되는 디렉터리입니다. 컨테이너에 마운트됩니다.
 
 ## 문제 해결
 
-- `./data` 권한 문제가 있으면 다음을 실행하세요.
+- 권한 문제: `./data` 디렉터리에 권한 오류가 나면, 쓰기 가능하도록 만들거나 미리 생성하세요.
 
-```bash
-mkdir -p data
-chmod 777 data
-```
+  ```bash
+  mkdir -p data
+  chmod 777 data
+  ```
 
-- `sclab-network`가 없으면 `run.sh`가 만들려고 시도합니다. 필요하면 직접 만들 수 있습니다.
+- 네트워크 문제: `sclab-network`에 문제가 있으면 `run.sh`가 자동으로 생성하려고 시도합니다. 필요하면 직접 생성할 수도 있습니다.
 
-```bash
-docker network create sclab-network
-```
+  ```bash
+  docker network create sclab-network
+  ```
