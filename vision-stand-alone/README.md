@@ -186,3 +186,24 @@ Test videos uploaded to the virtual camera (vcam) are kept in `./data/vision/vca
 - Recording is `always` on by default. Set `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
 - Never keep `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, or `VISION_SECRET_KEY` at their development defaults in production.
 - If you do not have a GPU, leave the mode as CPU. GPU mode requires Linux, NVIDIA drivers, and `nvidia-container-toolkit`.
+
+## Troubleshooting
+
+### `pull access denied ... authorization token has expired`
+
+ECR authorization tokens **expire after 12 hours**. `./pull.sh` and `./update.sh` re-authenticate on every run
+(`_ecr.sh`), so simply running them again is usually enough. If it still fails, your AWS credentials are missing
+or expired.
+
+```bash
+aws configure                 # when no credentials are set (access key / secret / region ap-northeast-2)
+./pull.sh && ./up.sh
+```
+
+To log in manually:
+
+```bash
+aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com
+```
+
+> If you see `aws: command not found`, re-run `./install.sh` — it installs the AWS CLI automatically.

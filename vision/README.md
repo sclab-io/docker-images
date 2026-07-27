@@ -184,3 +184,24 @@ Test videos uploaded to the virtual camera (vcam) are kept in `./data/vision/vca
 - Recording is `always` on by default. Set `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
 - If the root sclab-proxy is not running on this host (e.g. a data-services-only server), add `tls` to `COMPOSE_PROFILES` so the bundled nginx (`vision-tls`) exposes ports 8890/8090/8080 directly. Do not enable it where sclab-proxy runs — the ports would conflict.
 - Never keep `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, or `VISION_SECRET_KEY` at their development defaults in production.
+
+## Troubleshooting
+
+### `pull access denied ... authorization token has expired`
+
+ECR authorization tokens **expire after 12 hours**. `./pull.sh` and `./update.sh` re-authenticate on every run
+(`_ecr.sh`), so simply running them again is usually enough. If it still fails, your AWS credentials are missing
+or expired.
+
+```bash
+aws configure                 # when no credentials are set (access key / secret / region ap-northeast-2)
+./pull.sh && ./up.sh
+```
+
+To log in manually:
+
+```bash
+aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com
+```
+
+> If you see `aws: command not found`, re-run `./install.sh` — it installs the AWS CLI automatically.

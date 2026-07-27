@@ -184,3 +184,23 @@ cd vision
 - 기본값은 상시 녹화(`always`)입니다. 녹화를 쓰지 않으면 `VISION_RECORD_DEFAULT=off`로 바꾸면 됩니다.
 - 루트 sclab-proxy가 없는 호스트(데이터 서비스만 있는 서버 등)에서는 `COMPOSE_PROFILES`에 `tls`를 추가하면 내장 nginx(`vision-tls`)가 8890/8090/8080 포트를 직접 노출합니다. sclab-proxy가 있는 호스트에서 켜면 포트가 충돌하니 주의하세요.
 - 운영 환경에서는 `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, `VISION_SECRET_KEY`를 기본값으로 두지 마세요.
+
+## 문제 해결
+
+### `pull access denied ... authorization token has expired`
+
+ECR 인증 토큰은 **12시간이면 만료**됩니다. `./pull.sh`와 `./update.sh`는 실행할 때마다 자동으로 재로그인하므로
+(`_ecr.sh`), 보통은 그대로 다시 실행하면 됩니다. 그래도 실패한다면 AWS 자격증명이 없거나 만료된 것입니다.
+
+```bash
+aws configure                 # 자격증명이 없을 때(액세스 키/시크릿/리전 ap-northeast-2)
+./pull.sh && ./up.sh
+```
+
+수동으로 로그인하려면:
+
+```bash
+aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com
+```
+
+> `aws: command not found`이면 `./install.sh`를 다시 실행하세요(AWS CLI를 자동 설치합니다).
