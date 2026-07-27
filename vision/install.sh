@@ -211,6 +211,72 @@ install_docker() {
   esac
 }
 
+# ─────────────────── AWS CLI(프라이빗 ECR pull용) ───────────────────
+detect_architecture() {
+  ARCH="$(uname -m)"
+  case "$ARCH" in
+    x86_64|amd64) ARCH_NORMALIZED="x86_64" ;;
+    aarch64|arm64) ARCH_NORMALIZED="aarch64" ;;
+    *) ARCH_NORMALIZED="$ARCH" ;;
+  esac
+}
+download_file() {
+  local url="$1" output="$2"
+  if command_exists curl; then curl -fsSL "$url" -o "$output"
+  elif command_exists wget; then wget -q "$url" -O "$output"
+  else die "curl or wget is required to download AWS CLI."; fi
+}
+install_aws_cli() {
+  detect_architecture
+  info "Installing AWS CLI (${ARCH_NORMALIZED})..."
+  local tmp aws_url sudocmd=""
+  [ "$(id -u)" -ne 0 ] && command_exists sudo && sudocmd="sudo"
+  if ! command_exists unzip; then
+    case "$DISTRO_ID" in
+      ubuntu|debian|raspbian|linuxmint|pop) $sudocmd apt-get update -y && $sudocmd apt-get install -y unzip ;;
+      fedora) $sudocmd dnf install -y unzip ;;
+      centos|rhel|rocky|almalinux) $sudocmd yum install -y unzip ;;
+      opensuse*|sles|suse) $sudocmd zypper install -y unzip ;;
+      arch|manjaro|endeavouros) $sudocmd pacman -Sy --noconfirm unzip ;;
+      alpine) $sudocmd apk add --no-cache unzip ;;
+      *) die "unzip is required to install AWS CLI. Install unzip manually, then re-run." ;;
+    esac
+  fi
+  case "$ARCH_NORMALIZED" in
+    x86_64)  aws_url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" ;;
+    aarch64) aws_url="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" ;;
+    *) die "AWS CLI automatic install is not supported for architecture: ${ARCH_NORMALIZED}" ;;
+  esac
+  tmp="$(mktemp -d 2>/dev/null || mktemp -d -t sclab-aws.XXXXXX)"
+  download_file "$aws_url" "$tmp/awscliv2.zip"
+  unzip -q "$tmp/awscliv2.zip" -d "$tmp"
+  $sudocmd "$tmp/aws/install" --update -i /usr/local/aws -b /usr/local/bin
+  rm -rf "$tmp"
+  ok "AWS CLI installed ($(aws --version 2>/dev/null))"
+}
+# aws가 없으면 설치를 제안한다. 거절/실패 시 1을 반환하고 호출부가 경고 후 계속 진행한다.
+ensure_aws_cli() {
+  if command_exists aws; then return 0; fi
+  warn "AWS CLI is not installed (required to log in to the private ECR registry)."
+  if ask_yn "Install AWS CLI now?" y; then install_aws_cli && command_exists aws; else return 1; fi
+}
+ensure_aws_credentials() {
+  local creds_file="${AWS_SHARED_CREDENTIALS_FILE:-$HOME/.aws/credentials}"
+  if [ -f "$creds_file" ] && grep -q "aws_access_key_id" "$creds_file" 2>/dev/null; then
+    ok "AWS credentials found"; return 0
+  fi
+  warn "AWS credentials not found."
+  if [ "$INTERACTIVE" = "0" ]; then
+    warn "Unattended mode: skipping aws configure. Pull may fail unless credentials come from environment/role."
+    return 0
+  fi
+  if ask_yn "Configure AWS credentials now? (required for private ECR images)" y; then
+    aws configure
+  else
+    warn "Skipping AWS credential configuration. Pull may fail for private images."
+  fi
+}
+
 # ─────────────────── Docker / Compose 준비 확인 ───────────────────
 SUDO=""
 ensure_docker() {
@@ -362,6 +428,7 @@ info "Saving configuration: .env"
 {
 cat <<EOF
 # SCLAB Vision - install.sh가 생성함 ($(date '+%Y-%m-%d %H:%M:%S')). 수정 후 ./up.sh를 실행해 적용한다.
+COMPOSE_PROJECT_NAME=sclab-vision
 COMPOSE_PROFILES=${PROFILES}
 ${COMPOSE_FILE_LINE}
 VISION_REGISTRY=${VISION_REGISTRY}
@@ -421,7 +488,8 @@ case "$VISION_REGISTRY" in
   *.dkr.ecr.*.amazonaws.com*)
     region="$(printf '%s' "$VISION_REGISTRY" | sed -n 's/.*\.dkr\.ecr\.\([a-z0-9-]*\)\.amazonaws\.com.*/\1/p')"
     host="$(printf '%s' "$VISION_REGISTRY" | sed -n 's#\(^[0-9]*\.dkr\.ecr\.[a-z0-9-]*\.amazonaws\.com\).*#\1#p')"
-    if command_exists aws; then
+    if ensure_aws_cli; then
+      ensure_aws_credentials
       info "Logging in to ECR (${host})"
       if aws ecr get-login-password --region "$region" 2>/dev/null | ${SUDO}docker login --username AWS --password-stdin "$host" >/dev/null 2>&1; then
         ok "ECR login succeeded"
@@ -429,7 +497,7 @@ case "$VISION_REGISTRY" in
         warn "ECR login failed — check your AWS credentials (aws configure/SSO). Continuing if images are already local."
       fi
     else
-      warn "aws CLI not found — skipping ECR login. Pull may fail for private images."
+      warn "aws CLI not available — skipping ECR login. Pull may fail for private images."
     fi ;;
 esac
 

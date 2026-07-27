@@ -12,7 +12,9 @@
 #
 # 네트워크: 외부 sclab-network, 같은 레벨의 메인 스택과 공유한다.
 # 볼륨: Vision 소유 데이터는 모두 ./data/vision/* 아래에 bind mount된다.
-name: sclab-vision
+#
+# 프로젝트명은 .env의 COMPOSE_PROJECT_NAME(sclab-vision)으로 지정한다 — 최상위 `name:` 키는
+# 구형 docker-compose v1(파이썬판)이 인식하지 못해 스키마 오류를 내므로 쓰지 않는다.
 
 services:
   # 기본 서비스.

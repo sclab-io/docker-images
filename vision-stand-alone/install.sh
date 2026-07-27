@@ -401,6 +401,7 @@ info "Saving configuration: .env"
 {
 cat <<EOF
 # SCLAB Vision stand-alone, install.sh가 생성함 ($(date '+%Y-%m-%d %H:%M:%S')).
+COMPOSE_PROJECT_NAME=sclab-vision-stand-alone
 COMPOSE_PROFILES=${PROFILES}
 ${COMPOSE_FILE_LINE}
 VISION_REGISTRY=${VISION_REGISTRY}

@@ -14,7 +14,9 @@
 #
 # 네트워크: 내부 compose 네트워크로, 루트 SCLAB 스택과 분리된다.
 # 볼륨: stand-alone 데이터는 모두 ./data/* 아래에 bind mount된다.
-name: sclab-vision-stand-alone
+#
+# 프로젝트명은 .env의 COMPOSE_PROJECT_NAME(sclab-vision-stand-alone)으로 지정한다 — 최상위 `name:` 키는
+# 구형 docker-compose v1(파이썬판)이 인식하지 못해 스키마 오류를 내므로 쓰지 않는다.
 
 services:
   mongo:
