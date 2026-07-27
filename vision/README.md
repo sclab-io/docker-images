@@ -145,10 +145,10 @@ The `sv-dev-*` values are development-only defaults. Replace them with random pr
 
 | Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_RECORD_DEFAULT` | `off` | Default recording mode | Whether camera video is saved by default. |
+| `VISION_RECORD_DEFAULT` | `always` | Default recording mode | Cameras record continuously by default (all features on). Set `off` to disable. Console admin settings (DB) override this value. |
 | `VISION_RECORD_DIR` | `/var/lib/vision/recordings` | Local recording directory | Where recording files are stored inside the container. |
 | `VISION_RECORD_DELETE_AFTER` | `86400` | Retention time in seconds | How long to keep recordings before deleting them. `86400` seconds is 1 day. |
-| `VISION_S3_BUCKET` | empty | S3 bucket name | If this is empty, Vision uses disk-only recording. |
+| `VISION_S3_BUCKET` | `sv-recordings` | S3 bucket name | If this is empty, Vision uses disk-only recording. RustFS cold tier is on by default. |
 | `VISION_S3_ENDPOINT` | `http://rustfs:9000` | S3-compatible endpoint | Where the S3-compatible storage lives. The default is RustFS. |
 | `VISION_S3_REGION` | `us-east-1` | S3 region name | A region label required by many S3 clients. |
 | `VISION_S3_ACCESS_KEY_ID` | `rustfsadmin` | S3 access key ID | The username used to access S3 storage. |
@@ -161,10 +161,25 @@ The `sv-dev-*` values are development-only defaults. Replace them with random pr
 
 If you set `VISION_S3_BUCKET` and enable the `s3` profile, the `rustfs` container starts automatically.
 
+### 7) Analysis and AI features (all features on by default)
+
+| Variable | Default | Purpose | Plain explanation |
+|---|---|---|---|
+| `VISION_ORT_EP` | `cpu` | ONNX inference device | Runs AI analysis (face recognition, etc.) on the CPU. The GPU overlay switches this to `cuda` automatically. |
+| `VISION_EXTERNAL_INFERENCE_OPTIN` | `true` | External cloud AI switch | Globally allows external AI (VLM/LLM) calls. Each analysis rule must still enable it explicitly. |
+| `VISION_ASSISTANT_BASE` | empty | AI assistant LLM endpoint | An OpenAI-compatible endpoint. Empty uses the built-in default (Ollama); it can also be set in the console admin settings. |
+| `VISION_ASSISTANT_MODEL` | empty | AI assistant model name | The model to use. Empty uses the default model. |
+| `VISION_ASSISTANT_KEY` | empty | AI assistant API key | Only needed for OpenAI-compatible hosted services. |
+| `VISION_PUBLIC_HLS_BASE` | empty | Absolute playback base URL | Empty keeps relative URLs; the proxy serves playback paths (`/hls`, ...) on the console origin. Console admin settings (DB) take precedence. |
+
+Analysis models (SCRFD+AdaFace face recognition, object detection, license plates, mosaic) and onnxruntime are baked into the image — no extra installation.
+Face/appearance vector collection names are derived automatically from the model; do not set them manually.
+Test videos uploaded to the virtual camera (vcam) are kept in `./data/vision/vcam`.
+
 ## Beginner tips
 
 - Leave the defaults as they are if you are starting Vision for the first time.
 - In shared mode, MongoDB / Redis / Qdrant credentials must match the root stack.
 - Keep `VISION_STUDIO_SHARED=true` in shared deployments.
-- Leave `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
+- Recording is `always` on by default. Set `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
 - Never keep `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, or `VISION_SECRET_KEY` at their development defaults in production.

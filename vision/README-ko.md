@@ -145,10 +145,10 @@ cd vision
 
 | 변수 | 기본값 | 역할 | 쉽게 말하면 |
 |---|---|---|---|
-| `VISION_RECORD_DEFAULT` | `off` | 기본 녹화 여부 | 카메라 영상을 기본적으로 저장할지 정합니다. `off`면 저장하지 않습니다. |
+| `VISION_RECORD_DEFAULT` | `always` | 기본 녹화 여부 | 카메라 영상을 기본적으로 항상 저장합니다(모든 기능 기본 ON). 끄려면 `off`. 콘솔 관리 설정(DB)이 이 값보다 우선합니다. |
 | `VISION_RECORD_DIR` | `/var/lib/vision/recordings` | 디스크 녹화 저장 경로 | 컨테이너 안에서 녹화 파일이 쌓이는 위치입니다. |
 | `VISION_RECORD_DELETE_AFTER` | `86400` | 녹화 파일 자동 삭제까지 걸리는 시간(초) | 오래된 녹화를 언제 지울지 정합니다. 86400초는 1일입니다. |
-| `VISION_S3_BUCKET` | 비어 있음 | S3 cold tier 버킷 이름 | 이 값이 비어 있으면 S3 저장을 쓰지 않고 디스크만 씁니다. |
+| `VISION_S3_BUCKET` | `sv-recordings` | S3 cold tier 버킷 이름 | 이 값이 비어 있으면 S3 저장을 쓰지 않고 디스크만 씁니다. 기본은 RustFS cold tier 사용입니다. |
 | `VISION_S3_ENDPOINT` | `http://rustfs:9000` | S3 호환 저장소 주소 | S3처럼 보이는 저장소가 어디 있는지 정합니다. 기본값은 RustFS입니다. |
 | `VISION_S3_REGION` | `us-east-1` | S3 리전 이름 | S3 호환 저장소가 위치한 "지역 이름"입니다. |
 | `VISION_S3_ACCESS_KEY_ID` | `rustfsadmin` | S3 접근 키 ID | S3에 들어갈 때 쓰는 아이디입니다. |
@@ -161,10 +161,25 @@ cd vision
 
 `VISION_S3_BUCKET`을 채우고 `COMPOSE_PROFILES=s3`를 켜면 `rustfs` 컨테이너가 함께 올라옵니다.
 
+### 7) 분석·AI 기능 (모든 기능 기본 활성화)
+
+| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+|---|---|---|---|
+| `VISION_ORT_EP` | `cpu` | ONNX 추론 실행 장치 | 얼굴인식 같은 AI 분석을 CPU로 돌립니다. GPU 모드에서는 오버레이가 자동으로 `cuda`로 바꿉니다. |
+| `VISION_EXTERNAL_INFERENCE_OPTIN` | `true` | 외부 클라우드 AI 허용 스위치 | 외부 AI(VLM/LLM) 호출을 전역에서 허용합니다. 실제 반출은 분석 규칙에서 따로 켜야 동작합니다. |
+| `VISION_ASSISTANT_BASE` | 비어 있음 | AI 어시스턴트 LLM 주소 | OpenAI 호환 주소입니다. 비우면 기본값(Ollama)을 쓰고, 콘솔 관리 설정에서도 지정할 수 있습니다. |
+| `VISION_ASSISTANT_MODEL` | 비어 있음 | AI 어시스턴트 모델 이름 | 사용할 모델 이름입니다. 비우면 기본 모델을 씁니다. |
+| `VISION_ASSISTANT_KEY` | 비어 있음 | AI 어시스턴트 API 키 | OpenAI 호환 유료 서비스를 쓸 때 필요한 키입니다. |
+| `VISION_PUBLIC_HLS_BASE` | 비어 있음 | 재생 주소 절대화 base | 비워 두면 프록시가 콘솔 주소에서 재생 경로(`/hls` 등)를 대신 처리합니다. 콘솔 관리 설정(DB)이 우선합니다. |
+
+얼굴인식(SCRFD+AdaFace)·객체탐지·번호판·모자이크 등 분석 모델과 onnxruntime은 이미지에 베이크되어 있어 별도 설치가 필요 없습니다.
+얼굴/외형 벡터 컬렉션 이름은 모델에 맞춰 자동으로 정해지므로 따로 설정하지 않습니다.
+가상 카메라(vcam)로 업로드한 테스트 영상은 `./data/vision/vcam`에 보관됩니다.
+
 ## 초보자용 설정 팁
 
 - Vision을 처음 띄우는 경우에는 `install.sh`의 기본값을 그대로 써도 됩니다.
 - 공유 스택에서는 MongoDB / Redis / Qdrant 비밀번호를 루트 스택과 똑같이 맞춰야 합니다.
 - `VISION_STUDIO_SHARED=true`는 공유 스택에서 거의 항상 그대로 둡니다.
-- 녹화를 쓰지 않으면 `VISION_RECORD_DEFAULT=off`로 두면 됩니다.
+- 기본값은 상시 녹화(`always`)입니다. 녹화를 쓰지 않으면 `VISION_RECORD_DEFAULT=off`로 바꾸면 됩니다.
 - 운영 환경에서는 `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, `VISION_SECRET_KEY`를 기본값으로 두지 마세요.

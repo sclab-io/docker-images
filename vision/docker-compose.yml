@@ -30,6 +30,8 @@ services:
       VISION_QDRANT_URL: "${VISION_QDRANT_URL:-http://qdrant:6333}"
       VISION_QDRANT_API_KEY: "${VISION_QDRANT_API_KEY:-changeThisQdrantApiKey}"
       VISION_QDRANT_COLLECTION: "${VISION_QDRANT_COLLECTION:-sv-VisionAnalysisVector}"
+      # 얼굴/외형 벡터 컬렉션명(sv-VisionFaceVector-ada512·sv-VisionAppearanceVector)은 이미지에 베이크된
+      # 얼굴인식 모델(AdaFace 512-d)에 맞춰 자동 파생된다 — 지정하면 차원 불일치 위험이 있으니 두지 않는다.
       VISION_VERSION: "${VISION_VERSION:-latest}"
       # aio와 console이 공유하는 secret. install.sh가 운영용 랜덤 값을 생성한다.
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
@@ -41,8 +43,9 @@ services:
       VISION_AIO_GATEWAY_ADDR: "0.0.0.0:8080"
       VISION_AIO_EGRESS_ADDR: "127.0.0.1:8088"
       VISION_HLS_CORS_ORIGINS: "${VISION_HLS_CORS_ORIGINS:-*}"
-      # 선택 DVR 녹화. hot은 아래 disk volume, cold는 S3 프로파일을 사용한다.
-      VISION_RECORD_DEFAULT: "${VISION_RECORD_DEFAULT:-off}"
+      # DVR 녹화(기본 상시 녹화 — 모든 기능 기본 ON). 끄려면 .env에서 off.
+      # 콘솔 /admin/settings 저장값(DB)이 env보다 우선하며 라이브로 즉시 반영된다.
+      VISION_RECORD_DEFAULT: "${VISION_RECORD_DEFAULT:-always}"
       VISION_RECORD_DIR: "/var/lib/vision/recordings"
       VISION_RECORD_DELETE_AFTER: "${VISION_RECORD_DELETE_AFTER:-86400}"
       # 선택 S3 cold tier. VISION_S3_BUCKET이 비어 있으면 disk-only로 동작한다.
@@ -54,10 +57,25 @@ services:
       VISION_S3_PREFIX: "${VISION_S3_PREFIX:-recordings}"
       VISION_S3_ALLOW_HTTP: "true"
       VISION_S3_FORCE_PATH_STYLE: "true"
+      VISION_S3_INIT_TIMEOUT_SECS: "${VISION_S3_INIT_TIMEOUT_SECS:-90}"   # RustFS 준비/버킷 자동생성 대기(초)
+      # ── 분석·AI 기능(모든 기능 기본 활성화) ──
+      # ONNX 추론 EP — CPU 이미지는 cpu 고정(팬텀 GPU-EP 다중세션 크래시 회피). GPU 오버레이가 cuda로 덮어쓴다.
+      VISION_ORT_EP: "${VISION_ORT_EP:-cpu}"
+      # 외부 클라우드 추론(VLM/LLM) 전역 허용 스위치. 실제 반출은 분석 규칙별 external_inference 설정과 AND.
+      VISION_EXTERNAL_INFERENCE_OPTIN: "${VISION_EXTERNAL_INFERENCE_OPTIN:-true}"
+      # AI 어시스턴트 LLM(OpenAI 호환 base/모델/키). 비우면 코드 기본(Ollama http://127.0.0.1:11434/v1) —
+      # 콘솔 관리 설정(DB)으로도 지정할 수 있다.
+      VISION_ASSISTANT_BASE: "${VISION_ASSISTANT_BASE:-}"
+      VISION_ASSISTANT_MODEL: "${VISION_ASSISTANT_MODEL:-}"
+      VISION_ASSISTANT_KEY: "${VISION_ASSISTANT_KEY:-}"
+      # 재생 URL 절대화 base(예: https://호스트:8080). 비우면 상대경로 — sclab-proxy가 콘솔 오리진(8890)에서
+      # /hls·/playback·/vendor 를 gateway로 프록시하므로 빈 값으로도 재생된다. 콘솔 /admin/settings(DB)가 우선.
+      VISION_PUBLIC_HLS_BASE: "${VISION_PUBLIC_HLS_BASE:-}"
       RUST_LOG: "${RUST_LOG:-info}"
     volumes:
       - ./data/vision/app:/data
       - ./data/vision/recordings:/var/lib/vision/recordings   # DVR hot segment 저장소
+      - ./data/vision/vcam:/tmp/vision-vcam                   # 가상 카메라(vcam) 업로드 변환 스풀(영속)
     extra_hosts:
       - "host.docker.internal:host-gateway"   # 호스트의 RTSP source에 접근한다
     logging:
@@ -83,6 +101,10 @@ services:
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       SESSION_SECRET: "${SESSION_SECRET:-sv-dev-admin-jwt-secret}"
       SESSION_MAX_AGE: "${SESSION_MAX_AGE:-2592000}"
+      # 프록시 뒤 오리진 신뢰(SvelteKit CSRF) — 사진/동영상 업로드(multipart POST) 403 방지.
+      # sclab-proxy가 X-Forwarded-Proto/Host를 세팅하므로 이를 오리진으로 신뢰한다.
+      PROTOCOL_HEADER: "x-forwarded-proto"
+      HOST_HEADER: "x-forwarded-host"
       PORT: "3000"
     logging:
       driver: "json-file"

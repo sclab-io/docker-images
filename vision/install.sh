@@ -314,14 +314,14 @@ VISION_QDRANT_COLLECTION="$(ask "Qdrant collection" "$VISION_QDRANT_COLLECTION")
 
 # 3) 녹화(DVR)
 echo; printf "%b\n" "${C_B}[3/6] Recording (DVR)${C_0}"
-echo "  1) Disabled (default)"
+echo "  1) Disabled"
 echo "  2) Record to disk (./data/vision/recordings)"
-echo "  3) Disk + S3 object storage (RustFS cold tier)"
-rec_choice="$(ask "Choose (1/2/3)" "1")"
+echo "  3) Disk + S3 object storage (RustFS cold tier, default)"
+rec_choice="$(ask "Choose (1/2/3)" "3")"
 case "$rec_choice" in
+  1) REC_MODE="off";  VISION_RECORD_DEFAULT="off" ;;
   2) REC_MODE="disk"; VISION_RECORD_DEFAULT="always" ;;
-  3) REC_MODE="s3";   VISION_RECORD_DEFAULT="always"; VISION_S3_BUCKET="sv-recordings" ;;
-  *) REC_MODE="off";  VISION_RECORD_DEFAULT="off" ;;
+  *) REC_MODE="s3";   VISION_RECORD_DEFAULT="always"; VISION_S3_BUCKET="sv-recordings" ;;
 esac
 
 # 4) 메인 HTTPS 프록시 포트
@@ -394,6 +394,12 @@ VISION_S3_SECRET_ACCESS_KEY=rustfsadmin
 VISION_S3_PREFIX=recordings
 VISION_S3_API_PORT=19000
 VISION_S3_CONSOLE_PORT=19001
+VISION_ORT_EP=cpu
+VISION_EXTERNAL_INFERENCE_OPTIN=true
+VISION_ASSISTANT_BASE=
+VISION_ASSISTANT_MODEL=
+VISION_ASSISTANT_KEY=
+VISION_PUBLIC_HLS_BASE=
 RUST_LOG=info
 EOF
 } > .env
@@ -401,8 +407,8 @@ ok ".env written"
 
 # ── 데이터 디렉터리 ──
 info "Creating data directories under ./data/vision/"
-mkdir -p data/vision/app data/vision/recordings
-DATA_DIRS=(data/vision/app data/vision/recordings)
+mkdir -p data/vision/app data/vision/recordings data/vision/vcam
+DATA_DIRS=(data/vision/app data/vision/recordings data/vision/vcam)
 if [ "$REC_MODE" = "s3" ]; then
   mkdir -p data/vision/rustfs data/vision/rustfs-logs
   DATA_DIRS+=(data/vision/rustfs data/vision/rustfs-logs)
