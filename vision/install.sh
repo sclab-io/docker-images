@@ -394,6 +394,12 @@ esac
 echo; printf "%b\n" "${C_B}[4/6] Main HTTPS proxy ports${C_0}"
 echo "  Vision HTTPS ports are exposed by the root sclab-proxy container."
 echo "  Console=${VISION_CONSOLE_PORT}, HLS gateway=${VISION_GATEWAY_PORT}, Control API=${VISION_CONTROL_PORT}"
+TLS_MODE=0
+echo "  If the root sclab-proxy is NOT running on this host (data-services-only host),"
+echo "  Vision can expose these ports itself with a bundled nginx (vision-tls)."
+if ask_yn "Expose ports via bundled nginx (vision-tls)? Say no if sclab-proxy runs here" n; then
+  TLS_MODE=1
+fi
 
 # 5) 이미지
 echo; printf "%b\n" "${C_B}[5/6] Images${C_0}"
@@ -416,6 +422,7 @@ SESSION_MAX_AGE="2592000"
 # ── profile / COMPOSE_FILE 조립 ──
 PROFILES=""
 [ "$REC_MODE" = "s3" ] && PROFILES="${PROFILES:+$PROFILES,}s3"
+[ "$TLS_MODE" = "1" ] && PROFILES="${PROFILES:+$PROFILES,}tls"
 COMPOSE_FILE_LINE=""
 DC_FILES=(-f "$COMPOSE_FILE_BASE")
 if [ "$GPU" = "1" ]; then
@@ -482,6 +489,14 @@ if [ "$REC_MODE" = "s3" ]; then
 fi
 chmod_data_dirs "${DATA_DIRS[@]}"
 ok "Directories ready"
+
+# ── TLS 인증서(내장 nginx 사용 시) ──
+if [ "$TLS_MODE" = "1" ]; then
+  info "Checking TLS certificate"
+  . ./_tls.sh
+  ensure_tls_cert
+  ok "TLS certificate ready (./data/vision/certs)"
+fi
 
 # ── ECR 로그인(레지스트리가 ECR인 경우) ──
 case "$VISION_REGISTRY" in

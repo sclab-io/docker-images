@@ -8,6 +8,8 @@
 #   기본        vision-aio + vision-console
 #               Mongo/Redis/Qdrant는 sclab-network의 기존 mongo/redis/qdrant를 공유한다
 #   profile s3  DVR cold-tier S3 호환 스토리지용 rustfs
+#   profile tls 내장 HTTPS 프록시(vision-tls) — 루트 sclab-proxy가 이 호스트에 없을 때
+#               8890/8090/8080을 직접 노출한다(sclab-proxy가 있으면 포트 충돌 — 켜지 말 것)
 #   GPU         docker-compose.gpu.yml 오버레이가 aio를 aio-gpu로 바꾼다
 #
 # 네트워크: 외부 sclab-network, 같은 레벨의 메인 스택과 공유한다.
@@ -108,6 +110,31 @@ services:
       PROTOCOL_HEADER: "x-forwarded-proto"
       HOST_HEADER: "x-forwarded-host"
       PORT: "3000"
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "10" }
+    networks:
+      - sclab-network
+
+  # 내장 HTTPS 프록시(profile: tls) — 루트 sclab-proxy 없이 데이터 서비스만 있는 호스트에서
+  # vision을 올릴 때 콘솔/제어/HLS 포트를 직접 노출한다. 인증서는 ./data/vision/certs/
+  # (cert.pem/privkey.pem, 없으면 install.sh/up.sh가 자체 서명 생성).
+  vision-tls:
+    container_name: vision-tls
+    hostname: vision-tls
+    image: "nginx:alpine3.18"
+    restart: always
+    profiles: ["tls"]
+    depends_on:
+      - vision-aio
+      - vision-console
+    ports:
+      - "${VISION_CONSOLE_PORT:-8890}:3000"
+      - "${VISION_CONTROL_PORT:-8090}:8090"
+      - "${VISION_GATEWAY_PORT:-8080}:8080"
+    volumes:
+      - ./nginx-tls.conf:/etc/nginx/nginx.conf:ro
+      - ./data/vision/certs:/etc/vision-tls:ro
     logging:
       driver: "json-file"
       options: { max-size: "20m", max-file: "10" }

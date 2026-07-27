@@ -12,8 +12,8 @@ chmod_data_dirs() {
 }
 . ./_tls.sh
 ensure_tls_cert
-mkdir -p data/vision/app data/vision/recordings
-DATA_DIRS=(data/vision/app data/vision/recordings)
+mkdir -p data/vision/app data/vision/recordings data/vision/vcam
+DATA_DIRS=(data/vision/app data/vision/recordings data/vision/vcam)
 PROFILES="${COMPOSE_PROFILES:-}"
 if [ -f .env ]; then
   ENV_PROFILES="$(sed -n 's/^COMPOSE_PROFILES=//p' .env | tail -1)"

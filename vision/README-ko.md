@@ -182,4 +182,5 @@ cd vision
 - 공유 스택에서는 MongoDB / Redis / Qdrant 비밀번호를 루트 스택과 똑같이 맞춰야 합니다.
 - `VISION_STUDIO_SHARED=true`는 공유 스택에서 거의 항상 그대로 둡니다.
 - 기본값은 상시 녹화(`always`)입니다. 녹화를 쓰지 않으면 `VISION_RECORD_DEFAULT=off`로 바꾸면 됩니다.
+- 루트 sclab-proxy가 없는 호스트(데이터 서비스만 있는 서버 등)에서는 `COMPOSE_PROFILES`에 `tls`를 추가하면 내장 nginx(`vision-tls`)가 8890/8090/8080 포트를 직접 노출합니다. sclab-proxy가 있는 호스트에서 켜면 포트가 충돌하니 주의하세요.
 - 운영 환경에서는 `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, `VISION_SECRET_KEY`를 기본값으로 두지 마세요.

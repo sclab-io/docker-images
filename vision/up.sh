@@ -10,8 +10,8 @@ chmod_data_dirs() {
     return 1
   fi
 }
-mkdir -p data/vision/app data/vision/recordings
-DATA_DIRS=(data/vision/app data/vision/recordings)
+mkdir -p data/vision/app data/vision/recordings data/vision/vcam
+DATA_DIRS=(data/vision/app data/vision/recordings data/vision/vcam)
 PROFILES="${COMPOSE_PROFILES:-}"
 if [ -f .env ]; then
   ENV_PROFILES="$(sed -n 's/^COMPOSE_PROFILES=//p' .env | tail -1)"
@@ -19,6 +19,9 @@ if [ -f .env ]; then
 fi
 case ",${PROFILES}," in
   *,s3,*) mkdir -p data/vision/rustfs data/vision/rustfs-logs; DATA_DIRS+=(data/vision/rustfs data/vision/rustfs-logs) ;;
+esac
+case ",${PROFILES}," in
+  *,tls,*) . ./_tls.sh; ensure_tls_cert ;;
 esac
 chmod_data_dirs "${DATA_DIRS[@]}"
 . ./_dc.sh

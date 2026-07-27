@@ -182,4 +182,5 @@ Test videos uploaded to the virtual camera (vcam) are kept in `./data/vision/vca
 - In shared mode, MongoDB / Redis / Qdrant credentials must match the root stack.
 - Keep `VISION_STUDIO_SHARED=true` in shared deployments.
 - Recording is `always` on by default. Set `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
+- If the root sclab-proxy is not running on this host (e.g. a data-services-only server), add `tls` to `COMPOSE_PROFILES` so the bundled nginx (`vision-tls`) exposes ports 8890/8090/8080 directly. Do not enable it where sclab-proxy runs — the ports would conflict.
 - Never keep `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, or `VISION_SECRET_KEY` at their development defaults in production.
