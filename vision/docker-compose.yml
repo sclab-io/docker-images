@@ -41,6 +41,7 @@ services:
       VISION_INTERNAL_TOKEN: "${VISION_INTERNAL_TOKEN:-sv-dev-internal-token}"
       VISION_ADMIN_JWT_SECRET: "${VISION_ADMIN_JWT_SECRET:-sv-dev-admin-jwt-secret}"
       VISION_SIGNING_KEY: "${VISION_SIGNING_KEY:-dev-insecure-signing-key}"
+      # 봉투암호화 마스터키 — 64-hex(32B) 필수. 형식이 틀리면 평문 폴백 + 얼굴 사진(생체) 등록 거부(§11.4).
       VISION_SECRET_KEY: "${VISION_SECRET_KEY:-dev-insecure-secret-key}"
       # 컨테이너 내부 bind 주소. 외부 노출은 메인 sclab-proxy가 제어한다.
       VISION_AIO_CONTROL_ADDR: "0.0.0.0:8090"

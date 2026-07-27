@@ -43,6 +43,11 @@ gen_secret() {  # 랜덤 48자 hex 문자열
   elif [ -r /dev/urandom ]; then LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 48
   else echo "sv$(date +%s)$$${RANDOM:-0}${RANDOM:-0}" | head -c 48; fi
 }
+gen_secret32() {  # 랜덤 64자 hex(32바이트) — VISION_SECRET_KEY 봉투암호화 마스터키 형식(64-hex 필수, §11.4)
+  if command_exists openssl; then openssl rand -hex 32
+  elif [ -r /dev/urandom ]; then LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64
+  else printf '%016x%016x%016x%016x' "$(date +%s)" "$$" "${RANDOM:-0}" "${RANDOM:-0}" | head -c 64; fi
+}
 strip_quotes() {
   local v="${1:-}"
   v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
@@ -410,7 +415,7 @@ VISION_VERSION="$VISION_TAG"
 # 6) secret
 echo; printf "%b\n" "${C_B}[6/6] Secrets (production security)${C_0}"
 if ask_yn "Auto-generate secrets? (no = keep insecure dev defaults)" y; then
-  VISION_INTERNAL_TOKEN="$(gen_secret)"; VISION_ADMIN_JWT_SECRET="$(gen_secret)"; VISION_SIGNING_KEY="$(gen_secret)"; VISION_SECRET_KEY="$(gen_secret)"
+  VISION_INTERNAL_TOKEN="$(gen_secret)"; VISION_ADMIN_JWT_SECRET="$(gen_secret)"; VISION_SIGNING_KEY="$(gen_secret)"; VISION_SECRET_KEY="$(gen_secret32)"
   ok "Generated 4 random secrets"
 else
   VISION_INTERNAL_TOKEN="sv-dev-internal-token"; VISION_ADMIN_JWT_SECRET="sv-dev-admin-jwt-secret"; VISION_SIGNING_KEY="dev-insecure-signing-key"; VISION_SECRET_KEY="dev-insecure-secret-key"

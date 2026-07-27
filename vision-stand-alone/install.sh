@@ -67,6 +67,17 @@ gen_secret() {
     echo "sv$(date +%s)$$${RANDOM:-0}${RANDOM:-0}" | head -c 48
   fi
 }
+# VISION_SECRET_KEY 전용: 봉투암호화 마스터키는 반드시 64자 hex(32바이트)여야 한다(§11.4).
+# 형식이 다르면 백엔드가 평문 폴백으로 내려가 얼굴 사진(생체) 등록이 거부된다.
+gen_secret32() {
+  if command_exists openssl; then
+    openssl rand -hex 32
+  elif [ -r /dev/urandom ]; then
+    LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64
+  else
+    printf '%016x%016x%016x%016x' "$(date +%s)" "$$" "${RANDOM:-0}" "${RANDOM:-0}" | head -c 64
+  fi
+}
 chmod_data_dirs() {
   chmod 0777 "$@" 2>/dev/null && return 0
   if [ "$(id -u)" -ne 0 ] && command_exists sudo; then
@@ -372,7 +383,7 @@ if ask_yn "Auto-generate Vision secrets?" y; then
   VISION_INTERNAL_TOKEN="$(gen_secret)"
   VISION_ADMIN_JWT_SECRET="$(gen_secret)"
   VISION_SIGNING_KEY="$(gen_secret)"
-  VISION_SECRET_KEY="$(gen_secret)"
+  VISION_SECRET_KEY="$(gen_secret32)"
   ok "Generated Vision secrets"
 else
   VISION_INTERNAL_TOKEN="sv-dev-internal-token"
