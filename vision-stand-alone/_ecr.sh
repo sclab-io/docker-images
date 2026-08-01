@@ -30,11 +30,18 @@ ecr_login() {
     return 0
   fi
   echo "Logging in to ECR (${host})..."
-  if aws ecr get-login-password --region "$region" 2>/dev/null \
+  # 토큰 발급: 현재 사용자 → 실패 시 sudo 폴백(자격증명을 `sudo aws configure`로 root에만 넣은 호스트 —
+  # docker는 ${SUDO}로 sudo를 붙이면서 aws만 일반 사용자로 돌면 로그인이 항상 실패한다).
+  local pw=""
+  pw="$(aws ecr get-login-password --region "$region" 2>/dev/null)" || true
+  if [ -z "$pw" ] && command -v sudo >/dev/null 2>&1; then
+    pw="$(sudo aws ecr get-login-password --region "$region" 2>/dev/null)" || true
+  fi
+  if [ -n "$pw" ] && printf '%s' "$pw" \
       | ${SUDO:-}docker login --username AWS --password-stdin "$host" >/dev/null 2>&1; then
     echo "ECR login OK"
   else
     echo "WARN: ECR login failed — check AWS credentials (aws configure / SSO / instance role)." >&2
-    echo "      Manual: aws ecr get-login-password --region ${region} | ${SUDO:-}docker login --username AWS --password-stdin ${host}" >&2
+    echo "      Manual: sudo aws ecr get-login-password --region ${region} | ${SUDO:-}docker login --username AWS --password-stdin ${host}" >&2
   fi
 }
