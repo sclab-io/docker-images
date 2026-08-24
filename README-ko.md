@@ -385,6 +385,7 @@ sudo ./install.sh
 | `public.ai.vllm.llm` | vLLM LLM 목록 |
 | `public.ai.vllm.embed` | vLLM embedding model 목록 |
 | `public.ai.deepseek.llm` | DeepSeek LLM 목록 |
+| `public.ai.*.llm[].contextLimit` | **선택.** 이 배포에서 그 모델에 허용할 입력 토큰 수. 모델 자체의 최대치는 하드웨어와 무관하므로, 실제 GPU가 감당하는 값을 지정한다. 생략하면 모델 최대치를 사용한다. 아래 "모델 컨텍스트 한도" 참고 |
 | `public.ai.ocrModels` | OCR용 VLM 모델 목록 |
 | `public.ai.sqlModel` | SQL 생성용 모델 |
 | `public.hub.llmAPI` | `"openai"`(기본), `"gemini"`, `"ollama"` |
@@ -417,6 +418,45 @@ sudo ./install.sh
 | `redisOplog.mutationDefaults.optimistic` | diff를 동기 처리하지 않고 client-side mutation과 함께 동작 |
 | `redisOplog.mutationDefaults.pushToRedis` | 기본적으로 변경 내용을 Redis에 푸시할지 여부 |
 | `redisOplog.debug` | redis-oplog의 타임스탬프와 동작을 표시할지 여부 |
+
+#### 모델 컨텍스트 한도
+
+모델의 최대 컨텍스트 길이는 **모델의 속성**이지 하드웨어의 속성이 아닙니다.
+같은 모델이라도 32&nbsp;GB GPU에서 감당할 수 있는 컨텍스트는 96&nbsp;GB GPU보다 훨씬 작으므로,
+온프레미스 설치에서는 "이 장비가 실제로 감당하는 값"을 따로 지정할 수 있어야 합니다.
+
+넓은 것부터 좁은 것 순으로 3계층입니다.
+
+| 계층 | 위치 | 의미 |
+|:--|:--|:--|
+| 모델 최대치 | SCLAB 내장 | 모델 자체가 지원하는 최대 컨텍스트. 아래 두 값이 없을 때 사용됩니다. |
+| 배포 한도 | `settings.json` → `public.ai.*.llm[].contextLimit` | 이 모델을 서빙하는 GPU가 감당하는 값. 해당 모델을 선택한 모든 AI에 적용됩니다. |
+| AI별 재정의 | 에디터 → AI 설정 → **입력 컨텍스트 제한** | 체크박스와 토큰 수 입력. 개별 AI 데이터에서 배포 한도를 덮어씁니다. |
+
+한도를 넘는 프롬프트는 요청을 보내기 전에 잘리므로, 값을 크게 잡아도 그 자리에서
+드러나지 않고 서빙 백엔드가 요청을 거부하는 형태로 나타납니다.
+백엔드에 실제로 설정한 값과 맞추세요.
+
+* **Ollama** — 모델을 서빙할 때 지정한 `num_ctx`
+* **vLLM** — 서버 기동 시 지정한 `--max-model-len`
+
+##### 용량 산정
+
+가장 큰 비용은 KV 캐시이며 컨텍스트 길이에 비례해 커집니다.
+
+```
+KV 바이트 = 컨텍스트 토큰 수
+          x 어텐션 레이어 수 x KV 헤드 수 x head_dim x 2 (K, V)
+          x 요소당 바이트 (FP8은 1, FP16/BF16은 2)
+```
+
+여기에 모델 가중치와 활성화용 1~2&nbsp;GB 정도를 더하면 필요한 VRAM이 나옵니다.
+하이브리드 어텐션이나 sliding-window 계열 모델은 **full-attention 레이어만** 세면 되므로,
+전체 레이어 수만 보고 계산하면 크게 과대평가하게 됩니다.
+
+백엔드에서 *context length exceeded* 오류가 나면, 백엔드의 한도를 GPU가 감당하는 수준
+이상으로 올리지 말고 `contextLimit`(또는 AI별 재정의)을 낮추세요. 전자는 명확한 거부를
+메모리 부족 크래시로 바꿔놓을 뿐입니다.
 
 #### LDAP 로그인
 

@@ -396,6 +396,7 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | public.ai.vllm.llm                      | vLLM LLM list array [{"model": "VLLM_Qwen/Qwen2.5-1.5B-Instruct","label": "Qwen2.5-1.5B (vLLM)"}] you can use any vLLM models with prefix "VLLM_"                                                                                                                                                                       |
 | public.ai.vllm.embed                    | vLLM embedding model list array [{"model": "VLLM_mixedbread-ai/mxbai-embed-large-v1","label": "mxbai-embed-large (vLLM)"}] current support model ("mxbai-embed-large")                                                                                                                                                  |
 | public.ai.deepseek.llm                  | DeepSeek LLM list array [{"model": "DEEPSEEK_deepseek-v4-pro","label": "DeepSeek V4 Pro"}] you can use any DeepSeek models with prefix "DEEPSEEK_"                                                                                                                                                                      |
+| public.ai.\*.llm[].contextLimit         | **Optional.** Max input tokens for that model **in this deployment** (e.g. `{"model": "VLLM_unsloth/Qwen3.8-27B-NVFP4", "label": "Qwen3.8 27B", "contextLimit": 262144}`). A model's own maximum is hardware-independent, so set this to what your GPU can actually hold. If omitted, the model's maximum is used. See "Model context limit" below. |
 | public.ai.ocrModels                     | ollama vlm model list array ["OLLAMA_qwen2.5vl:72b"] current support model ("qwen2.5")                                                                                                                                                                                                                                  |
 | public.ai.sqlModel                      | model for SQL generation (e.g., "GPT5", "GPT4.1", "GEMINI_gemini-3-pro-preview", "OLLAMA_gemma2:latest")                                                                                                                                                                                                                |
 | public.hub.llmAPI                       | "openai" (default), "gemini", "ollama"                                                                                                                                                                                                                                                                                  |
@@ -428,6 +429,45 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | redisOplog.mutationDefaults.optimistic  | Does not do a sync processing on the diffs. But it works by default with client-side mutations.                                                                                                                                                                                                                         |
 | redisOplog.mutationDefaults.pushToRedis | Pushes to redis the changes by default.                                                                                                                                                                                                                                                                                 |
 | redisOplog.debug                        | Will show timestamp and activity of redis-oplog.                                                                                                                                                                                                                                                                        |
+
+#### Model context limit
+
+A model's maximum context length is a property of the **model**, not of your hardware.
+The same model can serve a much smaller context on a 32&nbsp;GB GPU than on a 96&nbsp;GB one,
+so on-premise installations need a way to say what *this* machine can actually hold.
+
+There are three layers, from widest to narrowest:
+
+| Layer | Where | Meaning |
+|:--|:--|:--|
+| Model maximum | built into SCLAB | The largest context the model itself supports. Used when nothing else is set. |
+| Deployment limit | `settings.json` → `public.ai.*.llm[].contextLimit` | What the GPU serving this model can hold. Applies to every AI that selects the model. |
+| Per-AI override | Editor → AI settings → **Limit input context** | A checkbox plus a token count, for one AI data. Overrides the deployment limit. |
+
+Prompts longer than the effective limit are truncated before the request is sent, so an
+over-large value does not fail loudly — the serving backend rejects the request instead.
+Set `contextLimit` to match what your backend is actually configured for:
+
+* **Ollama** — the `num_ctx` you serve the model with
+* **vLLM** — the `--max-model-len` the server was started with
+
+##### Sizing guidance
+
+The dominant cost is the KV cache, which grows linearly with context length:
+
+```
+KV bytes = context_tokens
+         x attention_layers x kv_heads x head_dim x 2 (K and V)
+         x bytes_per_element (1 for FP8, 2 for FP16/BF16)
+```
+
+Add the model weights and roughly 1–2&nbsp;GB for activations to get the total VRAM needed.
+Models with hybrid or sliding-window attention only count their full-attention layers here,
+which makes them far cheaper per token than the layer count alone suggests.
+
+If a request fails with a *context length exceeded* error from the backend, lower
+`contextLimit` (or the per-AI override) rather than raising the backend's limit past what
+the GPU can hold — the latter turns a clear rejection into an out-of-memory crash.
 
 #### LDAP login
 
