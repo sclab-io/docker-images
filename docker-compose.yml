@@ -289,10 +289,12 @@ services:
     networks:
       - sclab-network
 
+  # Map tile server (optional). Enabled by install.sh (COMPOSE_PROFILES=tileserver in .env).
   tileserver:
     container_name: tileserver
     hostname: tileserver
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-tileserver:latest"
+    profiles: ["tileserver"]
     restart: always
     logging:
       driver: "json-file"
@@ -306,6 +308,7 @@ services:
     container_name: tileserver-edge
     hostname: tileserver-edge
     image: nginx:1.27-alpine
+    profiles: ["tileserver"]
     restart: always
     env_file:
       - ./tileserver.env
@@ -339,7 +342,6 @@ services:
     restart: always
     depends_on:
       - webapp
-      - tileserver-edge
     networks:
       - sclab-network
     logging:

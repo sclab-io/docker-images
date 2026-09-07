@@ -692,6 +692,40 @@ main() {
     echo " → Editor will use the same domain as the main site."
   fi
   
+  # Map Tile Server Configuration
+  echo ""
+  echo "Map Tile Server Configuration"
+  echo "-----------------------------"
+  echo "Map widgets need a basemap tile server. SCLAB can run its own tile server on this host"
+  echo "(image sclabio/onpremise-tileserver, about 800 MB, map data for South Korea included)."
+  echo "If you skip it, map widgets use the public CARTO tiles, which show an 'API KEY REQUIRED' watermark."
+  echo ""
+  read -r -p "Install the map tile server? [y/N]: " INSTALL_TILESERVER || true
+  case "${INSTALL_TILESERVER:-N}" in
+    [Yy]* )
+      INSTALL_TILESERVER=Y
+      TILE_DOMAIN_DEFAULT="${DOMAIN_NEW:-sclab-onprem}"
+      TILE_URL_DEFAULT="https://${TILE_DOMAIN_DEFAULT}/tiles"
+      echo ""
+      echo "Tile server URL: the address map widgets load tiles from (public.tileServerURL in settings.json)."
+      echo "With the bundled setup, sclab-proxy serves it at https://<your domain>/tiles."
+      read -r -p "Tile server URL [Enter = ${TILE_URL_DEFAULT}]: " TILE_SERVER_URL || true
+      TILE_SERVER_URL="${TILE_SERVER_URL:-$TILE_URL_DEFAULT}"
+      TILE_SERVER_URL="${TILE_SERVER_URL%/}"
+      echo " → Tile server URL: $TILE_SERVER_URL"
+      echo ""
+      echo "Allowed domains: only pages served from these domains may load tiles (TILESERVER_ALLOWED_REFERERS)."
+      echo "Space separated. '*.example.com' allows all subdomains. Other domains can be added later in Admin > Tile Server."
+      read -r -p "Allowed domains [Enter = ${TILE_DOMAIN_DEFAULT} *.${TILE_DOMAIN_DEFAULT}]: " TILE_ALLOWED_DOMAINS || true
+      TILE_ALLOWED_DOMAINS="${TILE_ALLOWED_DOMAINS:-${TILE_DOMAIN_DEFAULT} *.${TILE_DOMAIN_DEFAULT}}"
+      echo " → Allowed domains: $TILE_ALLOWED_DOMAINS"
+      ;;
+    * )
+      INSTALL_TILESERVER=N
+      echo " → Skipping the map tile server. Map widgets will use the public CARTO tiles (watermarked)."
+      ;;
+  esac
+  
   # Administrator Account Configuration
   echo ""
   echo "Administrator Account Configuration"
@@ -780,6 +814,44 @@ main() {
     echo " ! Warning: settings.json not found; could not update mainPrefix."
   fi
   
+  # Map tile server
+  if [ "${INSTALL_TILESERVER:-N}" = "Y" ]; then
+    echo " - Configuring map tile server..."
+    if [ -f "settings.json" ]; then
+      TILE_URL_JSON=$(printf '%s' "$TILE_SERVER_URL" | sed 's/["\\]/\\&/g')
+      cp settings.json settings.json.tmp
+      sed 's@"tileServerURL"[[:space:]]*:[[:space:]]*"[^"]*"@"tileServerURL": "'"$TILE_URL_JSON"'"@g' settings.json.tmp > settings.json
+      rm -f settings.json.tmp
+      echo " - settings.json: updated tileServerURL to '$TILE_SERVER_URL'"
+    else
+      echo " ! Warning: settings.json not found; could not update tileServerURL."
+    fi
+    if [ -f "tileserver.env" ]; then
+      cp tileserver.env tileserver.env.tmp
+      sed 's@^TILESERVER_ALLOWED_REFERERS=.*$@TILESERVER_ALLOWED_REFERERS='"$TILE_ALLOWED_DOMAINS"'@' tileserver.env.tmp > tileserver.env
+      rm -f tileserver.env.tmp
+      echo " - tileserver.env: updated TILESERVER_ALLOWED_REFERERS to '$TILE_ALLOWED_DOMAINS'"
+    else
+      echo " ! Warning: tileserver.env not found; could not update allowed domains."
+    fi
+    # Enable the tileserver compose profile (docker compose reads .env from this directory)
+    if [ -f ".env" ] && grep -q '^COMPOSE_PROFILES=' .env; then
+      cp .env .env.tmp
+      sed 's@^COMPOSE_PROFILES=.*$@COMPOSE_PROFILES=tileserver@' .env.tmp > .env
+      rm -f .env.tmp
+    else
+      echo "COMPOSE_PROFILES=tileserver" >> .env
+    fi
+    echo " - .env: enabled compose profile 'tileserver'"
+  else
+    if [ -f "settings.json" ]; then
+      cp settings.json settings.json.tmp
+      sed 's@"tileServerURL"[[:space:]]*:[[:space:]]*"[^"]*"@"tileServerURL": ""@g' settings.json.tmp > settings.json
+      rm -f settings.json.tmp
+      echo " - settings.json: tileServerURL left empty (public CARTO tiles)."
+    fi
+  fi
+  
   # Replace license
   do_replace_license_only "$LICENSE_PLACEHOLDER" "$LICENSE_KEY" "license key"
   
@@ -811,6 +883,7 @@ main() {
     echo "files=${FILES[*]}"
     echo "domain_files=${DOMAIN_FILES[*]}"
     echo "license_file=$LICENSE_FILE"
+    echo "tileserver=${INSTALL_TILESERVER:-N}"
     echo "distro=$DISTRO_ID"
     echo "arch=$ARCH_NORMALIZED"
   } > "$INIT_FILE"
@@ -852,6 +925,13 @@ main() {
     fi
   else
     echo "  - https://sclab-onprem (update domain for production use)"
+  fi
+  if [ "${INSTALL_TILESERVER:-N}" = "Y" ]; then
+    echo "  - Map tile server: $TILE_SERVER_URL (allowed domains: $TILE_ALLOWED_DOMAINS)"
+  else
+    echo "  - Map tile server: not installed (map widgets use public CARTO tiles)."
+    echo "    To add it later: set COMPOSE_PROFILES=tileserver in .env, public.tileServerURL in settings.json,"
+    echo "    TILESERVER_ALLOWED_REFERERS in tileserver.env, then ./run.sh"
   fi
   echo ""
   echo "========================================"

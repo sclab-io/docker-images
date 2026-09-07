@@ -155,6 +155,7 @@ sudo ./install.sh
 | `db-agent.env` | SCLAB Agent용 환경 변수 |
 | `tileserver.env` | 지도 타일 서버 edge 환경 변수 (허용 도메인, 캐시) |
 | `tileserver/` | 지도 타일 서버 edge(`tileserver-edge`)용 Nginx 템플릿 |
+| `.env` | `install.sh` 가 생성. 타일 서버를 설치하면 `COMPOSE_PROFILES=tileserver` 가 들어감 |
 | `docker-compose.yml` | Docker Compose YAML |
 | `gen.yml` | 키 생성을 위한 Docker Compose YAML |
 | `nginx.conf` | Nginx 설정 |
@@ -376,6 +377,15 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 
 #### 지도 타일 서버
 
+타일 서버는 선택 사항입니다. `install.sh` 가 **Install the map tile server? [y/N]** 를 묻고(기본: 설치 안 함), 설치를 선택하면
+타일 서버 주소(`public.tileServerURL`, 기본 `https://<도메인>/tiles`)와 허용 도메인(`TILESERVER_ALLOWED_REFERERS`, 기본 `<도메인> *.<도메인>`)을
+물어본 뒤 `.env` 에 `COMPOSE_PROFILES=tileserver` 를 써서 compose 프로파일을 켭니다. 프로파일이 꺼져 있으면 `tileserver`, `tileserver-edge`
+서비스는 내려받지도 시작하지도 않습니다.
+
+설치 후에 추가하려면 `.env` 에 `COMPOSE_PROFILES=tileserver` 를 쓰고 `settings.json` 의 `public.tileServerURL` 과 `tileserver.env` 의
+`TILESERVER_ALLOWED_REFERERS` 를 채운 뒤 `./run.sh` 를 실행합니다. 제거하려면 `public.tileServerURL` 을 비우고 `.env` 에서 프로파일을 지운 뒤
+`docker compose down tileserver tileserver-edge` 를 실행합니다.
+
 - `tileserver`(이미지 `sclabio/onpremise-tileserver`)가 타일을 렌더링합니다. 이미지에 스타일·폰트·벡터 지도 데이터(기본 대한민국)가
   들어 있어 인터넷 연결 없이 동작합니다.
 - `tileserver-edge`(nginx)가 Referer 도메인을 검사하고 렌더링된 타일을 캐시합니다. `sclab-proxy` 가 `https://<도메인>/tiles/` 를 이쪽으로
@@ -399,7 +409,7 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 | `public.supportName` | 이메일 지원 담당자 이름 |
 | `public.supportEmail` | 지원 이메일 주소 |
 | `public.siteDomain` | 사이트 도메인 |
-| `public.tileServerURL` | 지도 타일 서버 기본 URL (지도 위젯의 베이스맵). 기본 compose 구성에서는 `https://<도메인>/tiles` 이며 `sclab-proxy` 가 `tileserver-edge` 로 넘깁니다. 비워 두면 공개 CARTO 타일을 쓰지만 "API KEY REQUIRED" 워터마크가 찍힙니다. 아래 "지도 타일 서버" 참고. |
+| `public.tileServerURL` | 지도 타일 서버 기본 URL (지도 위젯의 베이스맵). `install.sh` 가 타일 서버 설치 여부를 묻고 채웁니다(기본 `https://<도메인>/tiles`, `sclab-proxy` 가 `tileserver-edge` 로 넘김). 비어 있으면(기본) 공개 CARTO 타일을 쓰며 "API KEY REQUIRED" 워터마크가 찍힙니다. 아래 "지도 타일 서버" 참고. |
 | `public.mainPrefix` | 메인 prefix가 따로 있을 때 사용. 예: `app.sclab.io` |
 | `public.sso` | 사용할 SSO 목록(google, facebook, kakao, naver) |
 | `public.ldap.enabled` | 로그인 페이지에 LDAP 로그인 폼을 표시할지 여부 |
