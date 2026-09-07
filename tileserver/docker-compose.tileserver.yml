@@ -1,4 +1,4 @@
-# Map tile server services. Not part of docker-compose.yml by default (the image is about 30 GB).
+# Map tile server services. Not part of docker-compose.yml by default (the image is about 18 GB).
 # install.sh appends this block to docker-compose.yml when you choose to install the tile server,
 # or run ./tileserver/enable.sh later. Keep the two-space indentation: it is inserted under "services:".
   tileserver:

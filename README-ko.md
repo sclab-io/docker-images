@@ -378,7 +378,7 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 
 #### 지도 타일 서버
 
-타일 서버는 선택 사항이며 서비스 정의가 기본 `docker-compose.yml` 에 **들어 있지 않습니다**(이미지가 약 30GB). `install.sh` 가
+타일 서버는 선택 사항이며 서비스 정의가 기본 `docker-compose.yml` 에 **들어 있지 않습니다**(이미지가 약 18GB). `install.sh` 가
 **Install the map tile server? [y/N]** 를 묻고(기본: 설치 안 함), 설치를 선택하면 타일 서버 주소(`public.tileServerURL`, 기본
 `https://<도메인>/tiles`)와 허용 도메인(`TILESERVER_ALLOWED_REFERERS`, 기본 `<도메인> *.<도메인>`)을 물어본 뒤
 `tileserver/docker-compose.tileserver.yml` 의 `tileserver`, `tileserver-edge` 서비스를 `docker-compose.yml` 에 추가합니다.
@@ -388,8 +388,8 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 `docker-compose.yml` 에서 두 서비스를 지우고 `public.tileServerURL` 을 비웁니다.
 
 - `tileserver`(이미지 `sclabio/onpremise-tileserver`)가 타일을 렌더링합니다. 이미지에 스타일·폰트·벡터 지도 데이터가 들어 있어
-  인터넷 연결 없이 동작합니다. 데이터는 전 세계 개요(약 z11~12 까지) + 대한민국 상세(z14) 이며, 한국 밖은 그 줌 이상으로 확대해도
-  더 자세해지지 않습니다. 이미지 크기는 약 30GB 입니다.
+  인터넷 연결 없이 동작합니다. 데이터는 전 세계(z12 까지) + 대한민국 상세(z14) 이며, 한국 밖은 z12 이상으로 확대해도
+  더 자세해지지 않습니다. 이미지 크기는 약 18GB 입니다.
 - `tileserver-edge`(nginx)가 Referer 도메인을 검사하고 렌더링된 타일을 캐시합니다. `sclab-proxy` 가 `https://<도메인>/tiles/` 를 이쪽으로
   넘기고, `settings.json` 의 `public.tileServerURL` 이 지도 위젯을 그 주소로 보냅니다.
 - 다른 도메인(예: 발행 사이트를 임베드하는 고객사 포털)을 허용하려면 `TILESERVER_ALLOWED_REFERERS` 에 추가하고 `tileserver-edge` 를

@@ -385,7 +385,7 @@ public CARTO service, which now watermarks tiles that are requested without an A
 
 #### Map tile server
 
-The tile server is optional and its services are **not** in `docker-compose.yml` by default (the image is about 30 GB).
+The tile server is optional and its services are **not** in `docker-compose.yml` by default (the image is about 18 GB).
 `install.sh` asks **Install the map tile server? [y/N]** (default: no). If you answer yes it asks for the tile server URL
 (`public.tileServerURL`, default `https://<your domain>/tiles`) and the allowed domains (`TILESERVER_ALLOWED_REFERERS`,
 default `<your domain> *.<your domain>`), and appends the `tileserver` and `tileserver-edge` services from
@@ -396,8 +396,8 @@ To add it after installation: run `./tileserver/enable.sh`, set `public.tileServ
 `docker compose down tileserver tileserver-edge`, delete the two services from `docker-compose.yml` and empty `public.tileServerURL`.
 
 - `tileserver` (image `sclabio/onpremise-tileserver`) renders the tiles. The image already contains the styles, fonts and the
-  vector map data, so it works without internet access: the whole world up to about zoom 11–12 (overview) plus South Korea in
-  full detail (zoom 14). Outside Korea the map stops getting more detailed beyond that zoom. The image is roughly 30 GB.
+  vector map data, so it works without internet access: the whole world up to zoom 12 plus South Korea in full detail (zoom 14).
+  Outside Korea the map stops getting more detailed beyond zoom 12. The image is about 18 GB.
 - `tileserver-edge` (nginx) checks the Referer domain and caches rendered tiles. `sclab-proxy` forwards `https://<your domain>/tiles/` to it,
   and `settings.json` points the map widgets there with `public.tileServerURL`.
 - To allow another domain (for example a customer portal that embeds a published site), either add it to `TILESERVER_ALLOWED_REFERERS`
