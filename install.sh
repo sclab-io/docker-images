@@ -372,7 +372,7 @@ read_password() {
 
 INIT_FILE=".init"
 FILES=("docker-compose.yml" "common.env" "settings.json" "ai-service.env" "redis.conf")
-DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env")
+DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env" "tileserver.env")
 LICENSE_FILE="settings.json"
 LICENSE_PLACEHOLDER="LICENSE CODE HERE"
 

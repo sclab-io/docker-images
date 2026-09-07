@@ -29,6 +29,7 @@ SCLAB은 여러 데이터를 하나로 묶어 빠르게 시각화할 수 있게 
 - `sclabio/kafka-client`
 - `sclabio/node-vm-service`
 - `sclabio/ai-service`
+- `sclabio/onpremise-tileserver` (지도 베이스맵 타일 서버, 지도 데이터 포함)
 - `sclabio/vision-aio`
 - `sclabio/vision-aio-gpu`
 - `sclabio/vision-console`
@@ -152,6 +153,8 @@ sudo ./install.sh
 | `ai-service.env` | AI service용 환경 변수 |
 | `node-vm-service.env` | Node VM service용 환경 변수 |
 | `db-agent.env` | SCLAB Agent용 환경 변수 |
+| `tileserver.env` | 지도 타일 서버 edge 환경 변수 (허용 도메인, 캐시) |
+| `tileserver/` | 지도 타일 서버 edge(`tileserver-edge`)용 Nginx 템플릿 |
 | `docker-compose.yml` | Docker Compose YAML |
 | `gen.yml` | 키 생성을 위한 Docker Compose YAML |
 | `nginx.conf` | Nginx 설정 |
@@ -357,6 +360,33 @@ sudo ./install.sh
 | `MSSQL_IDLE_TIMEOUT_MS` | SQL Server 유휴 타임아웃(ms) |
 | `TUNNEL_KEEP_ALIVE_INTERVAL_MS` | SSH tunnel keep-alive 간격(ms) |
 
+### tileserver.env
+
+지도 위젯의 베이스맵(Positron / Dark Matter / Voyager 스타일)은 공개 CARTO 서비스 대신 자체 타일 서버에서 가져옵니다.
+CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
+
+| 변수 | 설명 |
+|:--|:--|
+| `TILESERVER_ALLOWED_REFERERS` | 타일을 가져다 쓸 수 있는 도메인 목록 (공백 구분, nginx `valid_referers` 문법). `install.sh` 가 `sclab-onprem` 을 사용자 도메인으로 바꿉니다. Referer 가 없거나 목록 밖 도메인이면 403 입니다. |
+| `TILESERVER_AUTH_URL` | 목록에 없는 도메인을 webapp 에 물어보는 주소 (`http://webapp:80/tile-auth`). webapp 은 사이트 도메인, 발행 사이트의 커스텀 도메인, **관리자 > 타일 서버** 에 등록한 도메인을 허용합니다. |
+| `TILESERVER_AUTH_CACHE_TTL` | webapp 응답을 도메인별로 캐시하는 시간 (기본 `10m`) |
+| `TILESERVER_CACHE_SIZE` | 렌더링된 타일 디스크 캐시 크기 (`./data/tileserver/cache`, 기본 `5g`) |
+| `TILESERVER_CACHE_TTL` | 렌더링된 타일을 캐시에 두는 기간 (기본 `30d`) |
+| `NGINX_PORT` / `TILESERVER_UPSTREAM` | 내부 연결용, 바꾸지 마세요 |
+
+#### 지도 타일 서버
+
+- `tileserver`(이미지 `sclabio/onpremise-tileserver`)가 타일을 렌더링합니다. 이미지에 스타일·폰트·벡터 지도 데이터(기본 대한민국)가
+  들어 있어 인터넷 연결 없이 동작합니다.
+- `tileserver-edge`(nginx)가 Referer 도메인을 검사하고 렌더링된 타일을 캐시합니다. `sclab-proxy` 가 `https://<도메인>/tiles/` 를 이쪽으로
+  넘기고, `settings.json` 의 `public.tileServerURL` 이 지도 위젯을 그 주소로 보냅니다.
+- 다른 도메인(예: 발행 사이트를 임베드하는 고객사 포털)을 허용하려면 `TILESERVER_ALLOWED_REFERERS` 에 추가하고 `tileserver-edge` 를
+  재시작하거나, **관리자 > 타일 서버** 에 등록합니다(재시작 불필요).
+- 다른 지역의 지도 데이터가 필요하면 SCLAB 소스의 `src/tileserver` 에서 `scripts/build-data.sh <지역>` 으로 `tiles.mbtiles` 를 만든 뒤
+  `tileserver` 서비스에 `- ./data/tileserver/tiles.mbtiles:/data/data/tiles.mbtiles:ro` 로 마운트해 덮어씁니다.
+  데이터 범위 밖은 빈 배경으로 렌더링됩니다.
+- `public.tileServerURL` 을 빈 문자열로 두면 지도 위젯이 공개 CARTO 타일(워터마크)로 돌아갑니다.
+
 ### settings.json
 
 `settings.json`에는 공개 설정과 비공개 설정이 함께 들어 있습니다. 대표적인 항목은 아래와 같습니다.
@@ -369,6 +399,7 @@ sudo ./install.sh
 | `public.supportName` | 이메일 지원 담당자 이름 |
 | `public.supportEmail` | 지원 이메일 주소 |
 | `public.siteDomain` | 사이트 도메인 |
+| `public.tileServerURL` | 지도 타일 서버 기본 URL (지도 위젯의 베이스맵). 기본 compose 구성에서는 `https://<도메인>/tiles` 이며 `sclab-proxy` 가 `tileserver-edge` 로 넘깁니다. 비워 두면 공개 CARTO 타일을 쓰지만 "API KEY REQUIRED" 워터마크가 찍힙니다. 아래 "지도 타일 서버" 참고. |
 | `public.mainPrefix` | 메인 prefix가 따로 있을 때 사용. 예: `app.sclab.io` |
 | `public.sso` | 사용할 SSO 목록(google, facebook, kakao, naver) |
 | `public.ldap.enabled` | 로그인 페이지에 LDAP 로그인 폼을 표시할지 여부 |

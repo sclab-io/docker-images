@@ -1,0 +1,17 @@
+# 타일 프록시 공통 설정. nginx 이미지의 envsubst 가 /etc/nginx/conf.d/tile_proxy.inc 로 만들고 default.conf 가 include 한다.
+proxy_http_version 1.1;
+proxy_set_header Host $host;
+proxy_set_header Connection "";
+
+proxy_cache tiles;
+proxy_cache_valid 200 ${TILESERVER_CACHE_TTL};
+proxy_cache_valid 404 1m;
+proxy_cache_lock on;
+proxy_cache_lock_timeout 30s;
+proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+proxy_ignore_headers Cache-Control Expires;
+
+proxy_hide_header Access-Control-Allow-Origin;
+add_header Access-Control-Allow-Origin "*" always;
+add_header Cache-Control "public, max-age=2592000" always;
+add_header X-Cache-Status $upstream_cache_status always;

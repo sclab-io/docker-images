@@ -35,6 +35,7 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 - sclabio/kafka-client
 - sclabio/node-vm-service
 - sclabio/ai-service
+- sclabio/onpremise-tileserver (basemap tile server, includes map data)
 - sclabio/vision-aio
 - sclabio/vision-aio-gpu
 - sclabio/vision-console
@@ -159,6 +160,8 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | ai-service.env         | Environment for AI service                 |
 | node-vm-service.env    | Environment for Node VM service            |
 | db-agent.env           | Environment for SCLAB Agent                |
+| tileserver.env         | Environment for the map tile server edge (allowed domains, cache) |
+| tileserver/            | Nginx templates for the map tile server edge (`tileserver-edge`) |
 | docker-compose.yml     | Docker Compose YAML                        |
 | gen.yml                | Docker Compose YAML for key generation     |
 | nginx.conf             | Nginx config                               |
@@ -364,6 +367,33 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | MSSQL_IDLE_TIMEOUT_MS         | SQL Server idle time out ms       |
 | TUNNEL_KEEP_ALIVE_INTERVAL_MS | SSH tunnel keep alive interval ms |
 
+### tileserver.env
+
+The map widgets load their basemap (Positron / Dark Matter / Voyager styles) from a self-hosted tile server instead of the
+public CARTO service, which now watermarks tiles that are requested without an API key.
+
+| var                         | description                                                                                                                                                         |
+|:----------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| TILESERVER_ALLOWED_REFERERS | Domains allowed to load tiles (space separated, nginx `valid_referers` syntax). `install.sh` replaces `sclab-onprem` with your domain. Requests without a Referer, or from other domains, get 403. |
+| TILESERVER_AUTH_URL         | Where the edge asks about domains that are not in the list above (`http://webapp:80/tile-auth`). webapp allows the site domain, custom domains of published sites and the domains registered in **Admin > Tile Server**. |
+| TILESERVER_AUTH_CACHE_TTL   | How long a webapp answer is cached per domain (default `10m`).                                                                                                      |
+| TILESERVER_CACHE_SIZE       | Disk cache size for rendered tiles (`./data/tileserver/cache`, default `5g`).                                                                                        |
+| TILESERVER_CACHE_TTL        | How long a rendered tile stays in the cache (default `30d`).                                                                                                        |
+| NGINX_PORT / TILESERVER_UPSTREAM | Internal wiring, do not change.                                                                                                                                |
+
+#### Map tile server
+
+- `tileserver` (image `sclabio/onpremise-tileserver`) renders the tiles. The image already contains the styles, fonts and the
+  vector map data (South Korea by default), so it works without internet access.
+- `tileserver-edge` (nginx) checks the Referer domain and caches rendered tiles. `sclab-proxy` forwards `https://<your domain>/tiles/` to it,
+  and `settings.json` points the map widgets there with `public.tileServerURL`.
+- To allow another domain (for example a customer portal that embeds a published site), either add it to `TILESERVER_ALLOWED_REFERERS`
+  and restart `tileserver-edge`, or register it in **Admin > Tile Server** (no restart needed).
+- Map data for other regions: build a `tiles.mbtiles` for the region (see `src/tileserver` in the SCLAB source, `scripts/build-data.sh <region>`)
+  and mount it over the bundled file: `- ./data/tileserver/tiles.mbtiles:/data/data/tiles.mbtiles:ro` on the `tileserver` service.
+  Areas outside the bundled region render as an empty background.
+- Setting `public.tileServerURL` to an empty string switches the map widgets back to the public CARTO tiles (watermarked).
+
 ### settings.json
 
 | var                                     | description                                                                                                                                                                                                                                                                                                             |
@@ -386,6 +416,7 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | public.useForceSSL                      | force redirect http to https                                                                                                                                                                                                                                                                                            |
 | public.uploadMaxMB                      | max upload file size (MB)                                                                                                                                                                                                                                                                                               |
 | public.editorHosts                      | editor host array                                                                                                                                                                                                                                                                                                       |
+| public.tileServerURL                    | Base URL of the map tile server (basemap for map widgets). With the bundled compose it is `https://<your domain>/tiles` (routed by `sclab-proxy` to `tileserver-edge`). Leave empty to use the public CARTO tiles instead (they show an "API KEY REQUIRED" watermark). See "Map tile server" below. |
 | public.ai.chat                          | ai chat bot default prompt (If you don't want to use this ai feature, remove "public.ai" field.)                                                                                                                                                                                                                        |
 | public.ai.openai.llm                    | OpenAI LLM list array [{"model": "GPT5_MINI","label": "GPT5 mini"}]                                                                                                                                                                                                                                                     |
 | public.ai.openai.embed                  | OpenAI embedding model list array [{"model": "text-embedding-3-large","label": "text-embedding-3-large (OPENAI)"}]                                                                                                                                                                                                      |

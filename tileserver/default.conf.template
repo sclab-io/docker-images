@@ -1,0 +1,113 @@
+# 타일 서버 앞단(edge): 허용 도메인 검사 + 디스크 캐시
+#
+# nginx 공식 이미지가 컨테이너 시작 시 envsubst 로 ${...} 환경 변수를 치환한다. 아래 변수만 쓴다.
+#   NGINX_PORT                   edge 가 listen 할 포트 (예: 8080, 쿠버네티스 사이드카는 8081)
+#   TILESERVER_UPSTREAM          렌더러 주소 (예: tileserver:8080)
+#   TILESERVER_ALLOWED_REFERERS  정적 허용 도메인 목록(공백 구분, nginx valid_referers 문법).
+#                                예: "sclab.io *.sclab.io *.dev.sclab.io customer.co.kr"
+#                                Referer 가 없는 요청도 허용하려면 none 을 추가한다.
+#   TILESERVER_AUTH_URL          정적 목록에 없는 도메인을 webapp 에 물어보는 주소
+#                                (예: http://sclab-io-webapp/tile-auth). webapp 은 X-Tile-Referer-Host 헤더의
+#                                호스트가 허용 도메인이면 200 + "X-Tile-Auth: ok" 를 준다. 상태 코드만 믿지 않고
+#                                이 헤더까지 확인하므로 SPA 가 아무 경로에나 200 을 돌려줘도 통과되지 않는다.
+#                                동적 검사를 끄려면 http://127.0.0.1:${NGINX_PORT}/_auth_deny 로 둔다.
+#   TILESERVER_AUTH_CACHE_TTL    webapp 허용 응답 캐시 기간 (예: 10m)
+#   TILESERVER_CACHE_SIZE        타일 디스크 캐시 최대 크기 (예: 10g)
+#   TILESERVER_CACHE_TTL         타일 200 응답 캐시 기간 (예: 30d)
+
+proxy_cache_path /var/cache/nginx/tiles levels=1:2 keys_zone=tiles:64m
+                 max_size=${TILESERVER_CACHE_SIZE} inactive=${TILESERVER_CACHE_TTL} use_temp_path=off;
+proxy_cache_path /var/cache/nginx/auth keys_zone=tile_auth:4m max_size=32m inactive=1h use_temp_path=off;
+
+upstream tile_renderer {
+    server ${TILESERVER_UPSTREAM};
+    keepalive 16;
+}
+
+# Referer 에서 호스트만 뽑는다 (https://foo.sclab.io/page/1 → foo.sclab.io).
+map $http_referer $tile_referer_host {
+    default "";
+    "~^https?://([^/:?#]+)" $1;
+}
+
+# 동적 검사 결과(X-Tile-Auth 헤더)에 따라 렌더러로 보내거나 403 으로 보낸다.
+# auth_request 는 2xx 면 무조건 통과시키므로, 응답 헤더까지 확인해 SPA 의 200 을 승인으로 오인하지 않게 한다.
+map $tile_auth_result $tile_auth_target {
+    "ok"    "http://tile_renderer/$tile_path";
+    default "http://127.0.0.1:${NGINX_PORT}/_auth_deny";
+}
+# 거부된 요청은 캐시 조회를 건너뛴다. 그렇지 않으면 이미 캐시된 타일이 업스트림(거부 대상)에 가지 않고 그대로 나간다.
+map $tile_auth_result $tile_auth_denied {
+    "ok"    0;
+    default 1;
+}
+
+server {
+    listen ${NGINX_PORT};
+    server_name _;
+    access_log /var/log/nginx/access.log combined;
+
+    # 1차: 정적 허용 도메인 목록 (valid_referers). 목록 밖이면 $invalid_referer=1.
+    valid_referers ${TILESERVER_ALLOWED_REFERERS};
+
+    # 렌더링된 래스터 타일만 외부에 연다.
+    location ~ ^/styles/[a-z0-9_]+/[0-9]+/[0-9]+/[0-9]+(@2x)?\.png$ {
+        # 정적 목록에 없으면 webapp 동적 검사 경로로 넘긴다.
+        if ($invalid_referer) {
+            rewrite ^(.*)$ /_dyn$1 last;
+        }
+
+        proxy_pass http://tile_renderer;
+        include /etc/nginx/conf.d/tile_proxy.inc;
+        proxy_cache_key $uri;
+    }
+
+    # 2차: webapp 에 물어보는 동적 검사 (auth_request). 발행 사이트의 커스텀 도메인을 자동으로 허용한다.
+    location ~ ^/_dyn/(styles/[a-z0-9_]+/[0-9]+/[0-9]+/[0-9]+(@2x)?\.png)$ {
+        internal;
+        set $tile_path $1;
+
+        if ($tile_referer_host = "") {
+            return 403;
+        }
+        auth_request /_auth;
+        auth_request_set $tile_auth_result $upstream_http_x_tile_auth;
+
+        proxy_pass $tile_auth_target;
+        include /etc/nginx/conf.d/tile_proxy.inc;
+        proxy_cache_key /$tile_path;
+        proxy_cache_bypass $tile_auth_denied;
+        proxy_no_cache $tile_auth_denied;
+    }
+
+    location = /_auth {
+        internal;
+        proxy_pass ${TILESERVER_AUTH_URL};
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Tile-Referer-Host $tile_referer_host;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 5s;
+
+        # 호스트별로 결과를 캐시해 webapp 호출을 줄인다.
+        proxy_cache tile_auth;
+        proxy_cache_key $tile_referer_host;
+        proxy_cache_valid 200 ${TILESERVER_AUTH_CACHE_TTL};
+        proxy_cache_valid 403 1m;
+        proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
+    }
+
+    # TILESERVER_AUTH_URL 기본값: 동적 검사 없이 거부.
+    location = /_auth_deny {
+        return 403;
+    }
+
+    location = /health {
+        proxy_pass http://tile_renderer/health;
+        access_log off;
+    }
+
+    location / {
+        return 404;
+    }
+}

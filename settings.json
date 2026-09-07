@@ -11,6 +11,7 @@
     "supportName": "Support Team",
     "supportEmail": "support@sclab.io",
     "siteDomain": "sclab-onprem",
+    "tileServerURL": "https://sclab-onprem/tiles",
     "mainPrefix": "",
     "sso": [],
     "useForceSSL": false,
