@@ -834,15 +834,12 @@ main() {
     else
       echo " ! Warning: tileserver.env not found; could not update allowed domains."
     fi
-    # Enable the tileserver compose profile (docker compose reads .env from this directory)
-    if [ -f ".env" ] && grep -q '^COMPOSE_PROFILES=' .env; then
-      cp .env .env.tmp
-      sed 's@^COMPOSE_PROFILES=.*$@COMPOSE_PROFILES=tileserver@' .env.tmp > .env
-      rm -f .env.tmp
+    # Add the tile server services to docker-compose.yml (they are not included by default: ~30 GB image)
+    if [ -x "tileserver/enable.sh" ]; then
+      ./tileserver/enable.sh
     else
-      echo "COMPOSE_PROFILES=tileserver" >> .env
+      echo " ! Warning: tileserver/enable.sh not found; add tileserver/docker-compose.tileserver.yml to docker-compose.yml manually."
     fi
-    echo " - .env: enabled compose profile 'tileserver'"
   else
     if [ -f "settings.json" ]; then
       cp settings.json settings.json.tmp
@@ -930,8 +927,8 @@ main() {
     echo "  - Map tile server: $TILE_SERVER_URL (allowed domains: $TILE_ALLOWED_DOMAINS)"
   else
     echo "  - Map tile server: not installed (map widgets use public CARTO tiles)."
-    echo "    To add it later: set COMPOSE_PROFILES=tileserver in .env, public.tileServerURL in settings.json,"
-    echo "    TILESERVER_ALLOWED_REFERERS in tileserver.env, then ./run.sh"
+    echo "    To add it later: ./tileserver/enable.sh, then set public.tileServerURL in settings.json"
+    echo "    and TILESERVER_ALLOWED_REFERERS in tileserver.env, then ./run.sh"
   fi
   echo ""
   echo "========================================"

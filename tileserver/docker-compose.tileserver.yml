@@ -1,0 +1,36 @@
+# Map tile server services. Not part of docker-compose.yml by default (the image is about 30 GB).
+# install.sh appends this block to docker-compose.yml when you choose to install the tile server,
+# or run ./tileserver/enable.sh later. Keep the two-space indentation: it is inserted under "services:".
+  tileserver:
+    container_name: tileserver
+    hostname: tileserver
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-tileserver:latest"
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    networks:
+      - sclab-network
+
+  tileserver-edge:
+    container_name: tileserver-edge
+    hostname: tileserver-edge
+    image: nginx:1.27-alpine
+    restart: always
+    env_file:
+      - ./tileserver.env
+    volumes:
+      - ./tileserver:/etc/nginx/templates:ro
+      - ./data/tileserver/cache:/var/cache/nginx
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - tileserver
+      - webapp
+    networks:
+      - sclab-network
