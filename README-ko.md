@@ -386,8 +386,9 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 `TILESERVER_ALLOWED_REFERERS` 를 채운 뒤 `./run.sh` 를 실행합니다. 제거하려면 `public.tileServerURL` 을 비우고 `.env` 에서 프로파일을 지운 뒤
 `docker compose down tileserver tileserver-edge` 를 실행합니다.
 
-- `tileserver`(이미지 `sclabio/onpremise-tileserver`)가 타일을 렌더링합니다. 이미지에 스타일·폰트·벡터 지도 데이터(기본 대한민국)가
-  들어 있어 인터넷 연결 없이 동작합니다.
+- `tileserver`(이미지 `sclabio/onpremise-tileserver`)가 타일을 렌더링합니다. 이미지에 스타일·폰트·벡터 지도 데이터가 들어 있어
+  인터넷 연결 없이 동작합니다. 데이터는 전 세계 개요(약 z11~12 까지) + 대한민국 상세(z14) 이며, 한국 밖은 그 줌 이상으로 확대해도
+  더 자세해지지 않습니다. 이미지 크기는 약 30GB 입니다.
 - `tileserver-edge`(nginx)가 Referer 도메인을 검사하고 렌더링된 타일을 캐시합니다. `sclab-proxy` 가 `https://<도메인>/tiles/` 를 이쪽으로
   넘기고, `settings.json` 의 `public.tileServerURL` 이 지도 위젯을 그 주소로 보냅니다.
 - 다른 도메인(예: 발행 사이트를 임베드하는 고객사 포털)을 허용하려면 `TILESERVER_ALLOWED_REFERERS` 에 추가하고 `tileserver-edge` 를

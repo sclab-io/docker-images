@@ -697,7 +697,7 @@ main() {
   echo "Map Tile Server Configuration"
   echo "-----------------------------"
   echo "Map widgets need a basemap tile server. SCLAB can run its own tile server on this host"
-  echo "(image sclabio/onpremise-tileserver, about 800 MB, map data for South Korea included)."
+  echo "(image sclabio/onpremise-tileserver, about 30 GB: world overview + South Korea detail map data included)."
   echo "If you skip it, map widgets use the public CARTO tiles, which show an 'API KEY REQUIRED' watermark."
   echo ""
   read -r -p "Install the map tile server? [y/N]: " INSTALL_TILESERVER || true

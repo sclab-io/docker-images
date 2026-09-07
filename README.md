@@ -394,7 +394,8 @@ and `TILESERVER_ALLOWED_REFERERS` in `tileserver.env`, then run `./run.sh`. To r
 the profile from `.env` and run `docker compose down tileserver tileserver-edge`.
 
 - `tileserver` (image `sclabio/onpremise-tileserver`) renders the tiles. The image already contains the styles, fonts and the
-  vector map data (South Korea by default), so it works without internet access.
+  vector map data, so it works without internet access: the whole world up to about zoom 11–12 (overview) plus South Korea in
+  full detail (zoom 14). Outside Korea the map stops getting more detailed beyond that zoom. The image is roughly 30 GB.
 - `tileserver-edge` (nginx) checks the Referer domain and caches rendered tiles. `sclab-proxy` forwards `https://<your domain>/tiles/` to it,
   and `settings.json` points the map widgets there with `public.tileServerURL`.
 - To allow another domain (for example a customer portal that embeds a published site), either add it to `TILESERVER_ALLOWED_REFERERS`
