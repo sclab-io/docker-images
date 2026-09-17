@@ -697,7 +697,8 @@ main() {
   echo "Map Tile Server Configuration"
   echo "-----------------------------"
   echo "Map widgets need a basemap tile server. SCLAB can run its own tile server on this host"
-  echo "(image sclabio/onpremise-tileserver, about 18 GB: world map up to zoom 12 + South Korea in full detail included)."
+  echo "(image sclabio/onpremise-tileserver, about 95 GB: the whole world in full detail, zoom 0-14)."
+  echo "It needs about 200 GB of free disk (image + map data assembled on the first start) and the first pull takes a while."
   echo "If you skip it, map widgets use the public CARTO tiles, which show an 'API KEY REQUIRED' watermark."
   echo ""
   read -r -p "Install the map tile server? [y/N]: " INSTALL_TILESERVER || true
@@ -834,7 +835,7 @@ main() {
     else
       echo " ! Warning: tileserver.env not found; could not update allowed domains."
     fi
-    # Add the tile server services to docker-compose.yml (they are not included by default: ~30 GB image)
+    # Add the tile server services to docker-compose.yml (they are not included by default: ~95 GB image)
     if [ -x "tileserver/enable.sh" ]; then
       ./tileserver/enable.sh
     else

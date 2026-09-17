@@ -1,4 +1,4 @@
-# Map tile server services. Not part of docker-compose.yml by default (the image is about 18 GB).
+# Map tile server services. Not part of docker-compose.yml by default (the image is about 95 GB: the whole world in full detail).
 # install.sh appends this block to docker-compose.yml when you choose to install the tile server,
 # or run ./tileserver/enable.sh later. Keep the two-space indentation: it is inserted under "services:".
   tileserver:
@@ -6,6 +6,10 @@
     hostname: tileserver
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-tileserver:latest"
     restart: always
+    volumes:
+      # The map data ships inside the image in 4 parts (registry layer size limit). On the first start they are assembled
+      # here once (about 93 GB, several minutes). Keep this directory: restarts and updates reuse it.
+      - ./data/tileserver/data:/data/data
     logging:
       driver: "json-file"
       options:

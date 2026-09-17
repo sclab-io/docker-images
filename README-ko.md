@@ -378,7 +378,7 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 
 #### 지도 타일 서버
 
-타일 서버는 선택 사항이며 서비스 정의가 기본 `docker-compose.yml` 에 **들어 있지 않습니다**(이미지가 약 18GB). `install.sh` 가
+타일 서버는 선택 사항이며 서비스 정의가 기본 `docker-compose.yml` 에 **들어 있지 않습니다**(이미지가 약 95GB). `install.sh` 가
 **Install the map tile server? [y/N]** 를 묻고(기본: 설치 안 함), 설치를 선택하면 타일 서버 주소(`public.tileServerURL`, 기본
 `https://<도메인>/tiles`)와 허용 도메인(`TILESERVER_ALLOWED_REFERERS`, 기본 `<도메인> *.<도메인>`)을 물어본 뒤
 `tileserver/docker-compose.tileserver.yml` 의 `tileserver`, `tileserver-edge` 서비스를 `docker-compose.yml` 에 추가합니다.
@@ -388,16 +388,22 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 `docker-compose.yml` 에서 두 서비스를 지우고 `public.tileServerURL` 을 비웁니다.
 
 - `tileserver`(이미지 `sclabio/onpremise-tileserver`)가 타일을 렌더링합니다. 이미지에 스타일·폰트·벡터 지도 데이터가 들어 있어
-  인터넷 연결 없이 동작합니다. 데이터는 전 세계(z12 까지) + 대한민국 상세(z14) 이며, 한국 밖은 z12 이상으로 확대해도
-  더 자세해지지 않습니다. 이미지 크기는 약 18GB 입니다.
+  인터넷 연결 없이 동작합니다. 데이터는 전 세계 전체 상세(z0~z14, tiles.sclab.io 와 같은 데이터)이며 이미지 크기는 약 95GB 라
+  처음 받을 때 시간이 걸립니다.
+- 컨테이너가 처음 뜰 때 이미지 안의 지도 데이터를 `./data/tileserver/data/tiles.mbtiles` 로 합칩니다(약 93GB, 몇 분 소요,
+  `docker compose logs -f tileserver` 로 진행 확인). 그동안 지도 위젯은 공개 CARTO 타일로 대체됩니다. 이 폴더는 지우지 마세요.
+  재시작·업데이트 때 그대로 재사용하고, 이미지의 데이터가 바뀌었을 때만 다시 합칩니다. 디스크는 데이터의 2배(이미지 + 합친 파일,
+  약 190GB)와 타일 캐시만큼 필요합니다.
 - `tileserver-edge`(nginx)가 Referer 도메인을 검사하고 렌더링된 타일을 캐시합니다. `sclab-proxy` 가 `https://<도메인>/tiles/` 를 이쪽으로
   넘기고, `settings.json` 의 `public.tileServerURL` 이 지도 위젯을 그 주소로 보냅니다.
 - 다른 도메인(예: 발행 사이트를 임베드하는 고객사 포털)을 허용하려면 `TILESERVER_ALLOWED_REFERERS` 에 추가하고 `tileserver-edge` 를
   재시작하거나, **관리자 > 타일 서버** 에 등록합니다(재시작 불필요).
-- 다른 지역의 지도 데이터가 필요하면 SCLAB 소스의 `src/tileserver` 에서 `scripts/build-data.sh <지역>` 으로 `tiles.mbtiles` 를 만든 뒤
-  `tileserver` 서비스에 `- ./data/tileserver/tiles.mbtiles:/data/data/tiles.mbtiles:ro` 로 마운트해 덮어씁니다.
-  데이터 범위 밖은 빈 배경으로 렌더링됩니다.
+- 자체 지도 데이터를 쓰려면 SCLAB 소스의 `src/tileserver` 에서 `scripts/build-data.sh <지역>` 으로 `tiles.mbtiles` 를 만든 뒤
+  `tileserver` 서비스에 `- ./data/tileserver/tiles.mbtiles:/data/data/tiles.mbtiles:ro` 로 읽기 전용 마운트해 덮어씁니다.
+  그러면 이미지에 든 데이터는 쓰지 않습니다. 데이터 범위 밖은 빈 배경으로 렌더링됩니다.
 - `public.tileServerURL` 을 빈 문자열로 두면 지도 위젯이 공개 CARTO 타일(워터마크)로 돌아갑니다.
+- 1.x 이미지(세계 z12 + 한국 상세, 18GB)에서 올라오려면 `docker-compose.yml` 의 `tileserver` 서비스에
+  `tileserver/docker-compose.tileserver.yml` 의 `volumes` 항목을 추가하고 디스크 여유를 확인한 뒤 `./update.sh` 를 실행합니다.
 
 ### settings.json
 

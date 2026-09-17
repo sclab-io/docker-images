@@ -385,7 +385,7 @@ public CARTO service, which now watermarks tiles that are requested without an A
 
 #### Map tile server
 
-The tile server is optional and its services are **not** in `docker-compose.yml` by default (the image is about 18 GB).
+The tile server is optional and its services are **not** in `docker-compose.yml` by default (the image is about 95 GB).
 `install.sh` asks **Install the map tile server? [y/N]** (default: no). If you answer yes it asks for the tile server URL
 (`public.tileServerURL`, default `https://<your domain>/tiles`) and the allowed domains (`TILESERVER_ALLOWED_REFERERS`,
 default `<your domain> *.<your domain>`), and appends the `tileserver` and `tileserver-edge` services from
@@ -396,16 +396,22 @@ To add it after installation: run `./tileserver/enable.sh`, set `public.tileServ
 `docker compose down tileserver tileserver-edge`, delete the two services from `docker-compose.yml` and empty `public.tileServerURL`.
 
 - `tileserver` (image `sclabio/onpremise-tileserver`) renders the tiles. The image already contains the styles, fonts and the
-  vector map data, so it works without internet access: the whole world up to zoom 12 plus South Korea in full detail (zoom 14).
-  Outside Korea the map stops getting more detailed beyond zoom 12. The image is about 18 GB.
+  vector map data of the whole world in full detail (zoom 0-14, the same data as tiles.sclab.io), so it works without internet access.
+  The image is about 95 GB, so the first pull takes a while.
+- On the first start the container assembles the map data from the image into `./data/tileserver/data/tiles.mbtiles`
+  (about 93 GB, several minutes; `docker compose logs -f tileserver` shows the progress). Until then the map widgets fall back to the
+  public CARTO tiles. Keep that directory: restarts and updates reuse it and only rebuild it when the image ships new data.
+  Plan for about twice the data size on disk (image + assembled file, about 190 GB) plus the tile cache.
 - `tileserver-edge` (nginx) checks the Referer domain and caches rendered tiles. `sclab-proxy` forwards `https://<your domain>/tiles/` to it,
   and `settings.json` points the map widgets there with `public.tileServerURL`.
 - To allow another domain (for example a customer portal that embeds a published site), either add it to `TILESERVER_ALLOWED_REFERERS`
   and restart `tileserver-edge`, or register it in **Admin > Tile Server** (no restart needed).
-- Map data for other regions: build a `tiles.mbtiles` for the region (see `src/tileserver` in the SCLAB source, `scripts/build-data.sh <region>`)
-  and mount it over the bundled file: `- ./data/tileserver/tiles.mbtiles:/data/data/tiles.mbtiles:ro` on the `tileserver` service.
-  Areas outside the bundled region render as an empty background.
+- Map data of your own: build a `tiles.mbtiles` (see `src/tileserver` in the SCLAB source, `scripts/build-data.sh <region>`)
+  and mount it read-only over the assembled file: `- ./data/tileserver/tiles.mbtiles:/data/data/tiles.mbtiles:ro` on the `tileserver`
+  service. The bundled data is then skipped. Areas outside your data render as an empty background.
 - Setting `public.tileServerURL` to an empty string switches the map widgets back to the public CARTO tiles (watermarked).
+- Upgrading from image 1.x (world up to zoom 12 + South Korea, 18 GB): add the `volumes` entry of `tileserver/docker-compose.tileserver.yml`
+  to the `tileserver` service in your `docker-compose.yml`, check the free disk space, then run `./update.sh`.
 
 ### settings.json
 
