@@ -28,7 +28,7 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 
 ## SCLAB image list
 
-- sclabio/webapp
+- sclabio/onpremise-webapp-datanuri (webapp for the Datanuri deployment, used by the `datanuri` branch of this repository)
 - sclabio/gis-process
 - sclabio/mqtt-client
 - sclabio/mqtt-broker
@@ -113,6 +113,7 @@ The installation script will:
    - OpenAI / Gemini / DeepSeek API keys (optional - leave empty to use local Ollama models)
    - Editor subdomain prefix (optional - for hosting editor on separate subdomain)
    - Domain name (optional - leave empty for localhost)
+   - Datanuri (DPP) integration: DPP API host, TLS certificate verification, JWT public key file (optional - `dpp-pub-key.pem` in this folder is used automatically; can be set later in `settings.json`)
    - Administrator email and password
 3. **Configure all services** by updating configuration files
 4. **Generate security keys** (JWT tokens and SSL certificates)
@@ -453,6 +454,9 @@ To add it after installation: run `./tileserver/enable.sh`, set `public.tileServ
 | private.adminEmail                      | admin email address - If admin account doesn't exists, then create admin account using this email address                                                                                                                                                                                                               |
 | private.adminPassword                   | admin password when create admin account, you can change after login.                                                                                                                                                                                                                                                   |
 | private.license                         | sclab on-premise license code (required)                                                                                                                                                                                                                                                                                |
+| private.datanuri.apiHost                | Datanuri DPP API address (e.g., "https://dpp.example.com:38443"). Empty disables the DPP file integration. See "Datanuri integration" below. |
+| private.datanuri.apiRejectUnauthorized  | verify the DPP API TLS certificate (default true). Set false only for a self-signed certificate. |
+| private.datanuri.jwtPublicKey           | Datanuri public key (PEM string, "\n" for line breaks) that verifies the RS256-signed login token. Empty disables Datanuri login. |
 | private.sso.google.clientId             | google client id for OAUTH                                                                                                                                                                                                                                                                                              |
 | private.sso.google.secret               | google secret for OAUTH                                                                                                                                                                                                                                                                                                 |
 | private.sso.naver.clientId              | naver client id for OAUTH                                                                                                                                                                                                                                                                                               |
@@ -545,6 +549,39 @@ Enable the form with `public.ldap.enabled` and configure the server under `priva
 ```
 
 > For `ldaps://`, set `port` to `636`. If the server certificate is not issued by a public CA, provide the CA certificate (PEM string) via `private.sso.ldap.ldapsCertificate`.
+
+#### Datanuri integration
+
+The `datanuri` branch runs the Datanuri build of the webapp (`sclabio/onpremise-webapp-datanuri`). Datanuri members sign in
+automatically with a JWT issued by Datanuri (`POST /dpp` or `/dpp/:siteId?authToken=`), and their DPP files appear in the
+user editor as data sources. Configure it under `private.datanuri`.
+
+`install.sh` asks for the DPP API host and whether to verify its TLS certificate. For the JWT public key, put the
+Datanuri public key file in this folder as **`dpp-pub-key.pem`** before running `install.sh`: it is detected and used
+automatically. If the file is missing (or is not a PEM public key), `install.sh` asks for the path of the key file instead.
+Any value left empty can be filled in `settings.json` later (restart the webapp after changing it).
+
+```bash
+cp /path/to/datanuri-public-key.pem ./dpp-pub-key.pem
+sudo ./install.sh
+```
+
+```json
+"private": {
+  "datanuri": {
+    "apiHost": "https://dpp.example.com:38443",
+    "apiRejectUnauthorized": true,
+    "jwtPublicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjAN...\n-----END PUBLIC KEY-----"
+  }
+}
+```
+
+- The login token must be signed with **RS256**. Tokens with any other algorithm (including HS256) are rejected.
+- The token payload keys are fixed: member id `mbrId` (falls back to `sub`), `name`, `email`.
+- If `jwtPublicKey` is empty, every Datanuri login is rejected and the webapp logs a warning at startup.
+- If `apiHost` is empty, the DPP file list is hidden. Set `apiRejectUnauthorized` to `false` only for a self-signed certificate.
+- To put a PEM file into `settings.json` by hand, join its lines with `\n`:
+  `awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }' datanuri.pub`
 
 ## Running SCLAB Studio
 

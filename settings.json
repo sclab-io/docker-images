@@ -160,7 +160,12 @@
   "private": {
     "adminEmail": "admin@sclab.io",
     "adminPassword": "admin",
-    "license": "LICENSE CODE HERE"
+    "license": "LICENSE CODE HERE",
+    "datanuri": {
+      "apiHost": "",
+      "apiRejectUnauthorized": true,
+      "jwtPublicKey": ""
+    }
   },
   "redisOplog": {
     "redis": {

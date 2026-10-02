@@ -727,6 +727,59 @@ main() {
       ;;
   esac
   
+  # Datanuri (DPP) Integration Configuration
+  echo ""
+  echo "Datanuri (DPP) Integration Configuration"
+  echo "----------------------------------------"
+  echo "Settings for the Datanuri login (JWT) and DPP file integration (private.datanuri in settings.json)."
+  echo "Leave a value empty to fill it in later in settings.json."
+  echo ""
+  echo "DPP API host: the Datanuri DPP API address, e.g. https://dpp.example.com:38443 (empty = DPP file integration off)."
+  read -r -p "DPP API host [Enter = skip]: " DATANURI_API_HOST || true
+  DATANURI_API_HOST="${DATANURI_API_HOST%/}"
+  if [ -n "${DATANURI_API_HOST:-}" ]; then
+    echo " → DPP API host: $DATANURI_API_HOST"
+    read -r -p "Verify the DPP API TLS certificate? (answer n for a self-signed certificate) [Y/n]: " DATANURI_VERIFY_TLS || true
+    case "${DATANURI_VERIFY_TLS:-Y}" in
+      [Nn]* ) DATANURI_REJECT_UNAUTHORIZED=false; echo " → TLS certificate verification disabled." ;;
+      * ) DATANURI_REJECT_UNAUTHORIZED=true; echo " → TLS certificate verification enabled." ;;
+    esac
+  else
+    DATANURI_REJECT_UNAUTHORIZED=true
+    echo " → DPP API host left empty (DPP file integration off)."
+  fi
+  echo ""
+  echo "JWT public key: the Datanuri public key (PEM) that verifies the RS256-signed login token."
+  DATANURI_JWT_PUBLIC_KEY=""
+  DATANURI_JWT_KEY_DEFAULT="dpp-pub-key.pem"
+  if [ -f "$DATANURI_JWT_KEY_DEFAULT" ]; then
+    if grep -q -- "-----BEGIN [A-Z ]*PUBLIC KEY-----" "$DATANURI_JWT_KEY_DEFAULT"; then
+      DATANURI_JWT_PUBLIC_KEY="$(cat "$DATANURI_JWT_KEY_DEFAULT")"
+      echo " → Found $DATANURI_JWT_KEY_DEFAULT; using it as the JWT public key."
+    else
+      echo " ! $DATANURI_JWT_KEY_DEFAULT is not a PEM public key (expected '-----BEGIN PUBLIC KEY-----')."
+    fi
+  else
+    echo "$DATANURI_JWT_KEY_DEFAULT was not found in this folder."
+  fi
+  while [ -z "$DATANURI_JWT_PUBLIC_KEY" ]; do
+    echo "Enter the path of the public key file. Without it, Datanuri login is disabled."
+    read -r -p "JWT public key file path (PEM) [Enter = skip]: " DATANURI_JWT_KEY_FILE || true
+    if [ -z "${DATANURI_JWT_KEY_FILE:-}" ]; then
+      echo " → JWT public key left empty. Set private.datanuri.jwtPublicKey in settings.json to enable Datanuri login."
+      break
+    fi
+    if [ ! -f "$DATANURI_JWT_KEY_FILE" ]; then
+      echo " ! File not found: $DATANURI_JWT_KEY_FILE"
+    elif ! grep -q -- "-----BEGIN [A-Z ]*PUBLIC KEY-----" "$DATANURI_JWT_KEY_FILE"; then
+      echo " ! Not a PEM public key (expected '-----BEGIN PUBLIC KEY-----'): $DATANURI_JWT_KEY_FILE"
+    else
+      DATANURI_JWT_PUBLIC_KEY="$(cat "$DATANURI_JWT_KEY_FILE")"
+      echo " → Using the public key from: $DATANURI_JWT_KEY_FILE"
+      break
+    fi
+  done
+
   # Administrator Account Configuration
   echo ""
   echo "Administrator Account Configuration"
@@ -850,6 +903,20 @@ main() {
     fi
   fi
   
+  # Datanuri (DPP) integration
+  if [ -f "settings.json" ]; then
+    echo " - Updating Datanuri settings in settings.json..."
+    # JSON-escape: backslash, double quote, then newlines as \n
+    DATANURI_API_HOST_JSON=$(printf '%s' "${DATANURI_API_HOST:-}" | sed 's/["\\]/\\&/g')
+    DATANURI_JWT_PUBLIC_KEY_JSON=$(printf '%s' "${DATANURI_JWT_PUBLIC_KEY:-}" | tr -d '\r' | sed 's/["\\]/\\&/g' | awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }')
+    safe_sed_inplace "settings.json" '"apiHost"[[:space:]]*:[[:space:]]*"[^"]*"' '"apiHost": "'"$DATANURI_API_HOST_JSON"'"'
+    safe_sed_inplace "settings.json" '"apiRejectUnauthorized"[[:space:]]*:[[:space:]]*[a-z]*' '"apiRejectUnauthorized": '"${DATANURI_REJECT_UNAUTHORIZED:-true}"
+    safe_sed_inplace "settings.json" '"jwtPublicKey"[[:space:]]*:[[:space:]]*"[^"]*"' '"jwtPublicKey": "'"$DATANURI_JWT_PUBLIC_KEY_JSON"'"'
+    echo " - settings.json: updated private.datanuri (apiHost '${DATANURI_API_HOST:-}', apiRejectUnauthorized ${DATANURI_REJECT_UNAUTHORIZED:-true}, jwtPublicKey $([ -n "${DATANURI_JWT_PUBLIC_KEY:-}" ] && echo set || echo empty))"
+  else
+    echo " ! Warning: settings.json not found; could not update Datanuri settings."
+  fi
+
   # Replace license
   do_replace_license_only "$LICENSE_PLACEHOLDER" "$LICENSE_KEY" "license key"
   
@@ -930,6 +997,14 @@ main() {
     echo "  - Map tile server: not installed (map widgets use public CARTO tiles)."
     echo "    To add it later: ./tileserver/enable.sh, then set public.tileServerURL in settings.json"
     echo "    and TILESERVER_ALLOWED_REFERERS in tileserver.env, then ./run.sh"
+  fi
+  if [ -n "${DATANURI_API_HOST:-}" ]; then
+    echo "  - Datanuri DPP API: $DATANURI_API_HOST"
+  else
+    echo "  - Datanuri DPP API: not set (private.datanuri.apiHost in settings.json)"
+  fi
+  if [ -z "${DATANURI_JWT_PUBLIC_KEY:-}" ]; then
+    echo "  - Datanuri JWT public key: not set (Datanuri login disabled). Set private.datanuri.jwtPublicKey in settings.json."
   fi
   echo ""
   echo "========================================"

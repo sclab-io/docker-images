@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: sclab-webapp
-          image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp:latest
+          image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-webapp-datanuri:latest
           volumeMounts:
             - name: data-volume
               mountPath: /data

@@ -22,7 +22,7 @@ SCLAB은 여러 데이터를 하나로 묶어 빠르게 시각화할 수 있게 
 
 ### SCLAB 이미지 목록
 
-- `sclabio/webapp`
+- `sclabio/onpremise-webapp-datanuri` (데이터누리용 webapp, 이 저장소의 `datanuri` 브랜치에서 사용)
 - `sclabio/gis-process`
 - `sclabio/mqtt-client`
 - `sclabio/mqtt-broker`
@@ -104,6 +104,7 @@ sudo ./install.sh
    - OpenAI / Gemini / DeepSeek API 키(선택, 비워 두면 로컬 Ollama 모델 사용)
    - editor를 별도 서브도메인으로 띄울 때 쓸 서브도메인 접두어(선택)
    - 도메인 이름(선택, 비워 두면 localhost)
+   - 데이터누리(DPP) 연동: DPP API 주소, TLS 인증서 검증 여부, JWT 공개키 파일(선택, 이 폴더의 `dpp-pub-key.pem`은 자동 사용, 나중에 `settings.json`에서 설정 가능)
    - 관리자 이메일과 비밀번호
 3. 설정 파일을 갱신해 모든 서비스를 구성한다.
 4. 보안 키를 생성한다(JWT 토큰, SSL 인증서).
@@ -441,6 +442,9 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 | `private.adminEmail` | 관리자 이메일 주소 |
 | `private.adminPassword` | 관리자 비밀번호 |
 | `private.license` | SCLAB 온프레미스 라이선스 코드 |
+| `private.datanuri.apiHost` | 데이터누리 DPP API 주소(예: `"https://dpp.example.com:38443"`). 비우면 DPP 파일 연동을 끈다. 아래 "데이터누리 연동" 참고 |
+| `private.datanuri.apiRejectUnauthorized` | DPP API TLS 인증서 검증 여부(기본 `true`). 사설 인증서일 때만 `false` |
+| `private.datanuri.jwtPublicKey` | RS256 로그인 토큰을 검증하는 데이터누리 공개키(PEM 문자열, 줄바꿈은 `\n`). 비우면 데이터누리 로그인을 막는다 |
 | `private.sso.google.clientId` | Google OAuth client ID |
 | `private.sso.google.secret` | Google OAuth secret |
 | `private.sso.naver.clientId` | Naver OAuth client ID |
@@ -533,6 +537,38 @@ SCLAB Studio는 기본 ID/비밀번호 로그인 외에도 회사 LDAP 서버로
 ```
 
 > `ldaps://`를 쓸 경우 포트를 `636`으로 맞추세요. 서버 인증서가 공인 CA 발급이 아니라면, `private.sso.ldap.ldapsCertificate`에 CA 인증서(PEM 문자열)를 넣어야 합니다.
+
+#### 데이터누리 연동
+
+`datanuri` 브랜치는 데이터누리용 webapp 이미지(`sclabio/onpremise-webapp-datanuri`)를 씁니다. 데이터누리 회원은 데이터누리가
+발급한 JWT로 자동 로그인하고(`POST /dpp` 또는 `/dpp/:siteId?authToken=`), 자신의 DPP 파일을 유저 에디터에서 데이터 소스로 씁니다.
+설정은 `private.datanuri` 아래에 둡니다.
+
+`install.sh`가 DPP API 주소와 TLS 인증서 검증 여부를 묻습니다. JWT 공개키는 `install.sh`를 실행하기 전에 데이터누리 공개키 파일을
+이 폴더에 **`dpp-pub-key.pem`** 이름으로 넣어 두면 자동으로 찾아 씁니다. 파일이 없거나 PEM 공개키가 아니면 공개키 파일 경로를 묻습니다.
+비워 둔 값은 나중에 `settings.json`에서 채우면 됩니다(바꾼 뒤 webapp 재시작).
+
+```bash
+cp /path/to/datanuri-public-key.pem ./dpp-pub-key.pem
+sudo ./install.sh
+```
+
+```json
+"private": {
+  "datanuri": {
+    "apiHost": "https://dpp.example.com:38443",
+    "apiRejectUnauthorized": true,
+    "jwtPublicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjAN...\n-----END PUBLIC KEY-----"
+  }
+}
+```
+
+- 로그인 토큰은 **RS256**으로 서명돼야 합니다. 다른 알고리즘(HS256 포함) 토큰은 거부합니다.
+- 토큰 payload 키는 고정입니다: 회원 id `mbrId`(없으면 `sub`), `name`, `email`.
+- `jwtPublicKey`가 비어 있으면 모든 데이터누리 로그인을 거부하고, webapp 시작 시 경고 로그를 남깁니다.
+- `apiHost`가 비어 있으면 DPP 파일 목록을 보여 주지 않습니다. `apiRejectUnauthorized`는 사설 인증서일 때만 `false`로 두세요.
+- PEM 파일을 `settings.json`에 직접 넣을 때는 줄을 `\n`으로 이어 붙입니다:
+  `awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }' datanuri.pub`
 
 ## SCLAB Studio 실행
 
