@@ -75,6 +75,7 @@ SCLAB Docker 이미지를 내려받으려면 AWS 자격 증명이 필요합니�
 
 - Ubuntu/Debian 계열(Mint, Pop!_OS 등)
 - RHEL/CentOS/Fedora 계열(Rocky Linux, AlmaLinux 등)
+- Amazon Linux 2 / Amazon Linux 2023(AWS Docker 패키지 설치, Compose v2.40.3 플러그인 별도 설치)
 - SUSE/openSUSE 계열
 - Arch Linux/Manjaro 계열
 - Alpine Linux

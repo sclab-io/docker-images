@@ -104,6 +104,17 @@ install_docker() {
         systemctl start docker
         systemctl enable docker
         ;;
+
+      amzn)
+        # Amazon Linux uses AWS repositories, not Docker's CentOS repository.
+        if [ "${VERSION_ID:-}" = "2" ]; then
+          amazon-linux-extras install -y docker
+        elif command_exists dnf; then
+          dnf install -y docker
+        else
+          yum install -y docker
+        fi
+        ;;
         
       suse|opensuse*)
         # Install Docker using zypper
@@ -165,6 +176,39 @@ install_docker() {
   fi
 }
 
+# Install Compose separately from the AWS-provided Docker Engine package.
+install_amazon_linux_compose() {
+  local compose_version="v2.40.3"
+  local compose_arch
+  local compose_dir="/usr/local/lib/docker/cli-plugins"
+  local compose_tmp
+
+  case "$(uname -m)" in
+    x86_64|amd64) compose_arch="x86_64" ;;
+    aarch64|arm64) compose_arch="aarch64" ;;
+    *)
+      echo "[Error] Unsupported architecture for Docker Compose: $(uname -m)"
+      exit 1
+      ;;
+  esac
+
+  if ! command_exists curl && ! command_exists wget; then
+    install_package curl
+  fi
+
+  # Pin Compose v2 for compatibility with the AWS-provided Docker Engine.
+  # Download first so a failed transfer cannot leave a partial plugin in place.
+  compose_tmp=$(mktemp)
+  if ! download_file "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-${compose_arch}" "$compose_tmp"; then
+    rm -f "$compose_tmp"
+    echo "[Error] Failed to download Docker Compose."
+    exit 1
+  fi
+  mkdir -p "$compose_dir"
+  install -m 0755 "$compose_tmp" "$compose_dir/docker-compose"
+  rm -f "$compose_tmp"
+}
+
 # Check for required commands
 check_requirements() {
   echo "Checking system requirements..."
@@ -211,6 +255,9 @@ check_requirements() {
           ;;
         centos|rhel|rocky|almalinux)
           yum install -y docker-compose-plugin
+          ;;
+        amzn)
+          install_amazon_linux_compose
           ;;
         suse|opensuse*)
           zypper install -y docker-compose

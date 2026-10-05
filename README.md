@@ -84,6 +84,7 @@ The installation script is compatible with all major Linux distributions:
 
 - **Ubuntu/Debian** and derivatives (Mint, Pop!_OS, etc.)
 - **RHEL/CentOS/Fedora** and derivatives (Rocky Linux, AlmaLinux)
+- **Amazon Linux 2 / Amazon Linux 2023** (AWS Docker package; Compose v2.40.3 plugin installed separately)
 - **SUSE/openSUSE**
 - **Arch Linux/Manjaro**
 - **Alpine Linux**
