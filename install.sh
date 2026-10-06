@@ -810,13 +810,41 @@ main() {
     echo "$DATANURI_JWT_KEY_DEFAULT was not found in this folder."
   fi
   while [ -z "$DATANURI_JWT_PUBLIC_KEY" ]; do
-    echo "Enter the path of the public key file. Without it, Datanuri login is disabled."
-    read -r -p "JWT public key file path (PEM) [Enter = skip]: " DATANURI_JWT_KEY_FILE || true
+    echo "Enter a public key file path or paste the PEM public key (through the END line)."
+    echo 'A single line with literal \n line breaks is also accepted. Without a key, Datanuri login is disabled.'
+    DATANURI_JWT_KEY_FILE=""
+    if ! IFS= read -r -p "JWT public key (file path or PEM) [Enter = skip]: " DATANURI_JWT_KEY_FILE && [ -z "$DATANURI_JWT_KEY_FILE" ]; then
+      echo "[Error] Input ended while reading the JWT public key."
+      exit 1
+    fi
+    DATANURI_JWT_KEY_FILE="${DATANURI_JWT_KEY_FILE//$'\r'/}"
     if [ -z "${DATANURI_JWT_KEY_FILE:-}" ]; then
       echo " → JWT public key left empty. Set private.datanuri.jwtPublicKey in settings.json to enable Datanuri login."
       break
     fi
-    if [ ! -f "$DATANURI_JWT_KEY_FILE" ]; then
+    if [[ "$DATANURI_JWT_KEY_FILE" == '-----BEGIN '*'PUBLIC KEY-----'* ]]; then
+      local pem_input="${DATANURI_JWT_KEY_FILE//\\n/$'\n'}"
+      local pem_header="${pem_input%%$'\n'*}"
+      local pem_footer="${pem_header/BEGIN/END}"
+      local pem_line=""
+      while [[ "$pem_input" != *"$pem_footer"* ]]; do
+        pem_line=""
+        if ! IFS= read -r pem_line && [ -z "$pem_line" ]; then
+          echo "[Error] Incomplete PEM public key: expected $pem_footer."
+          exit 1
+        fi
+        pem_line="${pem_line//$'\r'/}"
+        pem_input+=$'\n'"${pem_line//\\n/$'\n'}"
+      done
+      if ! printf '%s\n' "$pem_input" | grep -q -- '^-----BEGIN [A-Z ]*PUBLIC KEY-----$' ||
+         ! printf '%s\n' "$pem_input" | grep -q -- "^${pem_footer}$"; then
+        echo " ! Invalid PEM public key: expected matching BEGIN and END lines."
+        continue
+      fi
+      DATANURI_JWT_PUBLIC_KEY="$pem_input"
+      echo " → Using the pasted JWT public key."
+      break
+    elif [ ! -f "$DATANURI_JWT_KEY_FILE" ]; then
       echo " ! File not found: $DATANURI_JWT_KEY_FILE"
     elif ! grep -q -- "-----BEGIN [A-Z ]*PUBLIC KEY-----" "$DATANURI_JWT_KEY_FILE"; then
       echo " ! Not a PEM public key (expected '-----BEGIN PUBLIC KEY-----'): $DATANURI_JWT_KEY_FILE"

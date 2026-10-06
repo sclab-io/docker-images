@@ -546,7 +546,7 @@ SCLAB Studio는 기본 ID/비밀번호 로그인 외에도 회사 LDAP 서버로
 설정은 `private.datanuri` 아래에 둡니다.
 
 `install.sh`가 DPP API 주소와 TLS 인증서 검증 여부를 묻습니다. JWT 공개키는 `install.sh`를 실행하기 전에 데이터누리 공개키 파일을
-이 폴더에 **`dpp-pub-key.pem`** 이름으로 넣어 두면 자동으로 찾아 씁니다. 파일이 없거나 PEM 공개키가 아니면 공개키 파일 경로를 묻습니다.
+이 폴더에 **`dpp-pub-key.pem`** 이름으로 넣어 두면 자동으로 찾아 씁니다. 파일이 없거나 PEM 공개키가 아니면 공개키 파일 경로를 입력하거나 PEM 내용을 `-----BEGIN PUBLIC KEY-----`부터 `-----END PUBLIC KEY-----`까지 붙여넣을 수 있습니다. 실제 줄바꿈과 문자 그대로의 `\n`을 모두 지원합니다.
 비워 둔 값은 나중에 `settings.json`에서 채우면 됩니다(바꾼 뒤 webapp 재시작).
 
 ```bash

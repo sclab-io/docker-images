@@ -559,7 +559,8 @@ user editor as data sources. Configure it under `private.datanuri`.
 
 `install.sh` asks for the DPP API host and whether to verify its TLS certificate. For the JWT public key, put the
 Datanuri public key file in this folder as **`dpp-pub-key.pem`** before running `install.sh`: it is detected and used
-automatically. If the file is missing (or is not a PEM public key), `install.sh` asks for the path of the key file instead.
+automatically. If the file is missing (or is not a PEM public key), enter the key file path or paste the complete PEM
+from `-----BEGIN PUBLIC KEY-----` through `-----END PUBLIC KEY-----`. Both actual line breaks and literal `\n` sequences are accepted.
 Any value left empty can be filled in `settings.json` later (restart the webapp after changing it).
 
 ```bash
