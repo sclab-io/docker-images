@@ -1,0 +1,20 @@
+# Optional service 'qdrant'. Managed by ./service-manage.sh (and install.sh): inserted into / removed from docker-compose.yml.
+# Keep the two-space indentation: it is inserted under "services:".
+  qdrant:
+    container_name: qdrant
+    hostname: qdrant
+    image: "qdrant/qdrant:v1.15"
+    restart: always
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+      - ./data/qdrant/logs:/var/log/qdrant
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    networks:
+      - sclab-network
+    environment:
+      - QDRANT__SERVICE__HOST=0.0.0.0
+      - QDRANT__SERVICE__API_KEY=changeThisQdrantApiKey
