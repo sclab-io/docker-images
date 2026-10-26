@@ -162,7 +162,8 @@
   "private": {
     "adminEmail": "admin@sclab.io",
     "adminPassword": "admin",
-    "license": "LICENSE CODE HERE"
+    "license": "LICENSE CODE HERE",
+    "backupZipMaxMB": 1048576
   },
   "redisOplog": {
     "redis": {

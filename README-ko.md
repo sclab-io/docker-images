@@ -445,6 +445,7 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 | `private.adminEmail` | 관리자 이메일 주소 |
 | `private.adminPassword` | 관리자 비밀번호 |
 | `private.license` | SCLAB 온프레미스 라이선스 코드 |
+| `private.backupZipMaxMB` | 복원용으로 업로드할 수 있는 백업(zip) 파일의 최대 크기(MB). 생략하면 기본 1048576(1TB)이며 서버가 강제하므로 실제 한계는 디스크 여유 공간입니다. 수십 GB 백업도 스트리밍으로 처리해 서버 메모리는 한계가 아닙니다 |
 | `private.sso.google.clientId` | Google OAuth client ID |
 | `private.sso.google.secret` | Google OAuth secret |
 | `private.sso.naver.clientId` | Naver OAuth client ID |
