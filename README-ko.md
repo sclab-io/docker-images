@@ -158,6 +158,8 @@ sudo ./install.sh
 | `tileserver/` | 지도 타일 서버 edge(`tileserver-edge`)용 Nginx 템플릿 |
 | `tileserver/docker-compose.tileserver.yml` | 타일 서버 서비스 정의. 타일 서버를 설치할 때만 `docker-compose.yml` 에 추가됨 |
 | `tileserver/enable.sh` | 타일 서버 서비스를 `docker-compose.yml` 에 추가하는 스크립트 (`install.sh` 가 사용, 나중에 직접 실행 가능) |
+| `service-manage.sh` | 선택 서비스(gis-process, mqtt-client, mqtt-broker, kafka-client, mail, ai-service, node-vm-service, sclab-agent, mongo, redis, qdrant, tileserver, sclab-vision)를 `docker-compose.yml` 에서 켜고 끄는 스크립트. `install.sh` 는 각각 물어봅니다: gis-process, mqtt-client, mqtt-broker, kafka-client, mail 는 기본 설치 안 함, 나머지는 기본 설치이며 mongo/redis/qdrant 를 n 으로 답하면 외부 접속 정보를 입력받습니다. `./service-manage.sh`(메뉴), `list`, `enable <서비스>`, `disable <서비스>` 실행 후 `./run.sh` |
+| `optional-services/` | `service-manage.sh` 가 서비스를 `docker-compose.yml` 에 다시 추가할 때 쓰는 서비스 정의 |
 | `docker-compose.yml` | Docker Compose YAML |
 | `gen.yml` | 키 생성을 위한 Docker Compose YAML |
 | `nginx.conf` | Nginx 설정 |

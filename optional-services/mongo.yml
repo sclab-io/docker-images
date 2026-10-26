@@ -1,0 +1,35 @@
+# Optional service 'mongo'. Managed by ./service-manage.sh (and install.sh): inserted into / removed from docker-compose.yml.
+# Keep the two-space indentation: it is inserted under "services:".
+  mongo:
+    container_name: mongo
+    hostname: mongo
+    image: "mongo:8.2.7"
+    restart: always
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -lc
+      - |
+        uid=$(id -u mongodb 2>/dev/null || id -u)
+        gid=$(id -g mongodb 2>/dev/null || id -g)
+        mkdir -p /var/log/mongodb
+        touch /var/log/mongodb/mongod.log
+        chown -R "$$uid:$$gid" /var/log/mongodb
+        chmod 775 /var/log/mongodb
+        chmod 664 /var/log/mongodb/mongod.log
+        chmod 644 /etc/mongod.conf
+        exec docker-entrypoint.sh mongod --config /etc/mongod.conf
+    volumes:
+      - ./data/mongo/db:/data/db
+      - ./data/mongo/logs:/var/log/mongodb
+      - ./mongod.conf:/etc/mongod.conf
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=changeThisMongoPassword
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    networks:
+      - sclab-network

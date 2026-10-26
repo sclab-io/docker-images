@@ -1,0 +1,9 @@
+# Optional service 'mail'. Managed by ./service-manage.sh (and install.sh): inserted into / removed from docker-compose.yml.
+# Keep the two-space indentation: it is inserted under "services:".
+  mail:
+    container_name: mail
+    hostname: mail
+    image: "bytemark/smtp"
+    restart: always
+    networks:
+      - sclab-network

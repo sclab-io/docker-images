@@ -1,0 +1,22 @@
+# Optional service 'sclab-agent'. Managed by ./service-manage.sh (and install.sh): inserted into / removed from docker-compose.yml.
+# Keep the two-space indentation: it is inserted under "services:".
+  sclab-agent:
+    container_name: sclab-agent
+    hostname: sclab-agent
+    image: "sclabio/sclab-agent:latest"
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    volumes:
+      - ./data/db-agent:/data
+      - ./jwt:/data/jwt
+      - ./cert:/data/cert
+    env_file:
+      - ./db-agent.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - sclab-network

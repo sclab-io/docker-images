@@ -1,0 +1,29 @@
+# Optional service 'redis'. Managed by ./service-manage.sh (and install.sh): inserted into / removed from docker-compose.yml.
+# Keep the two-space indentation: it is inserted under "services:".
+  redis:
+    container_name: redis
+    hostname: redis
+    image: "redis:8.2.1"
+    restart: always
+    user: "0:0"
+    command: >
+      sh -c '
+        mkdir -p /data/logs &&
+        touch /data/logs/redis-server.log &&
+        chmod 0777 /data/logs &&
+        chmod 0666 /data/logs/redis-server.log &&
+        redis-server /usr/local/etc/redis/redis.conf
+      '
+    environment:
+      - REDIS_PASSWORD=changeThisRedisPassword
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    networks:
+      - sclab-network
+    volumes:
+      - ./data/redis/logs:/data/logs
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./data/redis/data:/data

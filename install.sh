@@ -417,6 +417,57 @@ read_password() {
   printf -v "$var_name" '%s' "${password}"
 }
 
+# Ask a yes/no question. $1 prompt, $2 default (Y or N), $3 variable that receives Y or N.
+ask_yes_no() {
+  local prompt="$1" default="$2" var_name="$3" hint answer
+  if [ "$default" = "Y" ]; then hint="[Y/n]"; else hint="[y/N]"; fi
+  read -r -p "$prompt $hint: " answer || answer=""
+  case "${answer:-$default}" in
+    [Yy]*) printf -v "$var_name" '%s' Y ;;
+    *)     printf -v "$var_name" '%s' N ;;
+  esac
+}
+
+# True if the optional service was selected during this run.
+service_selected() {
+  local s
+  for s in ${OPTIONAL_SERVICES_ON[@]+"${OPTIONAL_SERVICES_ON[@]}"}; do
+    [ "$s" = "$1" ] && return 0
+  done
+  return 1
+}
+
+# Percent-encode a string for use inside a URL (userinfo part).
+url_encode() {
+  local str="$1" out="" c i
+  local LC_ALL=C
+  for ((i = 0; i < ${#str}; i++)); do
+    c="${str:i:1}"
+    case "$c" in
+      [A-Za-z0-9._~-]) out+="$c" ;;
+      *) out+=$(printf '%%%02X' $(( $(printf '%d' "'$c") & 255 ))) ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+# Set KEY=value in an env file, keeping the double quotes if the existing line used them.
+set_env_value() {
+  local file="$1" key="$2" value="$3" tmp
+  tmp=$(mktemp "${file}.XXXXXX")
+  KEY="$key" VALUE="$value" awk '
+    BEGIN { k = ENVIRON["KEY"]; v = ENVIRON["VALUE"] }
+    index($0, k "=") == 1 {
+      if (substr($0, length(k) + 2, 1) == "\"") print k "=\"" v "\""
+      else print k "=" v
+      next
+    }
+    { print }
+  ' "$file" > "$tmp"
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+
 INIT_FILE=".init"
 FILES=("docker-compose.yml" "common.env" "settings.json" "ai-service.env" "redis.conf")
 DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env" "tileserver.env")
@@ -657,50 +708,184 @@ main() {
     esac
   fi
   
-  # Database and Service Passwords
+  # Database and Service Configuration
   echo ""
   echo "Database and Service Configuration"
   echo "----------------------------------"
-  echo "Configure passwords for the following services:"
+  echo "MongoDB, Redis and Qdrant run as bundled containers by default."
+  echo "Answer n to use a server you operate yourself: the bundled container is removed from"
+  echo "docker-compose.yml and you enter the connection info instead."
+  
+  MONGO_EXTERNAL=N
+  REDIS_EXTERNAL=N
+  QDRANT_EXTERNAL=N
+  OPTIONAL_SERVICES_ON=()
+  OPTIONAL_SERVICES_OFF=()
+  
   echo ""
-  prompt_secret MONGO_PW   "MongoDB root password [Enter = auto-generate]: "
-  prompt_secret REDIS_PW   "Redis password [Enter = auto-generate]: "
-  prompt_secret QDRANT_KEY "Qdrant API key [Enter = auto-generate]: "
+  ask_yes_no "Install bundled MongoDB?" Y SVC_ANSWER
+  if [ "$SVC_ANSWER" = "Y" ]; then
+    OPTIONAL_SERVICES_ON+=(mongo)
+    prompt_secret MONGO_PW "MongoDB root password [Enter = auto-generate]: "
+  else
+    OPTIONAL_SERVICES_OFF+=(mongo)
+    MONGO_EXTERNAL=Y
+    MONGO_PW=""
+    echo " → Using an external MongoDB."
+    while true; do
+      read -r -p "MongoDB connection URI (e.g. mongodb://user:pass@host:27017/sclab?authSource=admin): " MONGO_EXTERNAL_URL || MONGO_EXTERNAL_URL=""
+      case "$MONGO_EXTERNAL_URL" in
+        mongodb://?*|mongodb+srv://?*) break ;;
+        *) echo " ! The URI must start with mongodb:// or mongodb+srv://" ;;
+      esac
+    done
+  fi
+  
+  echo ""
+  ask_yes_no "Install bundled Redis?" Y SVC_ANSWER
+  if [ "$SVC_ANSWER" = "Y" ]; then
+    OPTIONAL_SERVICES_ON+=(redis)
+    prompt_secret REDIS_PW "Redis password [Enter = auto-generate]: "
+  else
+    OPTIONAL_SERVICES_OFF+=(redis)
+    REDIS_EXTERNAL=Y
+    echo " → Using an external Redis."
+    read -r -p "Redis host: " REDIS_EXTERNAL_HOST || REDIS_EXTERNAL_HOST=""
+    while [ -z "$REDIS_EXTERNAL_HOST" ]; do
+      read -r -p "Redis host (required): " REDIS_EXTERNAL_HOST || REDIS_EXTERNAL_HOST=""
+    done
+    while true; do
+      read -r -p "Redis port [Enter = 6379]: " REDIS_EXTERNAL_PORT || REDIS_EXTERNAL_PORT=""
+      REDIS_EXTERNAL_PORT="${REDIS_EXTERNAL_PORT:-6379}"
+      case "$REDIS_EXTERNAL_PORT" in
+        ''|*[!0-9]*) echo " ! The port must be a number." ;;
+        *) break ;;
+      esac
+    done
+    read_password "Redis password [Enter = none]: " REDIS_PW
+  fi
+  
+  echo ""
+  ask_yes_no "Install bundled Qdrant (vector DB, used by the AI service)?" Y SVC_ANSWER
+  if [ "$SVC_ANSWER" = "Y" ]; then
+    OPTIONAL_SERVICES_ON+=(qdrant)
+    prompt_secret QDRANT_KEY "Qdrant API key [Enter = auto-generate]: "
+  else
+    OPTIONAL_SERVICES_OFF+=(qdrant)
+    QDRANT_EXTERNAL=Y
+    echo " → Using an external Qdrant."
+    while true; do
+      read -r -p "Qdrant URL (e.g. http://host:6333): " QDRANT_EXTERNAL_URL || QDRANT_EXTERNAL_URL=""
+      case "$QDRANT_EXTERNAL_URL" in
+        http://?*|https://?*) break ;;
+        *) echo " ! The URL must start with http:// or https://" ;;
+      esac
+    done
+    read_password "Qdrant API key [Enter = none]: " QDRANT_KEY
+  fi
+  
   # Vector DB credential encryption key (auto-generated; encrypts vector DB
   # API keys/passwords saved via the admin UI). Shared by webapp and ai-service.
   VECTOR_DB_ENC_KEY="$(gen_secret)"
+  echo ""
   echo " → Auto-generated vector DB encryption key."
   
+  # Optional Services Configuration
+  echo ""
+  echo "Optional Services"
+  echo "-----------------"
+  echo "Answer n to remove a service from docker-compose.yml so it is not started (saves CPU/memory)."
+  echo "You can turn services on/off any time later with ./service-manage.sh."
+  echo ""
+  for svc_entry in \
+    "gis-process|N|GIS data processing" \
+    "mqtt-client|N|MQTT client (subscribes to external MQTT brokers)" \
+    "mqtt-broker|N|built-in MQTT broker (ports 8883, 8888)" \
+    "kafka-client|N|Kafka client" \
+    "mail|N|built-in SMTP relay for outgoing mail (MAIL_URL=smtp://mail:25)" \
+    "ai-service|Y|AI service (LLM / vector search)" \
+    "node-vm-service|Y|Node.js sandbox for scripts" \
+    "sclab-agent|Y|DB agent (connects to external databases)"; do
+    svc_name="${svc_entry%%|*}"
+    svc_rest="${svc_entry#*|}"
+    svc_default="${svc_rest%%|*}"
+    svc_desc="${svc_rest#*|}"
+    ask_yes_no "Install ${svc_name} - ${svc_desc}?" "$svc_default" SVC_ANSWER
+    if [ "$SVC_ANSWER" = "Y" ]; then
+      OPTIONAL_SERVICES_ON+=("$svc_name")
+      echo " → ${svc_name}: will be installed."
+    else
+      OPTIONAL_SERVICES_OFF+=("$svc_name")
+      echo " → ${svc_name}: skipped (removed from docker-compose.yml)."
+    fi
+  done
+  
+  # Outgoing mail: without the bundled SMTP relay, offer to send through a Gmail account.
+  MAIL_URL_NEW=""
+  if ! service_selected mail; then
+    echo ""
+    echo "Mail Configuration"
+    echo "------------------"
+    echo "The bundled mail relay is not installed. Outgoing mail (invitations, password resets) can be"
+    echo "sent through a Google account instead (smtp.gmail.com). This needs an App Password:"
+    echo "Google Account > Security > 2-Step Verification > App passwords (a normal password does not work)."
+    echo "If you skip this, set MAIL_URL in common.env later."
+    ask_yes_no "Send mail through Gmail?" N SVC_ANSWER
+    if [ "$SVC_ANSWER" = "Y" ]; then
+      GMAIL_USER=""
+      while [ -z "$GMAIL_USER" ]; do
+        read -r -p "Gmail address (e.g. you@gmail.com): " GMAIL_USER || GMAIL_USER=""
+      done
+      GMAIL_PASS=""
+      while [ -z "$GMAIL_PASS" ]; do
+        read_password "Gmail App Password (16 characters): " GMAIL_PASS
+        GMAIL_PASS="${GMAIL_PASS//[[:space:]]/}"
+      done
+      MAIL_URL_NEW="smtps://$(url_encode "$GMAIL_USER"):$(url_encode "$GMAIL_PASS")@smtp.gmail.com:465"
+      echo " → Mail will be sent through smtp.gmail.com as ${GMAIL_USER}."
+    else
+      echo " → Mail not configured (MAIL_URL still points to the removed 'mail' service)."
+    fi
+  fi
+  
   # AI Service Configuration
-  echo ""
-  echo "AI Service Configuration"
-  echo "------------------------"
-  echo "If you have an OpenAI API key, enter it to use GPT models."
-  echo "Leave empty to skip OpenAI."
-  read_password "OpenAI API Key [Enter = skip]: " OPENAI_KEY
-  if [ -n "${OPENAI_KEY:-}" ]; then
-    echo " → OpenAI API key configured. GPT models will be available."
+  OPENAI_KEY=""
+  GEMINI_API_KEY=""
+  DEEPSEEK_API_KEY=""
+  if service_selected ai-service; then
+    echo ""
+    echo "AI Service Configuration"
+    echo "------------------------"
+    echo "If you have an OpenAI API key, enter it to use GPT models."
+    echo "Leave empty to skip OpenAI."
+    read_password "OpenAI API Key [Enter = skip]: " OPENAI_KEY
+    if [ -n "${OPENAI_KEY:-}" ]; then
+      echo " → OpenAI API key configured. GPT models will be available."
+    else
+      echo " → No OpenAI API key provided."
+    fi
+    echo ""
+    echo "If you have a Gemini API key, enter it to use Gemini models."
+    read_password "Gemini API Key [Enter = skip]: " GEMINI_API_KEY
+    if [ -n "${GEMINI_API_KEY:-}" ]; then
+      echo " → Gemini API key configured. Gemini models will be available."
+    else
+      echo " → No Gemini API key provided."
+    fi
+    echo ""
+    echo "If you have a DeepSeek API key, enter it to use DeepSeek models."
+    read_password "DeepSeek API Key [Enter = skip]: " DEEPSEEK_API_KEY
+    if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+      echo " → DeepSeek API key configured. DeepSeek models will be available."
+    else
+      echo " → No DeepSeek API key provided."
+    fi
+    if [ -z "${OPENAI_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+      echo " → No OpenAI/Gemini/DeepSeek API key provided. Will use local Ollama models."
+    fi
   else
-    echo " → No OpenAI API key provided."
-  fi
-  echo ""
-  echo "If you have a Gemini API key, enter it to use Gemini models."
-  read_password "Gemini API Key [Enter = skip]: " GEMINI_API_KEY
-  if [ -n "${GEMINI_API_KEY:-}" ]; then
-    echo " → Gemini API key configured. Gemini models will be available."
-  else
-    echo " → No Gemini API key provided."
-  fi
-  echo ""
-  echo "If you have a DeepSeek API key, enter it to use DeepSeek models."
-  read_password "DeepSeek API Key [Enter = skip]: " DEEPSEEK_API_KEY
-  if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
-    echo " → DeepSeek API key configured. DeepSeek models will be available."
-  else
-    echo " → No DeepSeek API key provided."
-  fi
-  if [ -z "${OPENAI_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${DEEPSEEK_API_KEY:-}" ]; then
-    echo " → No OpenAI/Gemini/DeepSeek API key provided. Will use local Ollama models."
+    echo ""
+    echo " → AI service not installed: skipping LLM API key questions."
   fi
 
   # Domain Configuration
@@ -805,9 +990,30 @@ main() {
   echo "========================================"
   
   # Replace secrets
-  do_replace_all "changeThisMongoPassword"  "$MONGO_PW"   "MongoDB password"
+  if [ "$MONGO_EXTERNAL" = "Y" ]; then
+    set_env_value common.env MONGO_URL "$MONGO_EXTERNAL_URL"
+    echo " - common.env: MONGO_URL set to the external MongoDB."
+  else
+    do_replace_all "changeThisMongoPassword"  "$MONGO_PW"   "MongoDB password"
+  fi
   do_replace_all "changeThisRedisPassword"  "$REDIS_PW"   "Redis password"
+  if [ "$REDIS_EXTERNAL" = "Y" ]; then
+    REDIS_HOST_JSON=$(printf '%s' "$REDIS_EXTERNAL_HOST" | sed 's/[\\"]/\\&/g')
+    if [ -f "settings.json" ]; then
+      safe_sed_inplace "settings.json" '"host": "redis"' "\"host\": \"${REDIS_HOST_JSON}\""
+      safe_sed_inplace "settings.json" '"port": 6379' "\"port\": ${REDIS_EXTERNAL_PORT}"
+      echo " - settings.json: redisOplog host/port set to ${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT}."
+    fi
+    if [ -f "ai-service.env" ]; then
+      safe_sed_inplace "ai-service.env" 'redis://redis:6379' "redis://${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT}"
+      echo " - ai-service.env: REDIS_URL set to redis://${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT}."
+    fi
+  fi
   do_replace_all "changeThisQdrantApiKey"   "$QDRANT_KEY" "Qdrant API key"
+  if [ "$QDRANT_EXTERNAL" = "Y" ]; then
+    set_env_value common.env QDRANT_CLUSTER_URL "$QDRANT_EXTERNAL_URL"
+    echo " - common.env: QDRANT_CLUSTER_URL set to ${QDRANT_EXTERNAL_URL}."
+  fi
   do_replace_all "changeThisVectorDBEncryptionKey" "$VECTOR_DB_ENC_KEY" "Vector DB encryption key"
   
   # Replace OpenAI API key
@@ -897,6 +1103,22 @@ main() {
     fi
   fi
   
+  # Gmail SMTP
+  if [ -n "$MAIL_URL_NEW" ]; then
+    set_env_value common.env MAIL_URL "$MAIL_URL_NEW"
+    echo " - common.env: MAIL_URL set to Gmail SMTP (smtp.gmail.com:465)."
+  fi
+  
+  # Optional services: remove the ones that were not selected from docker-compose.yml
+  if [ "${#OPTIONAL_SERVICES_OFF[@]}" -gt 0 ]; then
+    echo " - Removing unselected optional services from docker-compose.yml..."
+    if [ -x "service-manage.sh" ]; then
+      SERVICE_MANAGE_QUIET=1 ./service-manage.sh disable "${OPTIONAL_SERVICES_OFF[@]}"
+    else
+      echo " ! Warning: service-manage.sh not found; remove ${OPTIONAL_SERVICES_OFF[*]} from docker-compose.yml manually."
+    fi
+  fi
+  
   # Replace license
   do_replace_license_only "$LICENSE_PLACEHOLDER" "$LICENSE_KEY" "license key"
   
@@ -929,6 +1151,9 @@ main() {
     echo "domain_files=${DOMAIN_FILES[*]}"
     echo "license_file=$LICENSE_FILE"
     echo "tileserver=${INSTALL_TILESERVER:-N}"
+    echo "external_stores=mongo:${MONGO_EXTERNAL} redis:${REDIS_EXTERNAL} qdrant:${QDRANT_EXTERNAL}"
+    echo "optional_services_on=${OPTIONAL_SERVICES_ON[*]:-}"
+    echo "optional_services_off=${OPTIONAL_SERVICES_OFF[*]:-}"
     echo "distro=$DISTRO_ID"
     echo "arch=$ARCH_NORMALIZED"
   } > "$INIT_FILE"
@@ -978,6 +1203,8 @@ main() {
     echo "    To add it later: ./tileserver/enable.sh, then set public.tileServerURL in settings.json"
     echo "    and TILESERVER_ALLOWED_REFERERS in tileserver.env, then ./run.sh"
   fi
+  echo "  - Optional services: ${OPTIONAL_SERVICES_ON[*]:-none installed}"
+  echo "    Turn services on/off later with: sudo ./service-manage.sh  (then ./run.sh)"
   echo ""
   echo "========================================"
   echo "Administrator Login Credentials"
