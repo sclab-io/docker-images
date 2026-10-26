@@ -161,6 +161,7 @@ sudo ./install.sh
 | `tileserver/enable.sh` | 타일 서버 서비스를 `docker-compose.yml` 에 추가하는 스크립트 (`install.sh` 가 사용, 나중에 직접 실행 가능) |
 | `service-manage.sh` | 선택 서비스(gis-process, mqtt-client, mqtt-broker, kafka-client, mail, ai-service, node-vm-service, sclab-agent, mongo, redis, qdrant, tileserver, sclab-vision)를 `docker-compose.yml` 에서 켜고 끄는 스크립트. `install.sh` 는 각각 물어봅니다: gis-process, mqtt-client, mqtt-broker, kafka-client, mail 는 기본 설치 안 함, 나머지는 기본 설치이며 mongo/redis/qdrant 를 n 으로 답하면 외부 접속 정보를 입력받습니다. `./service-manage.sh`(메뉴), `list`, `enable <서비스>`, `disable <서비스>` 실행 후 `./run.sh` |
 | `optional-services/` | `service-manage.sh` 가 서비스를 `docker-compose.yml` 에 다시 추가할 때 쓰는 서비스 정의 |
+| `update-docker-images.sh` | 설치된 디렉터리를 `git pull` 충돌 없이 최신 스크립트로 업데이트. 수정된 파일(`docker-compose.yml`, `common.env`, `settings.json` 등)을 백업한 뒤 3-way 병합해 설정값을 유지합니다. `--check` 미리보기, `-y` 확인 생략. 병합할 수 없는 파일은 그대로 두고 새 버전을 `<파일>.upstream` 으로 저장합니다. 이후 `./update.sh` 실행 |
 | `docker-compose.yml` | Docker Compose YAML |
 | `gen.yml` | 키 생성을 위한 Docker Compose YAML |
 | `nginx.conf` | Nginx 설정 |

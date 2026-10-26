@@ -168,6 +168,7 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | tileserver/enable.sh   | Appends the tile server services to `docker-compose.yml` (used by `install.sh`, or run it later) |
 | service-manage.sh      | Turns optional services (gis-process, mqtt-client, mqtt-broker, kafka-client, mail, ai-service, node-vm-service, sclab-agent, mongo, redis, qdrant, tileserver, sclab-vision) on/off in `docker-compose.yml`. `install.sh` asks about each: gis-process, mqtt-client, mqtt-broker, kafka-client, mail default to not installed, the others to installed; answering n for mongo/redis/qdrant asks for the external connection info. Run `./service-manage.sh` (menu), `list`, `enable <svc>` or `disable <svc>`, then `./run.sh` |
 | optional-services/     | Service definitions used by `service-manage.sh` to re-add a service to `docker-compose.yml` |
+| update-docker-images.sh | Updates an installed directory to the latest scripts without `git pull` conflicts: your edited files (`docker-compose.yml`, `common.env`, `settings.json`, ...) are backed up and three-way merged so your values are kept. `--check` previews, `-y` skips the prompt; files that cannot be merged are left as is and the new version is saved as `<file>.upstream`. Then run `./update.sh` |
 | docker-compose.yml     | Docker Compose YAML                        |
 | gen.yml                | Docker Compose YAML for key generation     |
 | nginx.conf             | Nginx config                               |
