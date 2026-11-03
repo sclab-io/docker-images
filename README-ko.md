@@ -440,6 +440,7 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 | `public.ai.deepseek.llm` | DeepSeek LLM 목록 |
 | `public.ai.*.llm[].contextLimit` | **선택.** 이 배포에서 그 모델에 허용할 입력 토큰 수. 모델 자체의 최대치는 하드웨어와 무관하므로, 실제 GPU가 감당하는 값을 지정한다. 생략하면 모델 최대치를 사용한다. 아래 "모델 컨텍스트 한도" 참고 |
 | `public.ai.ocrModels` | OCR용 VLM 모델 목록 |
+| `public.ai.imageModels` | 이미지 생성 모델 목록 `[{"value": "OPENAI_gpt-image-2","label": "OpenAI Image 2"}]`. 첫 항목이 기본값. OpenAI 이미지 모델은 `OPENAI_` 접두사(예: `OPENAI_gpt-image-2.5-sunburst`), Gemini 는 모델명 그대로(예: `gemini-2.5-flash-image`). 새 이미지 모델은 여기에 추가만 하면 되며 코드 수정은 필요 없다. 생략하면 내장 기본 목록을 사용한다. |
 | `public.ai.sqlModel` | SQL 생성용 모델 |
 | `public.hub.llmAPI` | `"openai"`(기본), `"gemini"`, `"ollama"` |
 | `private.adminEmail` | 관리자 이메일 주소 |
