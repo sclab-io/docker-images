@@ -85,6 +85,8 @@ kubectl apply -f deployment-mqtt-broker.yaml
 kubectl apply -f deployment-mqtt-client.yaml
 ```
 
+`gis-process`, `kafka-client`, `mqtt-client`, `mqtt-broker`는 Rust 서비스입니다. `sclab-common-env` ConfigMap(`config-common.yaml`)의 `MONGO_URL`, `REDIS_HOST`/`REDIS_PORT`(Redis에 비밀번호가 있으면 `REDIS_PASSWORD`)가 필요합니다. `gis-process`는 webapp 내부 서비스로 파일을 내려받습니다(`deployment-gis-process.yaml`의 `ROOT_URL`). 로그 파일은 만들지 않으므로 `kubectl logs`로 확인하세요.
+
 ## Ingress
 
 nginx ingress가 필요하면 아래를 적용합니다.

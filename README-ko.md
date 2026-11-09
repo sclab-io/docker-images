@@ -223,6 +223,9 @@ sudo ./install.sh
 | `MONGO_URL` | MongoDB 접속 문자열 |
 | `MONGO_DB_READ_PREFERENCE` | MongoDB 읽기 선호도 |
 | `MONGO_DB_POOL_SIZE` | MongoDB 연결 풀 크기 |
+| `REDIS_HOST` | Redis 호스트. gis-process·mqtt-client·kafka-client(Rust 서비스)가 redis-oplog 이벤트를 발행해 webapp 화면이 실시간으로 갱신되도록 사용(외부 Redis를 쓰면 `install.sh`가 설정) |
+| `REDIS_PORT` | Redis 포트(기본 6379) |
+| `REDIS_PASSWORD` | Redis 비밀번호(비우면 비밀번호 없음). `install.sh`가 채움 |
 | `METEORD_NODE_OPTIONS` | Node.js 실행 옵션 |
 | `MAIL_URL` | 메일 서버(SMTP) 접속 URL |
 | `QDRANT_CLUSTER_URL` | Qdrant 벡터 DB 클러스터 URL |
@@ -256,6 +259,8 @@ sudo ./install.sh
 | `VLLM_API_KEY` | vLLM API 키 |
 | `DEEPSEEK_API_KEY` | DeepSeek API 키 |
 
+> **Rust 서비스**: `gis-process`, `mqtt-client`, `mqtt-broker`, `kafka-client`는 Rust로 만든 서비스입니다. 로그는 표준 출력으로만 남기며(`docker compose logs -f <서비스>`, 로그 레벨은 `RUST_LOG`, 기본 `info`), `LOG_PATH`·`USE_FILE_LOG`·`LOG_FILE_COUNT`·`NODE_ENV`·`METEORD_NODE_OPTIONS`·`METEOR_SETTINGS`를 사용하지 않습니다. `common.env`의 `MONGO_URL`(데이터베이스 이름 필수)과 `REDIS_*`를 읽습니다.
+
 ### webapp.env
 
 | 변수 | 설명 |
@@ -276,7 +281,9 @@ sudo ./install.sh
 | 변수 | 설명 |
 |:--|:--|
 | `SERVER_ID` | GIS 파일을 파싱해 DB에 저장할 때 쓰는 서버 ID |
-| `SERVER_FILE_URL` | 서버 측 파일 읽기 경로 |
+| `ROOT_URL` | 업로드된 파일을 내려받는 기준 URL. `common.env`의 `ROOT_URL`을 덮어쓰며 webapp 내부 주소를 사용(기본 `http://webapp`) |
+| `GIS_POLL_INTERVAL_SECS` | (선택) 대기 작업 확인 주기(초, 기본 5) |
+| `GIS_BATCH_SIZE` | (선택) 항목 일괄 적재 크기(기본 1000) |
 
 ### mqtt-client.env
 
@@ -287,6 +294,7 @@ sudo ./install.sh
 | `SERVER_REGION` | MQTT 클라이언트 서버 리전 |
 | `PUBLIC_IP` | 공인 IP 주소 |
 | `PRIVATE_IP` | 사설 IP 주소 |
+| `MQTT_POLL_INTERVAL_MS` | (선택) 서버·액션 확인 주기(ms, 기본 1000) |
 
 ### mqtt-broker.env
 
@@ -300,6 +308,10 @@ sudo ./install.sh
 | `JWT_KEY` | MQTT JWT 키 파일 경로(RS256) |
 | `TLS_CERT` | SSL 인증서 파일 경로 |
 | `TLS_PRIVATE_KEY` | SSL 개인키 파일 경로 |
+| `PORT` | 컨테이너 내부 헬스 체크 포트(기본 80) |
+| `BROKER_MQTT_PORT` | (선택) MQTT 포트(TLS 사용 시 기본 8883, 아니면 1883) |
+| `BROKER_WS_PORT` | (선택) WebSocket 포트(기본 8888) |
+| `BROKER_MAX_CONNECTIONS` | (선택) 동시 연결 상한(기본 100000) |
 
 ### kafka-client.env
 
@@ -310,6 +322,8 @@ sudo ./install.sh
 | `SERVER_REGION` | Kafka 클라이언트 서버 리전 |
 | `PUBLIC_IP` | 공인 IP 주소 |
 | `PRIVATE_IP` | 사설 IP 주소 |
+| `KAFKA_POLL_INTERVAL_MS` | (선택) 서버·액션 확인 주기(ms, 기본 1000) |
+| `KAFKA_CLIENT_ERR_COUNT` | (선택) 연속 오류가 이 값을 넘으면 연결 중단(기본 100) |
 
 ### ai-service.env
 
@@ -606,6 +620,8 @@ sudo ./logs.sh
 
 모든 서비스의 실시간 로그를 보여 줍니다. `Ctrl+C`로 종료할 수 있습니다.
 
+Rust 서비스(`gis-process`, `mqtt-client`, `mqtt-broker`, `kafka-client`)는 로그 파일을 만들지 않으며, 컨테이너 출력(`docker compose logs -f <서비스>`)으로 보여 줍니다.
+
 ### 완전 종료
 
 ```bash
@@ -631,6 +647,12 @@ sudo ./pull.sh
 ```
 
 서비스를 중지하지 않고 모든 SCLAB Studio 이미지를 최신으로 받습니다.
+
+> **기존 설치를 Rust 서비스로 전환할 때**(`gis-process`, `mqtt-client`, `mqtt-broker`, `kafka-client`): `update-docker-images.sh`로 스크립트를 갱신한 뒤 기존 파일에 아래 내용을 반영하고 `./update.sh`를 실행하세요.
+>
+> - `common.env`: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` 추가(`settings.json`의 `redisOplog.redis.password`와 같은 값 사용)
+> - `gis-process.env`: `SERVER_FILE_URL`을 `ROOT_URL`(webapp 내부 주소, 예: `http://webapp`)로 바꾸고, `gis-process.env`·`mqtt-client.env`·`kafka-client.env`의 `PORT`는 삭제
+> - `docker-compose.yml`에서 위 4개 서비스의 `METEOR_SETTINGS`와 `data/<서비스>/logs` 볼륨 삭제. 로그는 `docker compose logs -f <서비스>`로 확인
 
 ### webapp만 업데이트
 

@@ -22,6 +22,11 @@ data:
   NODE_TLS_REJECT_UNAUTHORIZED: "0"
   SERVER_FILE_URL: http://sclab-webapp-service
 
+  # redis (gis-process, mqtt-client, kafka-client publish redis-oplog events to the webapp)
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  #REDIS_PASSWORD: ""
+
   # ai service
   QDRANT_CLUSTER_URL: "http://qdrant:6333"
   QDRANT_API_KEY: ""

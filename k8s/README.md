@@ -73,6 +73,8 @@ $ kubectl apply -f deployment-mqtt-broker.yaml
 $ kubectl apply -f deployment-mqtt-client.yaml
 ~~~
 
+`gis-process`, `kafka-client`, `mqtt-client` and `mqtt-broker` are Rust services. They need `MONGO_URL` and `REDIS_HOST`/`REDIS_PORT` (and `REDIS_PASSWORD` if your Redis requires one) from the `sclab-common-env` ConfigMap (`config-common.yaml`). `gis-process` downloads files through the internal webapp service (`ROOT_URL` in `deployment-gis-process.yaml`). They do not write log files; use `kubectl logs`.
+
 ## Ingress
 If you need nginx ingress
 ~~~bash

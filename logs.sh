@@ -30,19 +30,19 @@ case ${runEnv} in
   ;;
 
   "gis-process")
-  tail -n 100 -F ./data/gis-process/logs/sclab.log
+  docker compose logs -f --tail 100 gis-process  # Rust service: no log file, stdout only
   ;;
 
   "kafka-client")
-  tail -n 100 -F ./data/kafka-client/logs/sclab.log
+  docker compose logs -f --tail 100 kafka-client  # Rust service: no log file, stdout only
   ;;
 
   "mqtt-broker")
-  tail -n 100 -F ./data/mqtt-broker/logs/sclab.log
+  docker compose logs -f --tail 100 mqtt-broker  # Rust service: no log file, stdout only
   ;;
 
   "mqtt-client")
-  tail -n 100 -F ./data/mqtt-client/logs/sclab.log
+  docker compose logs -f --tail 100 mqtt-client  # Rust service: no log file, stdout only
   ;;
 
   "ai-service")

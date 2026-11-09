@@ -124,13 +124,9 @@ services:
     hostname: gis-process
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest"
     restart: always
-    volumes:
-      - ./data/gis-process/logs:/data/logs
     env_file:
       - ./common.env
       - ./gis-process.env
-    environment:
-      - METEOR_SETTINGS=${METEOR_SETTINGS}
     logging:
       driver: "json-file"
       options:
@@ -148,13 +144,9 @@ services:
     hostname: mqtt-client
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest"
     restart: always
-    volumes:
-      - ./data/mqtt-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./mqtt-client.env
-    environment:
-      - METEOR_SETTINGS=${METEOR_SETTINGS}
     logging:
       driver: "json-file"
       options:
@@ -176,14 +168,11 @@ services:
       - "8883:8883"
       - "8888:8888"
     volumes:
-      - ./data/mqtt-broker/logs:/data/logs
       - ./cert:/data/cert
       - ./jwt:/data/jwt
     env_file:
       - ./common.env
       - ./mqtt-broker.env
-    environment:
-      - METEOR_SETTINGS=${METEOR_SETTINGS}
     logging:
       driver: "json-file"
       options:
@@ -201,13 +190,9 @@ services:
     hostname: kafka-client
     image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-kafka-client:latest"
     restart: always
-    volumes:
-      - ./data/kafka-client/logs:/data/logs
     env_file:
       - ./common.env
       - ./kafka-client.env
-    environment:
-      - METEOR_SETTINGS=${METEOR_SETTINGS}
     logging:
       driver: "json-file"
       options:
