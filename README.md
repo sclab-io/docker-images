@@ -573,7 +573,7 @@ Enable the form with `public.ldap.enabled` and configure the server under `priva
 #### Datanuri integration
 
 The `datanuri` branch runs the Datanuri build of the webapp (`sclabio/onpremise-webapp-datanuri`). Datanuri members sign in
-automatically with a JWT issued by Datanuri (`POST /dpp` or `/dpp/:siteId?authToken=`), and their DPP files appear in the
+automatically with a JWT issued by Datanuri (`POST /dpp`, or `GET /dpp?authToken=<JWT>` on the published site host: `https://{siteCode}.{siteDomain}/dpp`, or `https://{your-domain}/dpp` for a white-label domain), and their DPP files appear in the
 user editor as data sources. Configure it under `private.datanuri`.
 
 `install.sh` asks for the DPP API host and whether to verify its TLS certificate. For the JWT public key, put the

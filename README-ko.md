@@ -561,7 +561,7 @@ SCLAB Studio는 기본 ID/비밀번호 로그인 외에도 회사 LDAP 서버로
 #### 데이터누리 연동
 
 `datanuri` 브랜치는 데이터누리용 webapp 이미지(`sclabio/onpremise-webapp-datanuri`)를 씁니다. 데이터누리 회원은 데이터누리가
-발급한 JWT로 자동 로그인하고(`POST /dpp` 또는 `/dpp/:siteId?authToken=`), 자신의 DPP 파일을 유저 에디터에서 데이터 소스로 씁니다.
+발급한 JWT로 자동 로그인하고(`POST /dpp`, 또는 발행 사이트 호스트의 `GET /dpp?authToken=<JWT>`: `https://{siteCode}.{siteDomain}/dpp`, 화이트라벨 도메인은 `https://{도메인}/dpp`), 자신의 DPP 파일을 유저 에디터에서 데이터 소스로 씁니다.
 설정은 `private.datanuri` 아래에 둡니다.
 
 `install.sh`가 DPP API 주소와 TLS 인증서 검증 여부를 묻습니다. JWT 공개키는 `install.sh`를 실행하기 전에 데이터누리 공개키 파일을
