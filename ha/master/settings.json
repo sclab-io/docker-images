@@ -152,6 +152,14 @@
           }
         ]
       },
+      "imageModels": [
+        { "value": "OPENAI_gpt-image-2", "label": "OpenAI Image 2" },
+        { "value": "OPENAI_gpt-image-2.5-sunburst", "label": "OpenAI Image 2.5 Sunburst" },
+        { "value": "OPENAI_gpt-image-2.5-flare", "label": "OpenAI Image 2.5 Flare" },
+        { "value": "OPENAI_gpt-image-1-mini", "label": "OpenAI Image 1 Mini" },
+        { "value": "gemini-3-pro-image-preview", "label": "NanoBanana Pro" },
+        { "value": "gemini-2.5-flash-image", "label": "Gemini Flash Image" }
+      ],
       "ocrModels": [],
       "sqlModel": "OLLAMA_gpt-oss:20b"
     },
@@ -162,7 +170,8 @@
   "private": {
     "adminEmail": "admin@sclab.io",
     "adminPassword": "admin",
-    "license": "LICENSE CODE HERE"
+    "license": "LICENSE CODE HERE",
+    "backupZipMaxMB": 1048576
   },
   "redisOplog": {
     "redis": {

@@ -44,6 +44,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 BACKUP_DIR=""
+PLACEHOLDER_WARNINGS=()
+PLACEHOLDER_RE='changeThis[A-Za-z]*|[A-Za-z]+ApiKeyHere|LICENSE CODE HERE'
 PREVIEW_DIR=""
 MODIFIED_FILES=()
 OLD_HEAD=""
@@ -60,6 +62,20 @@ restore_backup() {
     fi
   done
   echo "[Error] Update failed; your files were restored. Backup: $BACKUP_DIR" >&2
+}
+
+# Collect lines (stdin) that still hold an install-time placeholder such as changeThisXxx. $1 = file label.
+# Commented-out lines are ignored.
+collect_placeholders() {
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      [[:space:]]*"#"*|"#"*) continue ;;
+    esac
+    if printf '%s\n' "$line" | grep -Eq "$PLACEHOLDER_RE"; then
+      PLACEHOLDER_WARNINGS+=("$1: $(printf '%s' "$line" | sed 's/^[[:space:]]*//' | cut -c1-110)")
+    fi
+  done
 }
 
 # 3-way merge. $1 local, $2 base, $3 upstream, $4 output. Prints nothing.
@@ -205,6 +221,8 @@ main() {
       cp "$f" "$PREVIEW_DIR/theirs"
       if three_way "$BACKUP_DIR/files/$f" "$PREVIEW_DIR/base" "$PREVIEW_DIR/theirs" "$PREVIEW_DIR/out"; then
         cat "$PREVIEW_DIR/out" > "$f"
+        # Only the lines this update introduced: they never went through install.sh.
+        collect_placeholders "$f" < <(grep -Fxv -f "$BACKUP_DIR/files/$f" "$PREVIEW_DIR/out" || true)
       else
         cp "$f" "$f.upstream"
         cat "$BACKUP_DIR/files/$f" > "$f"
@@ -212,6 +230,12 @@ main() {
     fi
   done
   UPDATED=1
+
+  # New top-level config files shipped upstream (e.g. a new *.env) also still hold placeholders.
+  while IFS= read -r f; do
+    case "$f" in */*|"") continue ;; esac
+    [ -f "$f" ] && collect_placeholders "$f" < "$f"
+  done < <(git diff --name-only --relative --diff-filter=A "$OLD_HEAD" "$new_head")
 
   echo ""
   echo "Updated to $(git rev-parse --short HEAD)."
@@ -223,6 +247,11 @@ main() {
       echo "  diff $f $f.upstream      # what upstream changed: git diff ${OLD_HEAD:0:7} ${new_head:0:7} -- $f"
     done
     echo "Delete the .upstream files when done."
+  fi
+  if [ "${#PLACEHOLDER_WARNINGS[@]}" -gt 0 ]; then
+    echo ""
+    echo "[Warning] New settings that still hold a placeholder (install.sh never filled them in) - set a real value:"
+    for f in "${PLACEHOLDER_WARNINGS[@]}"; do echo "  $f"; done
   fi
   echo ""
   echo "Next: sudo ./update.sh   (pull new images and restart)   or   sudo ./run.sh"

@@ -9,14 +9,11 @@
       - "8883:8883"
       - "8888:8888"
     volumes:
-      - ./data/mqtt-broker/logs:/data/logs
       - ./cert:/data/cert
       - ./jwt:/data/jwt
     env_file:
       - ./common.env
       - ./mqtt-broker.env
-    environment:
-      - METEOR_SETTINGS=${METEOR_SETTINGS}
     logging:
       driver: "json-file"
       options:

@@ -1085,6 +1085,11 @@ main() {
       safe_sed_inplace "settings.json" '"port": 6379' "\"port\": ${REDIS_EXTERNAL_PORT}"
       echo " - settings.json: redisOplog host/port set to ${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT}."
     fi
+    if [ -f "common.env" ]; then
+      set_env_value common.env REDIS_HOST "$REDIS_EXTERNAL_HOST"
+      set_env_value common.env REDIS_PORT "$REDIS_EXTERNAL_PORT"
+      echo " - common.env: REDIS_HOST/REDIS_PORT set to ${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT} (used by gis-process, mqtt-client, kafka-client)."
+    fi
     if [ -f "ai-service.env" ]; then
       safe_sed_inplace "ai-service.env" 'redis://redis:6379' "redis://${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT}"
       echo " - ai-service.env: REDIS_URL set to redis://${REDIS_EXTERNAL_HOST}:${REDIS_EXTERNAL_PORT}."

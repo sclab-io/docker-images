@@ -231,6 +231,9 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | MONGO_URL                | Connection string for MongoDB                                                                                                                                                                             |
 | MONGO_DB_READ_PREFERENCE | Read Preference for MongoDB                                                                                                                                                                               |
 | MONGO_DB_POOL_SIZE       | Size of MongoDB connection pool                                                                                                                                                                           |
+| REDIS_HOST               | Redis host. gis-process, mqtt-client and kafka-client (Rust services) use it to publish redis-oplog events so the webapp UI updates in real time (`install.sh` sets it for an external Redis) |
+| REDIS_PORT               | Redis port (default 6379) |
+| REDIS_PASSWORD           | Redis password (empty = no password). `install.sh` fills it in |
 | METEORD_NODE_OPTIONS     | Options when running Node.js. [Node.js options](https://nodejs.org/api/cli.html#cli_options)                                                                                                              |
 | MAIL_URL                 | Mail server connection URL (SMTP)                                                                                                                                                                         |
 | QDRANT_CLUSTER_URL       | Qdrant vector database cluster URL                                                                                                                                                                        |
@@ -264,6 +267,8 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | VLLM_API_KEY             | vLLM API key                                                                                                                                                                                              |
 | DEEPSEEK_API_KEY         | DeepSeek API key                                                                                                                                                                                          |
 
+> **Rust services**: `gis-process`, `mqtt-client`, `mqtt-broker` and `kafka-client` are Rust binaries. They write logs to stdout only (`docker compose logs -f <service>`, log level via `RUST_LOG`, default `info`) and do not use `LOG_PATH`, `USE_FILE_LOG`, `LOG_FILE_COUNT`, `NODE_ENV`, `METEORD_NODE_OPTIONS` or `METEOR_SETTINGS`. They read `MONGO_URL` (database name required) and `REDIS_*` from `common.env`.
+
 ### webapp.env
 
 | var                         | description                                               |
@@ -284,7 +289,9 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | var             | description                                                                                                                                          |
 |:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | SERVER_ID       | Server ID is an ID used when parsing GIS files and storing them in DB. When duplicating using multiple servers, each server must use a different ID. |
-| SERVER_FILE_URL | Read file path for server side                                                                                                                       |
+| ROOT_URL        | Base URL used to download uploaded files. Overrides `ROOT_URL` of `common.env`; use the internal webapp address (default `http://webapp`)                                                                                                                       |
+| GIS_POLL_INTERVAL_SECS | (optional) Pending job check interval in seconds (default 5) |
+| GIS_BATCH_SIZE         | (optional) Batch size when loading items (default 1000) |
 
 ### mqtt-client.env
 
@@ -295,6 +302,7 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | SERVER_REGION | MQTT client server region |
 | PUBLIC_IP     | Public IP address         |
 | PRIVATE_IP    | Private IP address        |
+| MQTT_POLL_INTERVAL_MS | (optional) Server/action check interval in ms (default 1000) |
 
 ### mqtt-broker.env
 
@@ -308,6 +316,10 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | JWT_KEY         | MQTT JWT Key file path (RS256)  |
 | TLS_CERT        | Certificate file path for SSL   |
 | TLS_PRIVATE_KEY | Private key file path for SSL   |
+| PORT            | Health check port inside the container (default 80) |
+| BROKER_MQTT_PORT | (optional) MQTT port (default 8883 with TLS, otherwise 1883) |
+| BROKER_WS_PORT   | (optional) WebSocket port (default 8888) |
+| BROKER_MAX_CONNECTIONS | (optional) Max concurrent connections (default 100000) |
 
 ### kafka-client.env
 
@@ -318,6 +330,8 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | SERVER_REGION | Kafka client server region  |
 | PUBLIC_IP     | public IP address           |
 | PRIVATE_IP    | private IP address          |
+| KAFKA_POLL_INTERVAL_MS | (optional) Server/action check interval in ms (default 1000) |
+| KAFKA_CLIENT_ERR_COUNT | (optional) Stop connecting after this many consecutive errors (default 100) |
 
 ### ai-service.env
 
@@ -453,11 +467,13 @@ To add it after installation: run `./tileserver/enable.sh`, set `public.tileServ
 | public.ai.deepseek.llm                  | DeepSeek LLM list array [{"model": "DEEPSEEK_deepseek-v4-pro","label": "DeepSeek V4 Pro"}] you can use any DeepSeek models with prefix "DEEPSEEK_"                                                                                                                                                                      |
 | public.ai.\*.llm[].contextLimit         | **Optional.** Max input tokens for that model **in this deployment** (e.g. `{"model": "VLLM_unsloth/Qwen3.8-27B-NVFP4", "label": "Qwen3.8 27B", "contextLimit": 262144}`). A model's own maximum is hardware-independent, so set this to what your GPU can actually hold. If omitted, the model's maximum is used. See "Model context limit" below. |
 | public.ai.ocrModels                     | ollama vlm model list array ["OLLAMA_qwen2.5vl:72b"] current support model ("qwen2.5")                                                                                                                                                                                                                                  |
+| public.ai.imageModels                   | image generation model list array [{"value": "OPENAI_gpt-image-2","label": "OpenAI Image 2"}] the first item is the default. Use prefix "OPENAI_" for OpenAI image models (e.g. "OPENAI_gpt-image-2.5-sunburst"), Gemini models as is (e.g. "gemini-2.5-flash-image"). To use a new image model just add it here, no code change needed. If omitted, the built-in list is used. |
 | public.ai.sqlModel                      | model for SQL generation (e.g., "GPT5", "GPT4.1", "GEMINI_gemini-3-pro-preview", "OLLAMA_gemma2:latest")                                                                                                                                                                                                                |
 | public.hub.llmAPI                       | "openai" (default), "gemini", "ollama"                                                                                                                                                                                                                                                                                  |
 | private.adminEmail                      | admin email address - If admin account doesn't exists, then create admin account using this email address                                                                                                                                                                                                               |
 | private.adminPassword                   | admin password when create admin account, you can change after login.                                                                                                                                                                                                                                                   |
 | private.license                         | sclab on-premise license code (required)                                                                                                                                                                                                                                                                                |
+| private.backupZipMaxMB                  | max size (MB) of a backup (zip) file that can be uploaded for restore. Default 1048576 (1TB) when omitted; the server enforces it, so the real limit is the free disk space. Backups of tens of GB are streamed, so server memory is not the limit.                                                                     |
 | private.datanuri.apiHost                | Datanuri DPP API address (e.g., "https://dpp.example.com:38443"). Empty disables the DPP file integration. See "Datanuri integration" below. |
 | private.datanuri.apiRejectUnauthorized  | verify the DPP API TLS certificate (default true). Set false only for a self-signed certificate. |
 | private.datanuri.jwtPublicKey           | Datanuri public key (PEM string, "\n" for line breaks) that verifies the RS256-signed login token. Empty disables Datanuri login. |
@@ -652,6 +668,8 @@ sudo ./logs.sh
 
 Displays real-time logs from all services. Press `Ctrl+C` to exit.
 
+The Rust services (`gis-process`, `mqtt-client`, `mqtt-broker`, `kafka-client`) do not write log files; their logs are shown from the container output (`docker compose logs -f <service>`).
+
 ### Completely shutdown services
 
 ```bash
@@ -677,6 +695,12 @@ sudo ./pull.sh
 ```
 
 Downloads the latest versions of all SCLAB Studio Docker images without stopping services.
+
+> **Upgrading an existing installation to the Rust services** (`gis-process`, `mqtt-client`, `mqtt-broker`, `kafka-client`): after updating the scripts (`update-docker-images.sh`), set the following in your existing files, then run `./update.sh`.
+>
+> - `common.env`: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` (use the same Redis password as `settings.json` > `redisOplog.redis.password`).
+> - `gis-process.env`: replace `SERVER_FILE_URL` with `ROOT_URL` (internal webapp address, e.g. `http://webapp`) and remove `PORT` from `gis-process.env`, `mqtt-client.env` and `kafka-client.env`.
+> - Remove `METEOR_SETTINGS` and the `data/<service>/logs` volume from those four services in `docker-compose.yml`. Their logs are now shown with `docker compose logs -f <service>`.
 
 ### Update webapp only
 

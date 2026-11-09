@@ -15,12 +15,7 @@ spec:
       containers:
         - name: sclab-gis-process
           image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gis-process:latest
-          volumeMounts:
-            - name: data-volume
-              mountPath: /data
           imagePullPolicy: Always
-          ports:
-            - containerPort: 80
           resources:
             requests:
               cpu: 250m
@@ -30,13 +25,12 @@ spec:
             - configMapRef:
                 name: sclab-common-env
           env:
+            # Rust gis-process downloads uploaded files from this internal webapp URL.
+            - name: ROOT_URL
+              value: http://sclab-webapp-service
             - name: SERVER_ID
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
       imagePullSecrets:
         - name: sclab-ecr-sec
-      volumes:
-        - name: data-volume
-          persistentVolumeClaim:
-            claimName: sclab-webapp-pvc

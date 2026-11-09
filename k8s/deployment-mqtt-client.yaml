@@ -15,12 +15,7 @@ spec:
       containers:
         - name: sclab-mqtt-client
           image: 873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-mqtt-client:latest
-          volumeMounts:
-            - name: data-volume
-              mountPath: /data
           imagePullPolicy: Always
-          ports:
-            - containerPort: 80
           resources:
             requests:
               cpu: 250m
@@ -44,7 +39,3 @@ spec:
               value: region-01
       imagePullSecrets:
         - name: sclab-ecr-sec
-      volumes:
-        - name: data-volume
-          persistentVolumeClaim:
-            claimName: sclab-webapp-pvc
