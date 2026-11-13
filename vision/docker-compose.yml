@@ -66,8 +66,6 @@ services:
       # ── 분석·AI 기능(모든 기능 기본 활성화) ──
       # ONNX 추론 EP — CPU 이미지는 cpu 고정(팬텀 GPU-EP 다중세션 크래시 회피). GPU 오버레이가 cuda로 덮어쓴다.
       VISION_ORT_EP: "${VISION_ORT_EP:-cpu}"
-      # 외부 클라우드 추론(VLM/LLM) 전역 허용 스위치. 실제 반출은 분석 규칙별 external_inference 설정과 AND.
-      VISION_EXTERNAL_INFERENCE_OPTIN: "${VISION_EXTERNAL_INFERENCE_OPTIN:-true}"
       # AI 어시스턴트 LLM(OpenAI 호환 base/모델/키). 비우면 코드 기본(Ollama http://127.0.0.1:11434/v1) —
       # 콘솔 관리 설정(DB)으로도 지정할 수 있다.
       VISION_ASSISTANT_BASE: "${VISION_ASSISTANT_BASE:-}"

@@ -169,7 +169,6 @@ If you set `VISION_S3_BUCKET` and enable the `s3` profile, the `rustfs` containe
 | Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
 | `VISION_ORT_EP` | `cpu` | ONNX inference device | Runs AI analysis (face recognition, etc.) on the CPU. The GPU overlay switches this to `cuda` automatically. |
-| `VISION_EXTERNAL_INFERENCE_OPTIN` | `true` | External cloud AI switch | Globally allows external AI (VLM/LLM) calls. Each analysis rule must still enable it explicitly. |
 | `VISION_ASSISTANT_BASE` | empty | AI assistant LLM endpoint | An OpenAI-compatible endpoint. Empty uses the built-in default (Ollama); it can also be set in the console admin settings. |
 | `VISION_ASSISTANT_MODEL` | empty | AI assistant model name | The model to use. Empty uses the default model. |
 | `VISION_ASSISTANT_KEY` | empty | AI assistant API key | Only needed for OpenAI-compatible hosted services. |

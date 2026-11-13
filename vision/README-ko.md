@@ -166,7 +166,6 @@ cd vision
 | 변수 | 기본값 | 역할 | 쉽게 말하면 |
 |---|---|---|---|
 | `VISION_ORT_EP` | `cpu` | ONNX 추론 실행 장치 | 얼굴인식 같은 AI 분석을 CPU로 돌립니다. GPU 모드에서는 오버레이가 자동으로 `cuda`로 바꿉니다. |
-| `VISION_EXTERNAL_INFERENCE_OPTIN` | `true` | 외부 클라우드 AI 허용 스위치 | 외부 AI(VLM/LLM) 호출을 전역에서 허용합니다. 실제 반출은 분석 규칙에서 따로 켜야 동작합니다. |
 | `VISION_ASSISTANT_BASE` | 비어 있음 | AI 어시스턴트 LLM 주소 | OpenAI 호환 주소입니다. 비우면 기본값(Ollama)을 쓰고, 콘솔 관리 설정에서도 지정할 수 있습니다. |
 | `VISION_ASSISTANT_MODEL` | 비어 있음 | AI 어시스턴트 모델 이름 | 사용할 모델 이름입니다. 비우면 기본 모델을 씁니다. |
 | `VISION_ASSISTANT_KEY` | 비어 있음 | AI 어시스턴트 API 키 | OpenAI 호환 유료 서비스를 쓸 때 필요한 키입니다. |
