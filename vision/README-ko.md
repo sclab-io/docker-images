@@ -105,75 +105,25 @@ cd vision
 
 이 세 포트는 컨테이너 내부 포트가 아니라, 루트 프록시가 밖으로 내보내는 포트입니다. 바꿀 때는 프록시 설정도 함께 맞아야 합니다.
 
-### 3) 공유 서비스
+### 3) DB 접속 (환경 변수로 남은 유일한 서버 설정)
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
+| 변수 | 기본값 | 용도 | 쉽게 말하면 |
 |---|---|---|---|
-| `VISION_MONGO_URL` | `mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin` | MongoDB 접속 주소 | Vision 설정과 상태를 저장하는 데이터베이스 주소입니다. |
-| `VISION_MONGO_DB` | `sclab` | 사용할 MongoDB 데이터베이스 이름 | 같은 MongoDB 안에서 Vision이 어떤 서랍을 쓸지 정합니다. |
-| `VISION_REDIS_URL` | `redis://:changeThisRedisPassword@redis:6379` | Redis 접속 주소 | 잠금, 상태, 임시 정보 같은 빠른 데이터를 저장하는 곳입니다. |
-| `VISION_STUDIO_SHARED` | `true` | Studio와 DB 이름을 함께 쓰는지 여부 | `true`면 SCLAB Studio와 같은 DB를 공유하므로 이름 충돌을 피하려고 `sv-` 접두사를 붙입니다. |
-| `VISION_QDRANT_URL` | `http://qdrant:6333` | Qdrant 접속 주소 | 분석용 벡터 데이터를 저장하는 검색 엔진 주소입니다. |
-| `VISION_QDRANT_API_KEY` | `changeThisQdrantApiKey` | Qdrant 비밀키 | Qdrant에 들어갈 때 필요한 비밀번호입니다. |
-| `VISION_QDRANT_COLLECTION` | `sv-VisionAnalysisVector` | 벡터 컬렉션 이름 | Qdrant 안에서 Vision 데이터가 들어갈 폴더 이름입니다. |
+| `VISION_MONGO_URL` | `mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin` | MongoDB 접속 문자열 | Vision이 **모든** 설정·시크릿·상태를 저장하는 곳입니다. |
+| `VISION_MONGO_DB` | `sclab` | MongoDB 데이터베이스 이름 | Vision이 사용할 MongoDB 데이터베이스입니다. |
+| `VISION_REDIS_URL` | `redis://:changeThisRedisPassword@redis:6379` | Redis 접속 문자열 | 빠르게 바뀌는 임시 상태를 저장하는 곳입니다. |
+| `VISION_STUDIO_SHARED` | `true` | 공유 Studio 모드 | `true`이면 같은 MongoDB를 공유하고 이름 앞에 `sv-`를 붙여 충돌을 피합니다. |
 
-`VISION_STUDIO_SHARED=true`는 이 문서에서 가장 중요한 값 중 하나입니다. 같은 MongoDB를 쓰더라도, Vision 컬렉션 이름에 `sv-` 접두사를 붙여 SCLAB Studio와 헷갈리지 않게 합니다.
+그 외의 설정은 더 이상 환경 변수로 지정하지 않습니다.
 
-### 4) 로그인과 내부 비밀값
+### 4) 나머지는 모두 MongoDB (콘솔 → 설정 → 고급 튜닝)
 
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
-|---|---|---|---|
-| `VISION_INTERNAL_TOKEN` | `sv-dev-internal-token` | Vision 내부 서비스끼리 서로 확인하는 토큰 | 콘솔과 백엔드가 "우리끼리 맞다"를 확인할 때 쓰는 값입니다. |
-| `VISION_ADMIN_JWT_SECRET` | `sv-dev-admin-jwt-secret` | 관리자 로그인 토큰 서명값 | 관리자 로그인 쿠키가 위조되지 않았는지 확인합니다. |
-| `SESSION_SECRET` | `VISION_ADMIN_JWT_SECRET`와 동일 | 콘솔 세션 쿠키 서명값 | 브라우저 로그인 상태를 지키는 열쇠입니다. |
-| `SESSION_MAX_AGE` | `2592000` | 세션 유지 시간(초) | 로그인 상태를 얼마나 오래 기억할지 정합니다. 2592000초는 약 30일입니다. |
-| `VISION_SIGNING_KEY` | `dev-insecure-signing-key` | HLS 서명 URL 생성용 키 | HLS 주소에 붙는 서명이 진짜인지 만들 때 쓰는 비밀값입니다. |
-| `VISION_SECRET_KEY` | `dev-insecure-secret-key` | Vision 내부 암호화/검증용 비밀값 | 앱 내부에서 민감한 값을 다룰 때 쓰는 추가 비밀값입니다. |
+임계값, 주소, 포트, 모델 파일명, 녹화·S3 정책, AI 엔드포인트, **시크릿**은 MongoDB에 저장되고 콘솔 설정 화면(탭)에서 편집합니다. 한 번 저장하면 모든 노드에 자동 반영됩니다.
 
-기본값에 들어 있는 `sv-dev-*` 값은 개발용입니다. 운영 환경에서는 반드시 `install.sh`가 생성하는 랜덤 값으로 바꾸세요.
-
-### 5) HLS와 브라우저 접근
-
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
-|---|---|---|---|
-| `VISION_AIO_CONTROL_ADDR` | `0.0.0.0:8090` | 백엔드가 컨테이너 안에서 듣는 제어 API 주소 | 컨테이너 내부에서 관리자 요청을 받는 창구입니다. |
-| `VISION_AIO_GATEWAY_ADDR` | `0.0.0.0:8080` | 백엔드가 컨테이너 안에서 듣는 HLS 주소 | 영상 조각을 주고받는 창구입니다. |
-| `VISION_AIO_EGRESS_ADDR` | `127.0.0.1:8088` | 내부 egress 전용 주소 | 보통 외부에서 직접 쓰지 않는 내부 통로입니다. |
-| `VISION_HLS_CORS_ORIGINS` | `*` | 브라우저에서 HLS를 호출할 수 있는 출처 허용 목록 | 웹페이지가 다른 주소에 있어도 재생할 수 있게 허용합니다. `*`는 모두 허용입니다. |
-
-### 6) 녹화와 S3 cold tier
-
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
-|---|---|---|---|
-| `VISION_RECORD_DEFAULT` | `always` | 기본 녹화 여부 | 카메라 영상을 기본적으로 항상 저장합니다(모든 기능 기본 ON). 끄려면 `off`. 콘솔 관리 설정(DB)이 이 값보다 우선합니다. |
-| `VISION_RECORD_DIR` | `/var/lib/vision/recordings` | 디스크 녹화 저장 경로 | 컨테이너 안에서 녹화 파일이 쌓이는 위치입니다. |
-| `VISION_RECORD_DELETE_AFTER` | `86400` | 녹화 파일 자동 삭제까지 걸리는 시간(초) | 오래된 녹화를 언제 지울지 정합니다. 86400초는 1일입니다. |
-| `VISION_S3_BUCKET` | `sv-recordings` | S3 cold tier 버킷 이름 | 이 값이 비어 있으면 S3 저장을 쓰지 않고 디스크만 씁니다. 기본은 RustFS cold tier 사용입니다. |
-| `VISION_S3_ENDPOINT` | `http://rustfs:9000` | S3 호환 저장소 주소 | S3처럼 보이는 저장소가 어디 있는지 정합니다. 기본값은 RustFS입니다. |
-| `VISION_S3_REGION` | `us-east-1` | S3 리전 이름 | S3 호환 저장소가 위치한 "지역 이름"입니다. |
-| `VISION_S3_ACCESS_KEY_ID` | `rustfsadmin` | S3 접근 키 ID | S3에 들어갈 때 쓰는 아이디입니다. |
-| `VISION_S3_SECRET_ACCESS_KEY` | `rustfsadmin` | S3 비밀 키 | S3에 들어갈 때 쓰는 비밀번호입니다. |
-| `VISION_S3_PREFIX` | `recordings` | S3 안에서 파일을 저장할 접두사 | S3 버킷 안의 폴더 이름처럼 생각하면 됩니다. |
-| `VISION_S3_ALLOW_HTTP` | `true` | HTTP S3 연결 허용 여부 | 로컬 RustFS 같은 환경에서 암호화 없는 HTTP를 허용합니다. |
-| `VISION_S3_FORCE_PATH_STYLE` | `true` | S3 경로 스타일 사용 여부 | 일부 S3 호환 저장소가 필요로 하는 주소 방식입니다. |
-| `VISION_S3_API_PORT` | `19000` | RustFS S3 API 외부 포트 | 외부 툴이 RustFS를 S3처럼 접속할 때 쓰는 포트입니다. |
-| `VISION_S3_CONSOLE_PORT` | `19001` | RustFS 웹 콘솔 포트 | RustFS 관리자 화면을 여는 포트입니다. |
-
-`VISION_S3_BUCKET`을 채우고 `COMPOSE_PROFILES=s3`를 켜면 `rustfs` 컨테이너가 함께 올라옵니다.
-
-### 7) 분석·AI 기능 (모든 기능 기본 활성화)
-
-| 변수 | 기본값 | 역할 | 쉽게 말하면 |
-|---|---|---|---|
-| `VISION_ORT_EP` | `cpu` | ONNX 추론 실행 장치 | 얼굴인식 같은 AI 분석을 CPU로 돌립니다. GPU 모드에서는 오버레이가 자동으로 `cuda`로 바꿉니다. |
-| `VISION_ASSISTANT_BASE` | 비어 있음 | AI 어시스턴트 LLM 주소 | OpenAI 호환 주소입니다. 비우면 기본값(Ollama)을 쓰고, 콘솔 관리 설정에서도 지정할 수 있습니다. |
-| `VISION_ASSISTANT_MODEL` | 비어 있음 | AI 어시스턴트 모델 이름 | 사용할 모델 이름입니다. 비우면 기본 모델을 씁니다. |
-| `VISION_ASSISTANT_KEY` | 비어 있음 | AI 어시스턴트 API 키 | OpenAI 호환 유료 서비스를 쓸 때 필요한 키입니다. |
-| `VISION_PUBLIC_HLS_BASE` | 비어 있음 | 재생 주소 절대화 base | 비워 두면 프록시가 콘솔 주소에서 재생 경로(`/hls` 등)를 대신 처리합니다. 콘솔 관리 설정(DB)이 우선합니다. |
-
-얼굴인식(SCRFD+AdaFace)·객체탐지·번호판·모자이크 등 분석 모델과 onnxruntime은 이미지에 베이크되어 있어 별도 설치가 필요 없습니다.
-얼굴/외형 벡터 컬렉션 이름은 모델에 맞춰 자동으로 정해지므로 따로 설정하지 않습니다.
-가상 카메라(vcam)로 업로드한 테스트 영상은 `./data/vision/vcam`에 보관됩니다.
+- **첫 부팅 기본값**: `install.sh`가 `./data/vision/app/runtime-config.seed.json`(Qdrant 주소, 녹화 정책, S3, CPU/GPU 실행기 등)을 만듭니다. `vision-aio`는 **DB에 아직 없는 키만** 채우므로 콘솔에서 저장한 값이 항상 우선합니다. 기본값을 바꾸려면 *처음 시작하기 전에* 이 파일을 수정하세요.
+- **시크릿은 자동**: 서명키·내부 토큰·관리자 JWT 시크릿·뷰어 비밀·세션 시크릿은 첫 부팅에 생성되어 MongoDB에 **암호화**되어 저장됩니다(암호화 키는 MongoDB 비밀번호에서 파생). 콘솔에는 값이 표시되지 않으며 교체·재생성할 수 있습니다.
+- ⚠ **MongoDB 비밀번호를 바꾸면** 저장된 시크릿을 복호할 수 없습니다 — 콘솔에서 다시 입력하세요(자동 생성 항목은 *재생성*, 서명키를 재생성하면 이미 발급된 재생 링크가 무효가 됩니다).
+- ⚠ **기존 설치에서 업그레이드할 때**: 예전 `.env`의 이 항목들(시크릿, Qdrant, 녹화, S3, AI 키 등)은 **무시**됩니다. 필요한 값은 콘솔에서 다시 입력하세요. 이전에 얼굴 사진이나 카메라 비밀번호를 저장했다면, 업그레이드 후 첫 시작에는 `.env`에 `VISION_SECRET_KEY`를 남겨 두어야 읽을 수 있습니다(복호 전용). 이후 제거해도 됩니다.
 
 ## 초보자용 설정 팁
 
@@ -182,7 +132,7 @@ cd vision
 - `VISION_STUDIO_SHARED=true`는 공유 스택에서 거의 항상 그대로 둡니다.
 - 기본값은 상시 녹화(`always`)입니다. 녹화를 쓰지 않으면 `VISION_RECORD_DEFAULT=off`로 바꾸면 됩니다.
 - 루트 sclab-proxy가 없는 호스트(데이터 서비스만 있는 서버 등)에서는 `COMPOSE_PROFILES`에 `tls`를 추가하면 내장 nginx(`vision-tls`)가 8890/8090/8080 포트를 직접 노출합니다. sclab-proxy가 있는 호스트에서 켜면 포트가 충돌하니 주의하세요.
-- 운영 환경에서는 `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, `VISION_SECRET_KEY`를 기본값으로 두지 마세요.
+- 운영 환경에서는 MongoDB/Redis 기본 비밀번호를 바꾸세요. 서버 시크릿은 MongoDB 비밀번호에서 파생한 키로 암호화됩니다.
 
 ## 문제 해결
 

@@ -105,75 +105,25 @@ cd vision
 
 These are external ports exposed by the root proxy. If you change them, the proxy configuration must match.
 
-### 3) Shared services
+### 3) Database connection (the only server settings left as environment variables)
 
 | Variable | Default | Purpose | Plain explanation |
 |---|---|---|---|
-| `VISION_MONGO_URL` | `mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin` | MongoDB connection string | Where Vision stores configuration and state. |
+| `VISION_MONGO_URL` | `mongodb://root:changeThisMongoPassword@mongo:27017/?authSource=admin` | MongoDB connection string | Where Vision stores **all** configuration, secrets and state. |
 | `VISION_MONGO_DB` | `sclab` | MongoDB database name | The MongoDB database Vision uses. |
 | `VISION_REDIS_URL` | `redis://:changeThisRedisPassword@redis:6379` | Redis connection string | Where Vision stores fast, temporary state. |
-| `VISION_STUDIO_SHARED` | `true` | Shared Studio mode flag | When `true`, Vision shares the same MongoDB and avoids name collisions by using `sv-` prefixes. |
-| `VISION_QDRANT_URL` | `http://qdrant:6333` | Qdrant URL | Where Vision stores vector data for analysis. |
-| `VISION_QDRANT_API_KEY` | `changeThisQdrantApiKey` | Qdrant API key | The password used to access Qdrant. |
-| `VISION_QDRANT_COLLECTION` | `sv-VisionAnalysisVector` | Qdrant collection name | The collection that stores Vision vector data. |
+| `VISION_STUDIO_SHARED` | `true` | Shared Studio mode flag | When `true`, Vision shares the same MongoDB and prefixes names with `sv-`. |
 
-`VISION_STUDIO_SHARED=true` is important in shared deployments. It keeps Vision collections separate from SCLAB Studio collections by prefixing names with `sv-`.
+Nothing else is configured through environment variables any more.
 
-### 4) Login and secrets
+### 4) Everything else lives in MongoDB (Console → Settings → Advanced tuning)
 
-| Variable | Default | Purpose | Plain explanation |
-|---|---|---|---|
-| `VISION_INTERNAL_TOKEN` | `sv-dev-internal-token` | Internal service token | Lets Vision services verify that they belong to the same deployment. |
-| `VISION_ADMIN_JWT_SECRET` | `sv-dev-admin-jwt-secret` | Admin JWT signing secret | Prevents admin login tokens from being forged. |
-| `SESSION_SECRET` | same as `VISION_ADMIN_JWT_SECRET` | Console session secret | Signs browser session cookies. |
-| `SESSION_MAX_AGE` | `2592000` | Session lifetime in seconds | How long the login stays valid. `2592000` seconds is about 30 days. |
-| `VISION_SIGNING_KEY` | `dev-insecure-signing-key` | HLS signing key | Used to sign playback URLs. |
-| `VISION_SECRET_KEY` | `dev-insecure-secret-key` | Internal secret key | Extra secret used for internal encryption or verification. |
+Thresholds, addresses, ports, model file names, recording/S3 policy, AI endpoints, and **secrets** are stored in MongoDB and edited in the console (Settings page, tabs). One save is applied to every node automatically.
 
-The `sv-dev-*` values are development-only defaults. Replace them with random production secrets.
-
-### 5) HLS and browser access
-
-| Variable | Default | Purpose | Plain explanation |
-|---|---|---|---|
-| `VISION_AIO_CONTROL_ADDR` | `0.0.0.0:8090` | Backend control API bind address | Where the backend listens inside the container for admin calls. |
-| `VISION_AIO_GATEWAY_ADDR` | `0.0.0.0:8080` | Backend HLS bind address | Where the backend listens for video segment requests. |
-| `VISION_AIO_EGRESS_ADDR` | `127.0.0.1:8088` | Internal egress address | An internal path not normally used from outside. |
-| `VISION_HLS_CORS_ORIGINS` | `*` | Allowed browser origins | Lets browsers from other origins access HLS. `*` means allow all. |
-
-### 6) Recording and S3 cold tier
-
-| Variable | Default | Purpose | Plain explanation |
-|---|---|---|---|
-| `VISION_RECORD_DEFAULT` | `always` | Default recording mode | Cameras record continuously by default (all features on). Set `off` to disable. Console admin settings (DB) override this value. |
-| `VISION_RECORD_DIR` | `/var/lib/vision/recordings` | Local recording directory | Where recording files are stored inside the container. |
-| `VISION_RECORD_DELETE_AFTER` | `86400` | Retention time in seconds | How long to keep recordings before deleting them. `86400` seconds is 1 day. |
-| `VISION_S3_BUCKET` | `sv-recordings` | S3 bucket name | If this is empty, Vision uses disk-only recording. RustFS cold tier is on by default. |
-| `VISION_S3_ENDPOINT` | `http://rustfs:9000` | S3-compatible endpoint | Where the S3-compatible storage lives. The default is RustFS. |
-| `VISION_S3_REGION` | `us-east-1` | S3 region name | A region label required by many S3 clients. |
-| `VISION_S3_ACCESS_KEY_ID` | `rustfsadmin` | S3 access key ID | The username used to access S3 storage. |
-| `VISION_S3_SECRET_ACCESS_KEY` | `rustfsadmin` | S3 secret key | The password used to access S3 storage. |
-| `VISION_S3_PREFIX` | `recordings` | S3 key prefix | The folder-like path used inside the bucket. |
-| `VISION_S3_ALLOW_HTTP` | `true` | Allow HTTP for S3 | Lets Vision use plain HTTP for local RustFS setups. |
-| `VISION_S3_FORCE_PATH_STYLE` | `true` | Force path-style S3 URLs | Uses the path-style URL format required by some S3-compatible systems. |
-| `VISION_S3_API_PORT` | `19000` | RustFS S3 API port | The external port for S3-compatible access. |
-| `VISION_S3_CONSOLE_PORT` | `19001` | RustFS web console port | The external port for the RustFS management UI. |
-
-If you set `VISION_S3_BUCKET` and enable the `s3` profile, the `rustfs` container starts automatically.
-
-### 7) Analysis and AI features (all features on by default)
-
-| Variable | Default | Purpose | Plain explanation |
-|---|---|---|---|
-| `VISION_ORT_EP` | `cpu` | ONNX inference device | Runs AI analysis (face recognition, etc.) on the CPU. The GPU overlay switches this to `cuda` automatically. |
-| `VISION_ASSISTANT_BASE` | empty | AI assistant LLM endpoint | An OpenAI-compatible endpoint. Empty uses the built-in default (Ollama); it can also be set in the console admin settings. |
-| `VISION_ASSISTANT_MODEL` | empty | AI assistant model name | The model to use. Empty uses the default model. |
-| `VISION_ASSISTANT_KEY` | empty | AI assistant API key | Only needed for OpenAI-compatible hosted services. |
-| `VISION_PUBLIC_HLS_BASE` | empty | Absolute playback base URL | Empty keeps relative URLs; the proxy serves playback paths (`/hls`, ...) on the console origin. Console admin settings (DB) take precedence. |
-
-Analysis models (SCRFD+AdaFace face recognition, object detection, license plates, mosaic) and onnxruntime are baked into the image — no extra installation.
-Face/appearance vector collection names are derived automatically from the model; do not set them manually.
-Test videos uploaded to the virtual camera (vcam) are kept in `./data/vision/vcam`.
+- **First-boot defaults**: `install.sh` writes `./data/vision/app/runtime-config.seed.json` (Qdrant address, recording policy, S3, CPU/GPU execution provider, …). `vision-aio` fills **only the keys that are not in the database yet**, so values saved in the console always win. Edit the file *before the first start* if you want different defaults.
+- **Secrets are automatic**: the signing key, internal token, admin JWT secret, viewer secret and session secret are generated on first boot and stored **encrypted** in MongoDB (the encryption key is derived from the MongoDB password). They are never shown in the console; you can replace or regenerate them there.
+- ⚠ **Changing the MongoDB password** makes the stored secrets undecryptable — re-enter them in the console (auto-generated ones: press *Regenerate*; regenerating the signing key invalidates issued playback links).
+- ⚠ **Upgrading from an older install**: the old `.env` values for these settings (secrets, Qdrant, recording, S3, AI keys, …) are **ignored**. Re-enter what you need in the console. If you stored face photos or camera passwords before, keep `VISION_SECRET_KEY` in `.env` for the first start after upgrading so they can still be decrypted (read-only), then remove it.
 
 ## Beginner tips
 
@@ -182,7 +132,7 @@ Test videos uploaded to the virtual camera (vcam) are kept in `./data/vision/vca
 - Keep `VISION_STUDIO_SHARED=true` in shared deployments.
 - Recording is `always` on by default. Set `VISION_RECORD_DEFAULT=off` if you do not need DVR recording.
 - If the root sclab-proxy is not running on this host (e.g. a data-services-only server), add `tls` to `COMPOSE_PROFILES` so the bundled nginx (`vision-tls`) exposes ports 8890/8090/8080 directly. Do not enable it where sclab-proxy runs — the ports would conflict.
-- Never keep `VISION_INTERNAL_TOKEN`, `VISION_ADMIN_JWT_SECRET`, `VISION_SIGNING_KEY`, or `VISION_SECRET_KEY` at their development defaults in production.
+- Change the default MongoDB/Redis passwords before production — the server secrets are encrypted with a key derived from the MongoDB password.
 
 ## Troubleshooting
 
