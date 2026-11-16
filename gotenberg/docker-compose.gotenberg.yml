@@ -1,0 +1,26 @@
+# HTML → PDF conversion service (Gotenberg + Chromium) used by the HTML to PDF block of AI agents.
+# Not part of docker-compose.yml by default. install.sh appends this block to docker-compose.yml when you choose to
+# install it, or run ./gotenberg/enable.sh later. Keep the two-space indentation: it is inserted under "services:".
+  gotenberg:
+    container_name: gotenberg
+    hostname: gotenberg
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/onpremise-gotenberg:1.0.0"
+    restart: always
+    command:
+      - gotenberg
+      - --api-timeout=310s
+      - --chromium-restart-after=50
+      - --chromium-idle-shutdown-timeout=300s
+      - --chromium-max-queue-size=20
+    # Maps the site domain (<siteCode>.<your domain>) to sclab-proxy and accepts its (self-signed) certificate. See gotenberg.env.
+    env_file:
+      - ./gotenberg.env
+    # Chromium is memory hungry while converting large dashboards.
+    mem_limit: 2g
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+    networks:
+      - sclab-network

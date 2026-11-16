@@ -30,6 +30,7 @@ SCLAB은 여러 데이터를 하나로 묶어 빠르게 시각화할 수 있게 
 - `sclabio/node-vm-service`
 - `sclabio/ai-service`
 - `sclabio/onpremise-tileserver` (지도 베이스맵 타일 서버, 지도 데이터 포함)
+- `sclabio/onpremise-gotenberg` (HTML to PDF 변환, 선택 설치)
 - `sclabio/vision-aio`
 - `sclabio/vision-aio-gpu`
 - `sclabio/vision-console`
@@ -158,6 +159,9 @@ sudo ./install.sh
 | `tileserver/` | 지도 타일 서버 edge(`tileserver-edge`)용 Nginx 템플릿 |
 | `tileserver/docker-compose.tileserver.yml` | 타일 서버 서비스 정의. 타일 서버를 설치할 때만 `docker-compose.yml` 에 추가됨 |
 | `tileserver/enable.sh` | 타일 서버 서비스를 `docker-compose.yml` 에 추가하는 스크립트 (`install.sh` 가 사용, 나중에 직접 실행 가능) |
+| `gotenberg.env` | HTML to PDF 서비스 환경 변수 (사이트 도메인 연결) |
+| `gotenberg/docker-compose.gotenberg.yml` | HTML to PDF 서비스 정의. 서비스를 설치할 때만 `docker-compose.yml` 에 추가됨 |
+| `gotenberg/enable.sh` | HTML to PDF 서비스와 설정(`docker-compose.yml`, `gotenberg.env`, `ai-service.env`)을 추가하는 스크립트 (`install.sh` 가 사용, 나중에 직접 실행 가능) |
 | `service-manage.sh` | 선택 서비스(gis-process, mqtt-client, mqtt-broker, kafka-client, mail, ai-service, node-vm-service, sclab-agent, mongo, redis, qdrant, tileserver, sclab-vision)를 `docker-compose.yml` 에서 켜고 끄는 스크립트. `install.sh` 는 각각 물어봅니다: gis-process, mqtt-client, mqtt-broker, kafka-client, mail 는 기본 설치 안 함, 나머지는 기본 설치이며 mongo/redis/qdrant 를 n 으로 답하면 외부 접속 정보를 입력받습니다. `./service-manage.sh`(메뉴), `list`, `enable <서비스>`, `disable <서비스>` 실행 후 `./run.sh` |
 | `optional-services/` | `service-manage.sh` 가 서비스를 `docker-compose.yml` 에 다시 추가할 때 쓰는 서비스 정의 |
 | `update-docker-images.sh` | 설치된 디렉터리를 `git pull` 충돌 없이 최신 스크립트로 업데이트. 수정된 파일(`docker-compose.yml`, `common.env`, `settings.json` 등)을 백업한 뒤 3-way 병합해 설정값을 유지합니다. `--check` 미리보기, `-y` 확인 생략. 병합할 수 없는 파일은 그대로 두고 새 버전을 `<파일>.upstream` 으로 저장합니다. 이후 `./update.sh` 실행 |
@@ -422,6 +426,29 @@ CARTO 는 API 키 없는 요청에 워터마크를 찍기 때문입니다.
 - `public.tileServerURL` 을 빈 문자열로 두면 지도 위젯이 공개 CARTO 타일(워터마크)로 돌아갑니다.
 - 1.x 이미지(세계 z12 + 한국 상세, 18GB)에서 올라오려면 `docker-compose.yml` 의 `tileserver` 서비스에
   `tileserver/docker-compose.tileserver.yml` 의 `volumes` 항목을 추가하고 디스크 여유를 확인한 뒤 `./update.sh` 를 실행합니다.
+
+### HTML to PDF 서비스 (Gotenberg)
+
+AI 에이전트의 **HTML to PDF** 블록은 퍼블리시된 페이지나 iframe 을 PDF 로 만듭니다. 이를 위해 컨테이너 하나(Gotenberg + Chromium)가 더 필요하며,
+기본 `docker-compose.yml` 에는 **들어 있지 않습니다**. `install.sh` 가 **Install the HTML to PDF service? [y/N]** (기본: 설치 안 함)을 묻고,
+y 로 답하면 `gotenberg/docker-compose.gotenberg.yml` 의 `gotenberg` 서비스를 `docker-compose.yml` 에 추가하고 아래 설정을 기록합니다.
+설치하지 않으면 이 블록으로 변환할 수 없습니다.
+
+설치 후에 추가하려면 `./gotenberg/enable.sh` 를 실행한 뒤 `./run.sh` 를 실행합니다. 도메인(`common.env` 의 `ROOT_URL`)을 바꾼 뒤에는
+`./gotenberg/enable.sh` 를 다시 실행하세요. 제거하려면 `docker compose down gotenberg` 후 `docker-compose.yml` 에서 `gotenberg` 서비스를,
+`ai-service.env` 에서 아래 설정 줄을 삭제합니다.
+
+| 위치 | 설정 | 설명 |
+|:-----|:-----|:-----|
+| `ai-service.env` | `GOTENBERG_URL` | 변환 서비스 주소 (`http://gotenberg:3000`, docker 네트워크 안에서만 접근하며 포트는 외부에 열지 않습니다). |
+| `ai-service.env` | `HTML_TO_PDF_PUBLIC_URL` | SCLAB 의 공개 주소 (`ROOT_URL`, 예: `https://sclab.example.com`). 퍼블리시 사이트는 `<siteCode>.<사용자 도메인>` 으로 열리며, 이 도메인과 모든 하위 도메인을 변환 대상으로 허용합니다. |
+| `gotenberg.env` | `CHROMIUM_HOST_RESOLVER_RULES` | 사이트 도메인과 모든 `<siteCode>.<사용자 도메인>` 이름을 `sclab-proxy` 로 연결합니다. 공개 DNS 가 없어도 컨테이너 안 브라우저가 사이트를 열 수 있습니다. |
+| `gotenberg.env` | `CHROMIUM_IGNORE_CERTIFICATE_ERRORS` | `true`: `sclab-proxy` 의 인증서(대개 자체 서명)를 허용합니다. |
+
+- 이미지: `sclabio/onpremise-gotenberg` (한글/CJK 폰트를 넣은 Gotenberg 8). 큰 대시보드를 변환할 때 메모리를 최대 약 2GB 까지 쓸 수 있습니다
+  (서비스 정의의 `mem_limit: 2g`). 호스트에 그만큼 여유를 두세요.
+- 사이트가 **퍼블리시**되어 있어야 합니다. 블록은 퍼블리시된 사이트에 있는 페이지와 iframe 을 고르며, 에이전트를 만든 사용자의 권한으로 변환합니다.
+- 변환은 docker 네트워크 안에서 일어나며 서버 밖으로 나가지 않습니다. 외부 콘텐츠(외부 iframe, 타일 등)를 불러오는 페이지는 그 콘텐츠에 한해 컨테이너의 인터넷 접속이 필요합니다.
 
 ### settings.json
 

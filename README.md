@@ -36,6 +36,7 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 - sclabio/node-vm-service
 - sclabio/ai-service
 - sclabio/onpremise-tileserver (basemap tile server, includes map data)
+- sclabio/onpremise-gotenberg (HTML to PDF conversion, optional)
 - sclabio/vision-aio
 - sclabio/vision-aio-gpu
 - sclabio/vision-console
@@ -165,6 +166,9 @@ Both modes support GPU mode and DVR recording. The detailed environment variable
 | tileserver/            | Nginx templates for the map tile server edge (`tileserver-edge`) |
 | tileserver/docker-compose.tileserver.yml | Tile server service definitions, appended to `docker-compose.yml` only when the tile server is installed |
 | tileserver/enable.sh   | Appends the tile server services to `docker-compose.yml` (used by `install.sh`, or run it later) |
+| gotenberg.env          | Environment for the HTML to PDF service (site domain mapping) |
+| gotenberg/docker-compose.gotenberg.yml | HTML to PDF service definition, appended to `docker-compose.yml` only when the service is installed |
+| gotenberg/enable.sh    | Adds the HTML to PDF service and its settings (`docker-compose.yml`, `gotenberg.env`, `ai-service.env`); used by `install.sh`, or run it later |
 | service-manage.sh      | Turns optional services (gis-process, mqtt-client, mqtt-broker, kafka-client, mail, ai-service, node-vm-service, sclab-agent, mongo, redis, qdrant, tileserver, sclab-vision) on/off in `docker-compose.yml`. `install.sh` asks about each: gis-process, mqtt-client, mqtt-broker, kafka-client, mail default to not installed, the others to installed; answering n for mongo/redis/qdrant asks for the external connection info. Run `./service-manage.sh` (menu), `list`, `enable <svc>` or `disable <svc>`, then `./run.sh` |
 | optional-services/     | Service definitions used by `service-manage.sh` to re-add a service to `docker-compose.yml` |
 | update-docker-images.sh | Updates an installed directory to the latest scripts without `git pull` conflicts: your edited files (`docker-compose.yml`, `common.env`, `settings.json`, ...) are backed up and three-way merged so your values are kept. `--check` previews, `-y` skips the prompt; files that cannot be merged are left as is and the new version is saved as `<file>.upstream`. Then run `./update.sh` |
@@ -430,6 +434,31 @@ To add it after installation: run `./tileserver/enable.sh`, set `public.tileServ
 - Setting `public.tileServerURL` to an empty string switches the map widgets back to the public CARTO tiles (watermarked).
 - Upgrading from image 1.x (world up to zoom 12 + South Korea, 18 GB): add the `volumes` entry of `tileserver/docker-compose.tileserver.yml`
   to the `tileserver` service in your `docker-compose.yml`, check the free disk space, then run `./update.sh`.
+
+### HTML to PDF service (Gotenberg)
+
+The **HTML to PDF** block of AI agents turns a published page or iframe into a PDF. It needs one extra container (Gotenberg + Chromium)
+that is **not** in `docker-compose.yml` by default. `install.sh` asks **Install the HTML to PDF service? [y/N]** (default: no).
+If you answer yes it appends the `gotenberg` service from `gotenberg/docker-compose.gotenberg.yml` to `docker-compose.yml` and writes the
+settings below. Without it the block cannot convert anything.
+
+To add it after installation run `./gotenberg/enable.sh` and then `./run.sh`. Run `./gotenberg/enable.sh` again after you change the
+domain (`ROOT_URL` in `common.env`). To remove it run `docker compose down gotenberg`, delete the `gotenberg` service from
+`docker-compose.yml` and the lines below from `ai-service.env`.
+
+| where | setting | description |
+|:------|:--------|:------------|
+| `ai-service.env` | `GOTENBERG_URL` | Address of the conversion service (`http://gotenberg:3000`, inside the docker network only; no port is published). |
+| `ai-service.env` | `HTML_TO_PDF_PUBLIC_URL` | Public address of SCLAB (`ROOT_URL`, for example `https://sclab.example.com`). Published sites are opened as `<siteCode>.<your domain>`; this domain and all its subdomains are allowed as conversion targets. |
+| `gotenberg.env` | `CHROMIUM_HOST_RESOLVER_RULES` | Maps the site domain and all `<siteCode>.<your domain>` names to `sclab-proxy`, so the browser inside the container can open your sites without public DNS. |
+| `gotenberg.env` | `CHROMIUM_IGNORE_CERTIFICATE_ERRORS` | `true`: accept the certificate of `sclab-proxy` (usually self-signed). |
+
+- Image: `sclabio/onpremise-gotenberg` (Gotenberg 8 with Korean/CJK fonts). A conversion of a large dashboard can use up to about 2 GB of memory
+  (`mem_limit: 2g` in the service definition); plan for it on the host.
+- The site must be **published**. The block picks pages and iframes that exist in the published site, converted with the permissions of
+  the user who created the agent.
+- Conversion runs inside the docker network and never leaves your servers. Pages that load third-party content (external iframes, tiles)
+  need internet access from the container for that content.
 
 ### settings.json
 
