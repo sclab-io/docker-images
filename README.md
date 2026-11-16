@@ -36,7 +36,7 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 - sclabio/node-vm-service
 - sclabio/ai-service
 - sclabio/onpremise-tileserver (basemap tile server, includes map data)
-- [gotenberg/gotenberg](https://hub.docker.com/r/gotenberg/gotenberg) (HTML to PDF conversion, optional; public image, pinned to `8.40.0`)
+- sclabio/gotenberg (HTML to PDF conversion, optional)
 - sclabio/vision-aio
 - sclabio/vision-aio-gpu
 - sclabio/vision-console
@@ -453,10 +453,9 @@ domain (`ROOT_URL` in `common.env`). To remove it run `docker compose down goten
 | `gotenberg.env` | `CHROMIUM_HOST_RESOLVER_RULES` | Maps the site domain and all `<siteCode>.<your domain>` names to `sclab-proxy`, so the browser inside the container can open your sites without public DNS. |
 | `gotenberg.env` | `CHROMIUM_IGNORE_CERTIFICATE_ERRORS` | `true`: accept the certificate of `sclab-proxy` (usually self-signed). |
 
-- Image: the public `gotenberg/gotenberg` image from Docker Hub, pinned to `8.40.0` (about 1.7 GB; no SCLAB-specific build). It already contains
-  Noto Sans / Noto Serif CJK, so Korean, Japanese and Chinese text is rendered; pages that ask for a font that is not installed fall back to Noto Sans.
-  A conversion of a large dashboard can use up to about 2 GB of memory (`mem_limit: 2g` in the service definition); plan for it on the host.
-  Hosts without Docker Hub access need the image loaded the same way as the other public images (`mongo`, `redis`, `nginx`, ...).
+- Image: `sclabio/gotenberg` (Gotenberg 8 with Noto CJK and Nanum fonts, about 1.7 GB; the same image the SCLAB cloud uses). Korean, Japanese and Chinese
+  text is rendered; pages that ask for a font that is not installed fall back to Noto Sans. A conversion of a large dashboard can use up to about
+  2 GB of memory (`mem_limit: 2g` in the service definition); plan for it on the host.
 - The site must be **published**. The block picks pages and iframes that exist in the published site, converted with the permissions of
   the user who created the agent.
 - Conversion runs inside the docker network and never leaves your servers. Pages that load third-party content (external iframes, tiles)

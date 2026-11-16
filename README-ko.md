@@ -30,7 +30,7 @@ SCLAB은 여러 데이터를 하나로 묶어 빠르게 시각화할 수 있게 
 - `sclabio/node-vm-service`
 - `sclabio/ai-service`
 - `sclabio/onpremise-tileserver` (지도 베이스맵 타일 서버, 지도 데이터 포함)
-- [`gotenberg/gotenberg`](https://hub.docker.com/r/gotenberg/gotenberg) (HTML to PDF 변환, 선택 설치. 공개 이미지, `8.40.0` 으로 고정)
+- `sclabio/gotenberg` (HTML to PDF 변환, 선택 설치)
 - `sclabio/vision-aio`
 - `sclabio/vision-aio-gpu`
 - `sclabio/vision-console`
@@ -445,10 +445,9 @@ y 로 답하면 `gotenberg/docker-compose.gotenberg.yml` 의 `gotenberg` 서비�
 | `gotenberg.env` | `CHROMIUM_HOST_RESOLVER_RULES` | 사이트 도메인과 모든 `<siteCode>.<사용자 도메인>` 이름을 `sclab-proxy` 로 연결합니다. 공개 DNS 가 없어도 컨테이너 안 브라우저가 사이트를 열 수 있습니다. |
 | `gotenberg.env` | `CHROMIUM_IGNORE_CERTIFICATE_ERRORS` | `true`: `sclab-proxy` 의 인증서(대개 자체 서명)를 허용합니다. |
 
-- 이미지: Docker Hub 의 공개 `gotenberg/gotenberg` 이미지를 `8.40.0` 으로 고정해 사용합니다(약 1.7GB, SCLAB 전용 빌드 없음). Noto Sans / Noto Serif CJK 가
-  이미 들어 있어 한글·일본어·중국어가 표시되며, 설치되지 않은 폰트를 지정한 페이지는 Noto Sans 로 대체됩니다.
-  큰 대시보드를 변환할 때 메모리를 최대 약 2GB 까지 쓸 수 있습니다(서비스 정의의 `mem_limit: 2g`). 호스트에 그만큼 여유를 두세요.
-  Docker Hub 에 접속할 수 없는 호스트는 다른 공개 이미지(`mongo`, `redis`, `nginx` 등)와 같은 방법으로 이미지를 올려 두어야 합니다.
+- 이미지: `sclabio/gotenberg` (Noto CJK 와 나눔 폰트를 넣은 Gotenberg 8, 약 1.7GB, SCLAB 클라우드가 쓰는 것과 같은 이미지). 한글·일본어·중국어가 표시되며,
+  설치되지 않은 폰트를 지정한 페이지는 Noto Sans 로 대체됩니다. 큰 대시보드를 변환할 때 메모리를 최대 약 2GB 까지 쓸 수 있습니다
+  (서비스 정의의 `mem_limit: 2g`). 호스트에 그만큼 여유를 두세요.
 - 사이트가 **퍼블리시**되어 있어야 합니다. 블록은 퍼블리시된 사이트에 있는 페이지와 iframe 을 고르며, 에이전트를 만든 사용자의 권한으로 변환합니다.
 - 변환은 docker 네트워크 안에서 일어나며 서버 밖으로 나가지 않습니다. 외부 콘텐츠(외부 iframe, 타일 등)를 불러오는 페이지는 그 콘텐츠에 한해 컨테이너의 인터넷 접속이 필요합니다.
 

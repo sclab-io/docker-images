@@ -1,11 +1,11 @@
 # HTML → PDF conversion service (Gotenberg + Chromium) used by the HTML to PDF block of AI agents.
-# Uses the public Docker Hub image (it already ships Noto Sans/Serif CJK, so Korean/Japanese/Chinese text renders).
+# Image sclabio/gotenberg: Gotenberg 8 with Noto CJK + Nanum fonts (same image as the SCLAB cloud).
 # Not part of docker-compose.yml by default. install.sh appends this block to docker-compose.yml when you choose to
 # install it, or run ./gotenberg/enable.sh later. Keep the two-space indentation: it is inserted under "services:".
   gotenberg:
     container_name: gotenberg
     hostname: gotenberg
-    image: "gotenberg/gotenberg:8.40.0"
+    image: "873379329511.dkr.ecr.ap-northeast-2.amazonaws.com/sclabio/gotenberg:1.0.0"
     restart: always
     command:
       - gotenberg

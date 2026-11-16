@@ -964,7 +964,7 @@ main() {
   echo "HTML to PDF Service (Gotenberg)"
   echo "-------------------------------"
   echo "The 'HTML to PDF' block of AI agents turns a published page or iframe into a PDF."
-  echo "It needs an extra container (Gotenberg + Chromium, public image gotenberg/gotenberg, about 1.7 GB; up to 2 GB of memory while converting)."
+  echo "It needs an extra container (Gotenberg + Chromium, image sclabio/gotenberg, about 1.7 GB; up to 2 GB of memory while converting)."
   echo "If you skip it, the block is not available. You can add it later with ./gotenberg/enable.sh."
   echo ""
   ask_yes_no "Install the HTML to PDF service?" N INSTALL_GOTENBERG
