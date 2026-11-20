@@ -196,6 +196,34 @@ docker-images-sclab-proxy-1   nginx:alpine3.18         Up 3 seconds
 
 일반 `install.sh` 실행과 마찬가지로 마지막에 **관리자 이메일과 비밀번호**가 출력됩니다. 반드시 기록해 두세요.
 
+### 데이터 저장 위치 지정 (별도 디스크)
+
+`install-offline.sh` 는 용량이 큰 두 데이터를 다른 디스크에 둘 수 있습니다. 대화식 실행에서는 두 질문 모두 나오며(**Enter = 기본값**),
+`--yes` 에서는 옵션/환경변수 또는 기본값을 사용합니다.
+
+| 대상 | 프롬프트 기본값 | 옵션 / 환경변수 | 적용 방식 |
+|---|---|---|---|
+| Docker 데이터(이미지·컨테이너·볼륨) | `/var/lib/docker` | `--docker-data-root DIR` / `SCLAB_DOCKER_DATA_ROOT` | dockerd 시작 **전에** `/etc/docker/daemon.json` 에 `"data-root"` 를 병합(다른 설정 보존, 기존 파일은 `daemon.json.sclab-bak-<시각>` 로 백업)하므로 `docker load` 가 처음부터 그 경로에 씁니다. systemd·OpenRC·폴백 모두 `--data-root` 플래그 없이 dockerd 를 시작하므로 같은 파일을 읽으며, 마지막에 `docker info` 로 Docker Root Dir 을 검증합니다. |
+| 앱 데이터(MongoDB, Redis, Qdrant, 업로드 파일, 로그) | `<dest>/docker-images/data` | `--data-dir DIR` / `SCLAB_DATA_DIR` | `<dest>/docker-images/data` 가 `DIR` 로의 **심볼릭 링크**가 됩니다. 모든 스크립트와 compose 파일이 그대로 `./data/...` 를 쓰므로 run.sh, update.sh, logs.sh, optional-services 파일이 수정 없이 동작하고 업데이트 후에도 유지됩니다. |
+
+주의:
+
+- **마운트된** 디스크의 절대경로를 쓰세요. 먼저 마운트(+ `/etc/fstab` 등록)하지 않으면 데이터가 루트 디스크에 쌓입니다.
+  스크립트는 파일시스템·마운트 위치·여유 용량을 보여주고, 경로가 `/` 위이거나 NFS/CIFS/FUSE 이거나 (Docker 의 경우) `noexec`/`nosuid`/`nodev` 마운트이면 경고하며,
+  Docker 디스크가 이미지 크기(MANIFEST `images_bytes` x 1.2)보다 작으면 중단합니다.
+- SELinux(enforcing): 디렉터리에 레이블을 지정하세요. 예: Docker `semanage fcontext -a -e /var/lib/docker /data/docker && restorecon -R /data/docker`,
+  앱 데이터 `semanage fcontext -a -t container_file_t '/data/sclab(/.*)?' && restorecon -R /data/sclab` (해당 명령을 스크립트가 출력).
+- 권한: root 가 쓸 수 있어야 하며 하위 디렉터리는 컨테이너가 직접 만들고 `chown` 합니다. root-squash 가 켜진 NFS 는 쓰지 마세요.
+- Docker 가 **이미 설치된** 경우: 현재 데이터 경로를 보여주고 건드리지 않습니다. 다른 경로를 요청하면 기존 이미지·컨테이너·볼륨이 보이지 않게 되는 위험을 설명하고
+  확인을 받으며(무인 실행은 기존 경로 유지), `--migrate-docker-data` 를 주면 Docker 를 멈추고 기존 디렉터리를 새 경로로 복사(rsync 또는 `cp -a`)합니다. 원본은 삭제하지 않습니다.
+- 내용이 있는 기존 `<dest>/docker-images/data` 나 다른 곳을 가리키는 기존 링크는 자동으로 바꾸거나 옮기지 않습니다.
+- 같은 값으로 다시 실행해도 변경 없음(멱등)입니다.
+- `jq`/`python3` 가 없으면 `sed`/`awk` 로 병합합니다(일반적인 `daemon.json` 에는 충분하며, 시작 시 Docker 가 최종 검증).
+
+```bash
+sudo bash ./install-offline.sh --yes --docker-data-root /data/docker --data-dir /data/sclab
+```
+
 ## 6. 설치 확인
 
 ```bash

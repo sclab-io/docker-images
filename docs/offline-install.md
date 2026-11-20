@@ -202,6 +202,35 @@ docker-images-sclab-proxy-1   nginx:alpine3.18         Up 3 seconds
 
 At the end of a normal `install.sh` run the **administrator e-mail and password** are printed - note them down.
 
+### Choosing where the data is stored (separate disk)
+
+`install-offline.sh` can put the two big data sets on another disk. Both questions are asked in an interactive run (**Enter = default**);
+with `--yes` the options / environment variables or the defaults are used.
+
+| What | Prompt default | Option / env | How it is applied |
+|---|---|---|---|
+| Docker data (images, containers, volumes) | `/var/lib/docker` | `--docker-data-root DIR` / `SCLAB_DOCKER_DATA_ROOT` | `"data-root"` is merged into `/etc/docker/daemon.json` (other keys are kept, the old file is backed up as `daemon.json.sclab-bak-<time>`) **before** dockerd starts, so `docker load` already writes there. systemd, OpenRC and the plain fallback start dockerd without `--data-root`, so all read this file. Docker Root Dir is verified with `docker info` at the end. |
+| Application data (MongoDB, Redis, Qdrant, uploads, logs) | `<dest>/docker-images/data` | `--data-dir DIR` / `SCLAB_DATA_DIR` | `<dest>/docker-images/data` becomes a **symlink** to `DIR`. Every script and compose file keeps using `./data/...`, so run.sh, update.sh, logs.sh and the optional-services files work unchanged and the setting survives updates. |
+
+Notes:
+
+- Use an absolute path on a **mounted** disk. Mount it first (and add it to `/etc/fstab`), otherwise the data lands on the root disk;
+  the script shows the filesystem, mount point and free space and warns when the path is on `/`, on NFS/CIFS/FUSE, or (Docker) on a `noexec`/`nosuid`/`nodev` mount.
+  It stops when the Docker disk is smaller than the images need (MANIFEST `images_bytes` x 1.2).
+- SELinux (enforcing): label the directories, e.g. `semanage fcontext -a -e /var/lib/docker /data/docker && restorecon -R /data/docker`
+  (Docker) and `semanage fcontext -a -t container_file_t '/data/sclab(/.*)?' && restorecon -R /data/sclab` (application data). The script prints the matching commands.
+- Permissions: the directory must be writable by root; containers create and `chown` their sub-directories themselves. Do not use an NFS export with root-squash.
+- Docker **already installed**: its current data directory is shown and left alone. If you ask for another one, the script explains that existing images,
+  containers and volumes would disappear from view, asks for confirmation (unattended runs keep the old directory); `--migrate-docker-data` stops Docker and
+  copies the old directory (rsync or `cp -a`) to the new one - the old copy is not deleted.
+- An existing `<dest>/docker-images/data` with content, or an existing link to another place, is never replaced or moved automatically.
+- Re-running with the same values changes nothing.
+- Without `jq`/`python3` the merge uses `sed`/`awk` (fine for typical `daemon.json` files; the result is checked by Docker itself when it starts).
+
+```bash
+sudo bash ./install-offline.sh --yes --docker-data-root /data/docker --data-dir /data/sclab
+```
+
 ## 6. Verify the installation
 
 ```bash
