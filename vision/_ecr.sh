@@ -17,6 +17,8 @@ _ecr_env_value() {
 # $1 = 레지스트리 주소(생략 시 $VISION_REGISTRY 또는 .env의 VISION_REGISTRY)
 ecr_login() {
   local registry region host
+  # 폐쇄망(오프라인) 설치: 이미지는 번들에서 docker load 로 적재했으므로 ECR 로그인을 하지 않는다.
+  if [ "${SCLAB_OFFLINE:-0}" = "1" ] || [ -f ../.offline ]; then return 0; fi
   registry="${1:-${VISION_REGISTRY:-$(_ecr_env_value VISION_REGISTRY)}}"
   case "$registry" in
     *.dkr.ecr.*.amazonaws.com*) ;;

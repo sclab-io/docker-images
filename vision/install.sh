@@ -520,8 +520,11 @@ if [ "$TLS_MODE" = "1" ]; then
 fi
 
 # ── ECR 로그인(레지스트리가 ECR인 경우) ──
-case "$VISION_REGISTRY" in
-  *.dkr.ecr.*.amazonaws.com*)
+OFFLINE_MODE=0
+{ [ "${SCLAB_OFFLINE:-0}" = "1" ] || [ -f ../.offline ]; } && OFFLINE_MODE=1
+case "$OFFLINE_MODE:$VISION_REGISTRY" in
+  1:*) info "Offline mode: skipping AWS CLI / ECR login (images were loaded from the offline bundle)" ;;
+  0:*.dkr.ecr.*.amazonaws.com*)
     region="$(printf '%s' "$VISION_REGISTRY" | sed -n 's/.*\.dkr\.ecr\.\([a-z0-9-]*\)\.amazonaws\.com.*/\1/p')"
     host="$(printf '%s' "$VISION_REGISTRY" | sed -n 's#\(^[0-9]*\.dkr\.ecr\.[a-z0-9-]*\.amazonaws\.com\).*#\1#p')"
     if ensure_aws_cli; then
@@ -538,8 +541,12 @@ case "$VISION_REGISTRY" in
 esac
 
 # ── pull + up ──
-echo; info "Pulling images"
-${DC} "${DC_FILES[@]}" pull || warn "Some images failed to pull — continuing with any local images."
+if [ "$OFFLINE_MODE" = "1" ]; then
+  echo; info "Offline mode: skipping image pull (using images loaded from the bundle)"
+else
+  echo; info "Pulling images"
+  ${DC} "${DC_FILES[@]}" pull || warn "Some images failed to pull — continuing with any local images."
+fi
 info "Starting containers (up -d)"
 ${DC} "${DC_FILES[@]}" up -d
 

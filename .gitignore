@@ -86,3 +86,4 @@ data/
 vision/.env
 vision-stand-alone/.env
 
+sclab-offline-out/
