@@ -4,6 +4,24 @@
 
 set -euo pipefail
 
+# Offline (air-gapped) mode: used by install-offline.sh (--offline or SCLAB_OFFLINE=1).
+# It skips everything that needs the internet: Docker/Compose download, AWS CLI install, AWS credentials / ECR login,
+# and reads the license key from a file (SCLAB_LICENSE_FILE) instead of asking for it.
+#   SCLAB_BUNDLE_SERVICES  space separated services contained in the offline bundle; the others are not offered.
+OFFLINE=0
+case "${SCLAB_OFFLINE:-0}" in 1|y|Y|yes|true) OFFLINE=1 ;; esac
+for _arg in "$@"; do
+  [ "$_arg" = "--offline" ] && OFFLINE=1
+done
+unset _arg
+
+# True if the service can be installed: always online; offline only when it is inside the bundle.
+svc_available() {
+  [ "$OFFLINE" = "1" ] || return 0
+  [ -n "${SCLAB_BUNDLE_SERVICES:-}" ] || return 0
+  case " ${SCLAB_BUNDLE_SERVICES} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
 # Distribution detection
 detect_distro() {
   if [ -f /etc/os-release ]; then
@@ -220,6 +238,31 @@ check_requirements() {
     exit 1
   fi
   
+  if [ "$OFFLINE" = "1" ]; then
+    # Offline: nothing can be installed from the internet. Docker/Compose come from the offline bundle (install-offline.sh).
+    if ! command_exists docker; then
+      echo "[Error] Docker is not installed. Run install-offline.sh first (it installs Docker from the bundle)."
+      exit 1
+    fi
+    if docker compose version >/dev/null 2>&1; then
+      DOCKER_COMPOSE="docker compose"
+    elif command_exists docker-compose; then
+      DOCKER_COMPOSE="docker-compose"
+    else
+      echo "[Error] Docker Compose not found. Run install-offline.sh first (it installs Compose from the bundle)."
+      exit 1
+    fi
+    local cmd
+    for cmd in sed grep awk openssl; do
+      if ! command_exists "$cmd"; then
+        echo "[Error] Required command not found: $cmd (cannot be installed offline; install it from your OS media)."
+        exit 1
+      fi
+    done
+    echo "✓ All requirements satisfied (offline mode)"
+    return 0
+  fi
+
   # Check for Docker
   if ! command_exists docker; then
     echo "[Warning] Docker is not installed."
@@ -428,6 +471,19 @@ ask_yes_no() {
   esac
 }
 
+# Like ask_yes_no, but for a service: offline, a service that is not in the bundle is answered N without asking.
+# $1 service name, $2 prompt, $3 default (Y or N), $4 variable that receives Y or N.
+ask_service() {
+  if svc_available "$1"; then
+    # Offline: the service was chosen when the bundle was built, so installing it is the default.
+    if [ "$OFFLINE" = "1" ] && [ -n "${SCLAB_BUNDLE_SERVICES:-}" ]; then set -- "$1" "$2" Y "$4"; fi
+    ask_yes_no "$2" "$3" "$4"
+  else
+    echo " ! $1 is not included in the offline bundle: skipped."
+    printf -v "$4" '%s' N
+  fi
+}
+
 # True if the optional service was selected during this run.
 service_selected() {
   local s
@@ -473,6 +529,26 @@ FILES=("docker-compose.yml" "common.env" "settings.json" "ai-service.env" "redis
 DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env" "tileserver.env" "gotenberg.env")
 LICENSE_FILE="settings.json"
 LICENSE_PLACEHOLDER="LICENSE CODE HERE"
+
+# Offline replacement of gen.yml (key-generator): JWT key pair + self-signed TLS certificate with the host's openssl.
+generate_keys_offline() {
+  mkdir -p jwt cert
+  if [ ! -s jwt/jwtRS256.key ]; then
+    # PKCS#1 PEM ("BEGIN RSA PRIVATE KEY") like ssh-keygen -m PEM. OpenSSL 3 needs -traditional; OpenSSL 1.x/LibreSSL do not know it.
+    openssl genrsa -traditional -out jwt/jwtRS256.key 4096 2>/dev/null \
+      || openssl genrsa -out jwt/jwtRS256.key 4096 2>/dev/null \
+      || { echo "[Error] Failed to generate the JWT key with openssl."; exit 1; }
+    openssl rsa -in jwt/jwtRS256.key -pubout -outform PEM -out jwt/jwtRS256.key.pub 2>/dev/null
+    chmod 600 jwt/jwtRS256.key
+    chmod 644 jwt/jwtRS256.key.pub
+    echo " - jwt/: generated JWT key pair."
+  else
+    echo " - jwt/: key pair already exists."
+  fi
+  # shellcheck disable=SC1091
+  . ./_tls.sh
+  ensure_tls_cert
+}
 
 # Main installation starts here
 main() {
@@ -594,9 +670,16 @@ main() {
   echo ""
   echo "License Key Configuration"
   echo "------------------------"
-  echo "Please enter your SCLAB Studio license key."
-  echo "This is required to activate your installation."
-  read_password "License Key: " LICENSE_KEY
+  LICENSE_KEY=""
+  if [ "$OFFLINE" = "1" ] && [ -n "${SCLAB_LICENSE_FILE:-}" ] && [ -r "${SCLAB_LICENSE_FILE}" ]; then
+    # Offline: the license key is stored in the bundle (copy/paste is not possible on air-gapped servers).
+    LICENSE_KEY="$(grep -v '^[[:space:]]*#' "$SCLAB_LICENSE_FILE" | tr -d '\r' | sed -e '/^[[:space:]]*$/d' | head -1 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    echo "License key loaded from the bundle: $SCLAB_LICENSE_FILE"
+  else
+    echo "Please enter your SCLAB Studio license key."
+    echo "This is required to activate your installation."
+    read_password "License Key: " LICENSE_KEY
+  fi
   
   # Check if license key is empty (only whitespace)
   case "$LICENSE_KEY" in
@@ -610,102 +693,108 @@ main() {
       ;;
   esac
 
-  # Install AWS CLI
-  echo ""
-  echo "Installing AWS CLI..."
-  echo "AWS CLI is required for S3 storage functionality..."
-  AWS_CMD="aws"
-  if ! command_exists aws; then
-    # Create temp directory
-    TMP=$(mktemp -d 2>/dev/null || mktemp -d -t sclab.XXXXXX || echo "/tmp/sclab-$$")
-    mkdir -p "$TMP"
-
-    # Ensure cleanup on exit
-    cleanup() {
-      [ -d "$TMP" ] && rm -rf "$TMP"
-    }
-    trap cleanup EXIT INT TERM
-
-    # Download AWS CLI
-    case "$ARCH_NORMALIZED" in
-      x86_64)
-        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
-        ;;
-      aarch64)
-        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
-        ;;
-      *)
-        echo "[Warning] AWS CLI might not be available for architecture: $ARCH_NORMALIZED"
-        AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
-        ;;
-    esac
-
-    download_file "$AWS_URL" "$TMP/awscliv2.zip"
-
-    # Install unzip if needed
-    if ! command_exists unzip; then
-      install_package unzip
-    fi
-
-    unzip -q "$TMP/awscliv2.zip" -d "$TMP"
-    "$TMP/aws/install" -i /usr/local/aws -b /usr/local/bin
-
-    # Fix permissions for AWS CLI - ensure all files are accessible
-    chmod -R 755 /usr/local/aws
-    chmod +x /usr/local/bin/aws
-
-    # Find and fix the actual aws binary
-    if [ -L /usr/local/aws/v2/current/bin/aws ]; then
-      # Follow symlinks to find the actual binary
-      AWS_ACTUAL=$(readlink -f /usr/local/aws/v2/current/bin/aws)
-      if [ -f "$AWS_ACTUAL" ]; then
-        chmod +x "$AWS_ACTUAL"
-      fi
-    fi
-
-    AWS_CMD="$(command -v aws 2>/dev/null || echo /usr/local/bin/aws)"
-    echo "[Info] AWS CLI installed: $("$AWS_CMD" --version)"
-  else
-    AWS_CMD="$(command -v aws)"
-    echo "[Info] AWS CLI already installed: $("$AWS_CMD" --version)"
-  fi
-
-  # Check AWS credentials
-  echo ""
-  echo "Checking AWS credentials..."
-
-  # Check if credentials file exists and has content
-  AWS_CREDS_FILE="${HOME}/.aws/credentials"
-
-  if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
-    echo "✓ AWS credentials found"
-  else
-    echo "AWS credentials not found."
-    echo "AWS credentials are required to download SCLAB docker images."
+  if [ "$OFFLINE" = "1" ]; then
     echo ""
-    read -r -p "Would you like to configure AWS credentials now? [Y/n]: " CONFIGURE_AWS
-    case "${CONFIGURE_AWS:-Y}" in
-      [Yy]* )
-        echo ""
-        echo "Please enter your AWS credentials:"
-        echo "(These will be provided by SCLAB support)"
+    echo "Offline mode: skipping AWS CLI / AWS credentials / ECR login (images are loaded from the bundle)."
+  else
+    # Install AWS CLI
+    echo ""
+    echo "Installing AWS CLI..."
+    echo "AWS CLI is required for S3 storage functionality..."
+    AWS_CMD="aws"
+    if ! command_exists aws; then
+      # Create temp directory
+      TMP=$(mktemp -d 2>/dev/null || mktemp -d -t sclab.XXXXXX || echo "/tmp/sclab-$$")
+      mkdir -p "$TMP"
 
-        "$AWS_CMD" configure
+      # Ensure cleanup on exit
+      cleanup() {
+        [ -d "$TMP" ] && rm -rf "$TMP"
+      }
+      trap cleanup EXIT INT TERM
 
-        # Verify credentials were configured
-        if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
-          echo "✓ AWS credentials configured successfully"
-        else
-          echo "[Warning] AWS credentials were not configured properly."
-          echo "You may need to configure them manually later using: aws configure"
+      # Download AWS CLI
+      case "$ARCH_NORMALIZED" in
+        x86_64)
+          AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+          ;;
+        aarch64)
+          AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
+          ;;
+        *)
+          echo "[Warning] AWS CLI might not be available for architecture: $ARCH_NORMALIZED"
+          AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+          ;;
+      esac
+
+      download_file "$AWS_URL" "$TMP/awscliv2.zip"
+
+      # Install unzip if needed
+      if ! command_exists unzip; then
+        install_package unzip
+      fi
+
+      unzip -q "$TMP/awscliv2.zip" -d "$TMP"
+      "$TMP/aws/install" -i /usr/local/aws -b /usr/local/bin
+
+      # Fix permissions for AWS CLI - ensure all files are accessible
+      chmod -R 755 /usr/local/aws
+      chmod +x /usr/local/bin/aws
+
+      # Find and fix the actual aws binary
+      if [ -L /usr/local/aws/v2/current/bin/aws ]; then
+        # Follow symlinks to find the actual binary
+        AWS_ACTUAL=$(readlink -f /usr/local/aws/v2/current/bin/aws)
+        if [ -f "$AWS_ACTUAL" ]; then
+          chmod +x "$AWS_ACTUAL"
         fi
-        ;;
-      * )
-        echo "[Warning] Skipping AWS configuration."
-        echo "You will need to configure AWS credentials manually later using: aws configure"
-        echo "Without AWS credentials, you won't be able to download SCLAB docker images."
-        ;;
-    esac
+      fi
+
+      AWS_CMD="$(command -v aws 2>/dev/null || echo /usr/local/bin/aws)"
+      echo "[Info] AWS CLI installed: $("$AWS_CMD" --version)"
+    else
+      AWS_CMD="$(command -v aws)"
+      echo "[Info] AWS CLI already installed: $("$AWS_CMD" --version)"
+    fi
+
+    # Check AWS credentials
+    echo ""
+    echo "Checking AWS credentials..."
+
+    # Check if credentials file exists and has content
+    AWS_CREDS_FILE="${HOME}/.aws/credentials"
+
+    if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
+      echo "✓ AWS credentials found"
+    else
+      echo "AWS credentials not found."
+      echo "AWS credentials are required to download SCLAB docker images."
+      echo ""
+      read -r -p "Would you like to configure AWS credentials now? [Y/n]: " CONFIGURE_AWS
+      case "${CONFIGURE_AWS:-Y}" in
+        [Yy]* )
+          echo ""
+          echo "Please enter your AWS credentials:"
+          echo "(These will be provided by SCLAB support)"
+
+          "$AWS_CMD" configure
+
+          # Verify credentials were configured
+          if [ -f "$AWS_CREDS_FILE" ] && grep -q "aws_access_key_id" "$AWS_CREDS_FILE" 2>/dev/null; then
+            echo "✓ AWS credentials configured successfully"
+          else
+            echo "[Warning] AWS credentials were not configured properly."
+            echo "You may need to configure them manually later using: aws configure"
+          fi
+          ;;
+        * )
+          echo "[Warning] Skipping AWS configuration."
+          echo "You will need to configure AWS credentials manually later using: aws configure"
+          echo "Without AWS credentials, you won't be able to download SCLAB docker images."
+          ;;
+      esac
+    fi
+  
   fi
   
   # Database and Service Configuration
@@ -723,7 +812,7 @@ main() {
   OPTIONAL_SERVICES_OFF=()
   
   echo ""
-  ask_yes_no "Install bundled MongoDB?" Y SVC_ANSWER
+  ask_service mongo "Install bundled MongoDB?" Y SVC_ANSWER
   if [ "$SVC_ANSWER" = "Y" ]; then
     OPTIONAL_SERVICES_ON+=(mongo)
     prompt_secret MONGO_PW "MongoDB root password [Enter = auto-generate]: "
@@ -742,7 +831,7 @@ main() {
   fi
   
   echo ""
-  ask_yes_no "Install bundled Redis?" Y SVC_ANSWER
+  ask_service redis "Install bundled Redis?" Y SVC_ANSWER
   if [ "$SVC_ANSWER" = "Y" ]; then
     OPTIONAL_SERVICES_ON+=(redis)
     prompt_secret REDIS_PW "Redis password [Enter = auto-generate]: "
@@ -766,10 +855,15 @@ main() {
   fi
   
   echo ""
-  ask_yes_no "Install bundled Qdrant (vector DB, used by the AI service)?" Y SVC_ANSWER
+  ask_service qdrant "Install bundled Qdrant (vector DB, used by the AI service)?" Y SVC_ANSWER
   if [ "$SVC_ANSWER" = "Y" ]; then
     OPTIONAL_SERVICES_ON+=(qdrant)
     prompt_secret QDRANT_KEY "Qdrant API key [Enter = auto-generate]: "
+  elif ! svc_available qdrant; then
+    # Offline bundle without Qdrant: nothing to connect to (the AI service needs it, so it is usually not bundled either).
+    OPTIONAL_SERVICES_OFF+=(qdrant)
+    QDRANT_KEY=""
+    echo " → Qdrant is not part of the offline bundle: skipped (no vector DB)."
   else
     OPTIONAL_SERVICES_OFF+=(qdrant)
     QDRANT_EXTERNAL=Y
@@ -810,7 +904,7 @@ main() {
     svc_rest="${svc_entry#*|}"
     svc_default="${svc_rest%%|*}"
     svc_desc="${svc_rest#*|}"
-    ask_yes_no "Install ${svc_name} - ${svc_desc}?" "$svc_default" SVC_ANSWER
+    ask_service "$svc_name" "Install ${svc_name} - ${svc_desc}?" "$svc_default" SVC_ANSWER
     if [ "$SVC_ANSWER" = "Y" ]; then
       OPTIONAL_SERVICES_ON+=("$svc_name")
       echo " → ${svc_name}: will be installed."
@@ -933,7 +1027,17 @@ main() {
   echo "It needs about 200 GB of free disk (image + map data assembled on the first start) and the first pull takes a while."
   echo "If you skip it, map widgets use the public CARTO tiles, which show an 'API KEY REQUIRED' watermark."
   echo ""
-  read -r -p "Install the map tile server? [y/N]: " INSTALL_TILESERVER || true
+  if svc_available tileserver; then
+    if [ "$OFFLINE" = "1" ] && [ -n "${SCLAB_BUNDLE_SERVICES:-}" ]; then
+      echo "The tile server is part of the offline bundle: it will be installed."
+      INSTALL_TILESERVER=Y
+    else
+      read -r -p "Install the map tile server? [y/N]: " INSTALL_TILESERVER || true
+    fi
+  else
+    echo " ! The map tile server is not included in the offline bundle: skipped."
+    INSTALL_TILESERVER=N
+  fi
   case "${INSTALL_TILESERVER:-N}" in
     [Yy]* )
       INSTALL_TILESERVER=Y
@@ -967,7 +1071,7 @@ main() {
   echo "It needs an extra container (Gotenberg + Chromium, image sclabio/gotenberg, about 1.7 GB; up to 2 GB of memory while converting)."
   echo "If you skip it, the block is not available. You can add it later with ./gotenberg/enable.sh."
   echo ""
-  ask_yes_no "Install the HTML to PDF service?" N INSTALL_GOTENBERG
+  ask_service gotenberg "Install the HTML to PDF service?" N INSTALL_GOTENBERG
   if [ "${INSTALL_GOTENBERG:-N}" = "Y" ]; then
     echo " → The HTML to PDF service will be installed."
   else
@@ -1187,7 +1291,10 @@ main() {
     echo "optional_services_off=${OPTIONAL_SERVICES_OFF[*]:-}"
     echo "distro=$DISTRO_ID"
     echo "arch=$ARCH_NORMALIZED"
+    echo "offline=$OFFLINE"
   } > "$INIT_FILE"
+  # Marker for run.sh / pull.sh: no ECR login or image pull on an offline installation.
+  if [ "$OFFLINE" = "1" ]; then : > .offline; fi
   
   echo ""
   echo "✅ Configuration completed successfully!"
@@ -1198,7 +1305,12 @@ main() {
   echo ""
   echo "Generating security keys..."
   echo "Creating JWT tokens and SSL certificates for secure communication..."
-  $DOCKER_COMPOSE -f gen.yml run --rm key-generator
+  if [ "$OFFLINE" = "1" ]; then
+    # gen.yml runs "apk add" inside an alpine container, which needs the internet: generate with the host's openssl instead.
+    generate_keys_offline
+  else
+    $DOCKER_COMPOSE -f gen.yml run --rm key-generator
+  fi
   
   # Create Docker network
   echo ""

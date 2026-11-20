@@ -3,6 +3,8 @@ SCLAB Docker images
 
 > Korean version: [README-ko.md](README-ko.md)
 
+> **Air-gapped (offline) server?** See the step-by-step guide: [Offline installation guide](docs/offline-install.md) ([한국어](docs/offline-install-ko.md))
+
 # Quick reference
 
 - **Maintained by**:  
@@ -121,6 +123,13 @@ The installation script will:
 5. **Install dependencies** (AWS CLI for AWS ECR)
 6. **Configure AWS credentials** (required for downloading SCLAB docker images)
 7. **Create Docker network** for container communication
+
+### Offline (air-gapped) installation
+
+For servers without internet access, build a bundle on a machine that has internet with `./make-offline-zip.sh`
+(pick the target OS/architecture and the services; the images, Docker Engine, Compose, this repository and the
+license key are packed into 1 GB split files with `SHA256SUMS`), copy the files to the server and run
+`sudo bash ./install-offline.sh`. Full guide: [docs/offline-install.md](docs/offline-install.md) ([한국어](docs/offline-install-ko.md)).
 
 ### Security Notes
 
