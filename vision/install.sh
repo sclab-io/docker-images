@@ -43,11 +43,6 @@ gen_secret() {  # 랜덤 48자 hex 문자열
   elif [ -r /dev/urandom ]; then LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 48
   else echo "sv$(date +%s)$$${RANDOM:-0}${RANDOM:-0}" | head -c 48; fi
 }
-gen_secret32() {  # 랜덤 64자 hex(32바이트) — VISION_SECRET_KEY 봉투암호화 마스터키 형식(64-hex 필수, §11.4)
-  if command_exists openssl; then openssl rand -hex 32
-  elif [ -r /dev/urandom ]; then LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64
-  else printf '%016x%016x%016x%016x' "$(date +%s)" "$$" "${RANDOM:-0}" "${RANDOM:-0}" | head -c 64; fi
-}
 strip_quotes() {
   local v="${1:-}"
   v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
@@ -414,14 +409,9 @@ VISION_VERSION="$VISION_TAG"
 
 # 6) secret
 echo; printf "%b\n" "${C_B}[6/6] Secrets (production security)${C_0}"
-if ask_yn "Auto-generate secrets? (no = keep insecure dev defaults)" y; then
-  VISION_INTERNAL_TOKEN="$(gen_secret)"; VISION_ADMIN_JWT_SECRET="$(gen_secret)"; VISION_SIGNING_KEY="$(gen_secret)"; VISION_SECRET_KEY="$(gen_secret32)"
-  ok "Generated 4 random secrets"
-else
-  VISION_INTERNAL_TOKEN="sv-dev-internal-token"; VISION_ADMIN_JWT_SECRET="sv-dev-admin-jwt-secret"; VISION_SIGNING_KEY="dev-insecure-signing-key"; VISION_SECRET_KEY="dev-insecure-secret-key"
-  warn "Using insecure dev secrets — do NOT expose in production."
-fi
-SESSION_SECRET="${VISION_ADMIN_JWT_SECRET}"
+echo "  Server secrets (signing key, internal token, admin JWT secret, viewer secret) are generated automatically on first"
+echo "  boot and stored encrypted in MongoDB — nothing to configure here."
+SESSION_SECRET="$(gen_secret)"   # 설치 직후 관리자 로그인 토큰을 만들 때 쓴다(시드로 DB에 들어간다)
 SESSION_MAX_AGE="2592000"
 
 # ── profile / COMPOSE_FILE 조립 ──
@@ -453,36 +443,61 @@ VISION_MONGO_URL=${VISION_MONGO_URL}
 VISION_MONGO_DB=${VISION_MONGO_DB}
 VISION_REDIS_URL=${VISION_REDIS_URL}
 VISION_STUDIO_SHARED=${VISION_STUDIO_SHARED}
-VISION_QDRANT_URL=${VISION_QDRANT_URL}
-VISION_QDRANT_API_KEY=${VISION_QDRANT_API_KEY}
-VISION_QDRANT_COLLECTION=${VISION_QDRANT_COLLECTION}
-VISION_INTERNAL_TOKEN=${VISION_INTERNAL_TOKEN}
-VISION_ADMIN_JWT_SECRET=${VISION_ADMIN_JWT_SECRET}
-SESSION_SECRET=${SESSION_SECRET}
-SESSION_MAX_AGE=${SESSION_MAX_AGE}
-VISION_SIGNING_KEY=${VISION_SIGNING_KEY}
-VISION_SECRET_KEY=${VISION_SECRET_KEY}
-VISION_HLS_CORS_ORIGINS=${VISION_HLS_CORS_ORIGINS}
-VISION_RECORD_DEFAULT=${VISION_RECORD_DEFAULT}
-VISION_RECORD_DELETE_AFTER=86400
-VISION_S3_BUCKET=${VISION_S3_BUCKET}
-VISION_S3_ENDPOINT=http://rustfs:9000
-VISION_S3_REGION=us-east-1
 VISION_S3_ACCESS_KEY_ID=rustfsadmin
 VISION_S3_SECRET_ACCESS_KEY=rustfsadmin
-VISION_S3_PREFIX=recordings
 VISION_S3_API_PORT=19000
 VISION_S3_CONSOLE_PORT=19001
-VISION_ORT_EP=cpu
-VISION_EXTERNAL_INFERENCE_OPTIN=true
-VISION_ASSISTANT_BASE=
-VISION_ASSISTANT_MODEL=
-VISION_ASSISTANT_KEY=
-VISION_PUBLIC_HLS_BASE=
 RUST_LOG=info
 EOF
 } > .env
 ok ".env written"
+
+
+# ── 첫 부팅 시드(runtime-config.seed.json) ──
+# 환경변수는 DB·Redis 접속값만 남기므로, 초기 정책·주소·시크릿은 이 파일로 넘긴다. vision-aio가 부팅 때 **DB에 없는 키만**
+# 채우고(이미 저장된 값은 건드리지 않음), 이후에는 콘솔 설정 > 고급 튜닝이 유일한 편집 지점이다. 시크릿은 DB에 암호화 저장된다.
+json_str() {  # JSON 문자열 이스케이프
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+write_runtime_seed() {
+  local f="data/vision/app/runtime-config.seed.json" ort="cpu" rec_on="false" s3_on="false"
+  [ "${GPU:-0}" = "1" ] && ort="cuda"
+  [ "${VISION_RECORD_DEFAULT:-off}" != "off" ] && rec_on="true"
+  [ -n "${VISION_S3_BUCKET:-}" ] && s3_on="true"
+  cat > "$f" <<JSON
+{
+  "values": {
+    "VISION_API_BASE": "http://vision-aio:8090",
+    "VISION_GATEWAY_BASE": "http://vision-aio:8080",
+    "VISION_DISCOVERY_BASE": "http://vision-aio:8090",
+    "VISION_WIZARD_BASE": "http://vision-aio:8090",
+    "VISION_QDRANT_URL": "$(json_str "$VISION_QDRANT_URL")",
+    "VISION_QDRANT_COLLECTION": "$(json_str "$VISION_QDRANT_COLLECTION")",
+    "VISION_RECORD_DIR": "/var/lib/vision/recordings",
+    "VISION_S3_INIT_TIMEOUT_SECS": "90",
+    "VISION_ORT_EP": "${ort}",
+    "SESSION_MAX_AGE": "${SESSION_MAX_AGE}"
+  },
+  "secrets": {
+    "VISION_QDRANT_API_KEY": "$(json_str "$VISION_QDRANT_API_KEY")",
+    "SESSION_SECRET": "$(json_str "$SESSION_SECRET")"
+  },
+  "deployment": {
+    "hls_cors_origins": ["*"],
+    "record_default_on": ${rec_on},
+    "record_hot_retention_secs": 86400,
+    "s3_enabled": ${s3_on},
+    "s3_bucket": "$(json_str "${VISION_S3_BUCKET:-}")",
+    "s3_endpoint": "http://rustfs:9000",
+    "s3_region": "us-east-1",
+    "s3_prefix": "recordings",
+    "s3_access_key_id": "rustfsadmin",
+    "s3_secret_access_key": "rustfsadmin"
+  }
+}
+JSON
+  chmod 0644 "$f" 2>/dev/null || true
+}
 
 # ── 데이터 디렉터리 ──
 info "Creating data directories under ./data/vision/"
@@ -493,7 +508,8 @@ if [ "$REC_MODE" = "s3" ]; then
   DATA_DIRS+=(data/vision/rustfs data/vision/rustfs-logs)
 fi
 chmod_data_dirs "${DATA_DIRS[@]}"
-ok "Directories ready"
+write_runtime_seed
+ok "Directories ready (first-boot seed: data/vision/app/runtime-config.seed.json)"
 
 # ── TLS 인증서(내장 nginx 사용 시) ──
 if [ "$TLS_MODE" = "1" ]; then

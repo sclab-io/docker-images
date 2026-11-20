@@ -470,7 +470,7 @@ set_env_value() {
 
 INIT_FILE=".init"
 FILES=("docker-compose.yml" "common.env" "settings.json" "ai-service.env" "redis.conf")
-DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env" "tileserver.env")
+DOMAIN_FILES=("common.env" "nginx.conf" "settings.json" "mqtt-broker.env" "tileserver.env" "gotenberg.env")
 LICENSE_FILE="settings.json"
 LICENSE_PLACEHOLDER="LICENSE CODE HERE"
 
@@ -1040,6 +1040,21 @@ main() {
     fi
   done
 
+  # HTML to PDF (Gotenberg) Configuration
+  echo ""
+  echo "HTML to PDF Service (Gotenberg)"
+  echo "-------------------------------"
+  echo "The 'HTML to PDF' block of AI agents turns a published page or iframe into a PDF."
+  echo "It needs an extra container (Gotenberg + Chromium, image sclabio/gotenberg, about 1.7 GB; up to 2 GB of memory while converting)."
+  echo "If you skip it, the block is not available. You can add it later with ./gotenberg/enable.sh."
+  echo ""
+  ask_yes_no "Install the HTML to PDF service?" N INSTALL_GOTENBERG
+  if [ "${INSTALL_GOTENBERG:-N}" = "Y" ]; then
+    echo " → The HTML to PDF service will be installed."
+  else
+    echo " → Skipping the HTML to PDF service."
+  fi
+  
   # Administrator Account Configuration
   echo ""
   echo "Administrator Account Configuration"
@@ -1203,6 +1218,16 @@ main() {
     echo " ! Warning: settings.json not found; could not update Datanuri settings."
   fi
 
+  # HTML to PDF (Gotenberg): not included by default; add the service and its settings when selected.
+  if [ "${INSTALL_GOTENBERG:-N}" = "Y" ]; then
+    echo " - Configuring HTML to PDF service (Gotenberg)..."
+    if [ -x "gotenberg/enable.sh" ]; then
+      ./gotenberg/enable.sh || echo " ! Warning: gotenberg/enable.sh failed; run it again after the installation."
+    else
+      echo " ! Warning: gotenberg/enable.sh not found; add gotenberg/docker-compose.gotenberg.yml to docker-compose.yml manually."
+    fi
+  fi
+  
   # Gmail SMTP
   if [ -n "$MAIL_URL_NEW" ]; then
     set_env_value common.env MAIL_URL "$MAIL_URL_NEW"
@@ -1251,6 +1276,7 @@ main() {
     echo "domain_files=${DOMAIN_FILES[*]}"
     echo "license_file=$LICENSE_FILE"
     echo "tileserver=${INSTALL_TILESERVER:-N}"
+    echo "gotenberg=${INSTALL_GOTENBERG:-N}"
     echo "external_stores=mongo:${MONGO_EXTERNAL} redis:${REDIS_EXTERNAL} qdrant:${QDRANT_EXTERNAL}"
     echo "optional_services_on=${OPTIONAL_SERVICES_ON[*]:-}"
     echo "optional_services_off=${OPTIONAL_SERVICES_OFF[*]:-}"
@@ -1310,6 +1336,12 @@ main() {
   fi
   if [ -z "${DATANURI_JWT_PUBLIC_KEY:-}" ]; then
     echo "  - Datanuri JWT public key: not set (Datanuri login disabled). Set private.datanuri.jwtPublicKey in settings.json."
+  fi
+  if [ "${INSTALL_GOTENBERG:-N}" = "Y" ]; then
+    echo "  - HTML to PDF service: installed (publish the site before using the HTML to PDF block)"
+  else
+    echo "  - HTML to PDF service: not installed (the HTML to PDF block is not available)."
+    echo "    To add it later: ./gotenberg/enable.sh, then ./run.sh"
   fi
   echo "  - Optional services: ${OPTIONAL_SERVICES_ON[*]:-none installed}"
   echo "    Turn services on/off later with: sudo ./service-manage.sh  (then ./run.sh)"
