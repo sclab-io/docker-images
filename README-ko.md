@@ -2,6 +2,8 @@
 
 > English version: [README.md](README.md)
 
+> **폐쇄망(오프라인) 서버에 설치하나요?** 단계별 안내: [오프라인 설치 가이드](docs/offline-install-ko.md) ([English](docs/offline-install.md))
+
 ## 빠른 참고
 
 - **관리 주체**: [SCLAB](https://github.com/sclab-io/docker-images)
@@ -112,6 +114,12 @@ sudo ./install.sh
 5. AWS ECR에서 이미지를 받기 위한 AWS CLI를 설치한다.
 6. AWS 자격 증명을 구성한다.
 7. 서비스 간 통신용 Docker 네트워크를 만든다.
+
+### 폐쇄망(오프라인) 설치
+
+인터넷이 없는 서버에는 인터넷이 되는 머신에서 `./make-offline-zip.sh` 로 번들을 만든 뒤(대상 OS/아키텍처와 서비스를 선택하면
+이미지, Docker Engine, Compose, 이 저장소, 라이선스 키가 1GB 단위 분할 파일과 `SHA256SUMS` 로 묶입니다) 파일을 서버로 옮기고
+`sudo bash ./install-offline.sh` 를 실행합니다. 전체 안내: [docs/offline-install-ko.md](docs/offline-install-ko.md) ([English](docs/offline-install.md)).
 
 ### 보안 참고
 
