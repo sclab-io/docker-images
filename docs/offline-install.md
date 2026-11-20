@@ -58,8 +58,11 @@ cd docker-images
 
 The script is interactive:
 
-1. **Target OS family** and **CPU architecture** (menus).
-2. **Services** - a checkbox menu. Type a number to toggle, `a` = all, `n` = none, Enter = continue.
+1. **Target OS family** (arrow-key menu: Up/Down or `j`/`k` to move, Enter to select). The CPU architecture is fixed to x86_64 (amd64);
+   **aarch64/arm64 is not supported yet** (`--arch aarch64` stops with an error).
+2. **Services** - a checkbox menu. Up/Down (or `j`/`k`) move, **Space** toggles, `a` = all, `n` = none, **Enter** = continue.
+   The required services are shown as locked and cannot be unchecked. Without a terminal (pipe/CI) or with `TERM=dumb` the script falls back to
+   numbered prompts (type a number to toggle).
    `mongo redis webapp sclab-proxy mail` are always included. Optional: `qdrant ai-service node-vm-service sclab-agent gis-process
    mqtt-client mqtt-broker kafka-client tileserver gotenberg vision vision-gpu ollama vllm speaches`.
    Unselected services are not pulled **and** are removed from the bundled `docker-compose.yml`.
@@ -92,7 +95,7 @@ All options: `./make-offline-zip.sh --help` (`--list-services` prints the catalo
   variant of the same tag (for example your own arm64 `mongo:8.2.7`), a pull for the other architecture replaces it - pull it again afterwards if you need it.
 - Disk: the images are stored once inside the Docker VM and once more as staging files in `<out>/.work` on the Mac, plus the final parts
   (about 2.5 x the image size in total on the Mac, plus the images in the Docker VM; raise the Docker Desktop disk limit if needed).
-- Use an x86_64 build for the current SCLAB images: `onpremise-webapp` and `bytemark/smtp` exist only for amd64, so `--arch aarch64` stops with an error.
+- Use an x86_64 build for the current SCLAB images: `onpremise-webapp` and `bytemark/smtp` exist only for amd64, so `--arch aarch64` stops with an error (currently not supported).
 - The archives are created with root ownership and without macOS metadata (`._*` files / extended attributes), so they extract cleanly on Linux.
 
 ```bash

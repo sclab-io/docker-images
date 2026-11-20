@@ -54,14 +54,15 @@ make-offline-zip.sh - build an offline (air-gapped) install bundle for SCLAB Stu
 
 Usage: ./make-offline-zip.sh [options]
 
-Without options the script is interactive (menus for OS/architecture and services).
+Without options the script is interactive (arrow-key menus for the OS family and the services:
+Up/Down or j/k move, Space toggles, Enter confirms; numeric prompts when there is no terminal).
 
 Options:
   -y, --yes                 Non-interactive: use defaults for everything not given as an option.
   --os NAME                 Target OS family: ubuntu | rhel | amzn | suse | alpine | generic
                               ubuntu = Ubuntu/Debian, rhel = RHEL/Rocky/Alma/CentOS/Oracle/Fedora,
                               amzn = Amazon Linux, suse = SUSE/openSUSE, alpine = Alpine, generic = other.
-  --arch ARCH               Target architecture: x86_64 | aarch64   (default: this machine)
+  --arch ARCH               Target architecture: x86_64 (default). aarch64/arm64 is not supported yet.
   --services LIST           Comma separated OPTIONAL services to include (required ones are always included).
                               "none" = only the required ones. See --list-services.
   --list-services           Print the service catalog and exit.
@@ -266,10 +267,121 @@ ask_choice() { # $1 title, $2 default index, rest "label" ... -> echoes the chos
   done
 }
 
+# Arrow-key menus: need a real terminal on stdin and stderr. Pipes/CI, TERM=dumb or an unset TERM use the numeric prompts instead.
+USE_ARROWS=0
+if [ "$INTERACTIVE" = "1" ] && [ -t 2 ] && [ -n "${TERM:-}" ] && [ "${TERM:-}" != "dumb" ]; then USE_ARROWS=1; fi
+TERM_ROWS=24; TERM_COLS=80
+if [ "$USE_ARROWS" = "1" ]; then
+  tsz="$(stty size 2>/dev/null)" || tsz=""
+  case "$tsz" in
+    [0-9]*" "[0-9]*) TERM_ROWS="${tsz% *}"; TERM_COLS="${tsz#* }" ;;
+  esac
+  [ "$TERM_ROWS" -gt 0 ] 2>/dev/null || TERM_ROWS=24
+  [ "$TERM_COLS" -gt 20 ] 2>/dev/null || TERM_COLS=80
+fi
+
+# Reads one key (bash 3.2 compatible: no fractional read timeout; an ESC is followed by a read of the next 2 chars).
+# Sets MENU_KEY to: up | down | space | enter | all | none | eof | other
+MENU_KEY=""
+menu_read_key() {
+  local k k2=""
+  IFS= read -rsn1 k || { MENU_KEY=eof; return 0; }
+  case "$k" in
+    "") MENU_KEY=enter ;;
+    " ") MENU_KEY=space ;;
+    k|K) MENU_KEY=up ;;
+    j|J) MENU_KEY=down ;;
+    a|A) MENU_KEY=all ;;
+    n|N) MENU_KEY=none ;;
+    $'\033')
+      IFS= read -rsn2 k2 || k2=""
+      case "$k2" in
+        "[A"|"OA") MENU_KEY=up ;;
+        "[B"|"OB") MENU_KEY=down ;;
+        *) MENU_KEY=other ;;
+      esac ;;
+    *) MENU_KEY=other ;;
+  esac
+}
+
+MENU_SAVED_STTY=""
+menu_restore() { # always leave the terminal usable: restore stty and show the cursor
+  [ -n "$MENU_SAVED_STTY" ] && stty "$MENU_SAVED_STTY" 2>/dev/null || true
+  printf '\033[?25h' >&2
+}
+
+# Draws (or redraws in place) the menu. Items come from the arrays MI_LABEL / MI_DESC / MI_ON; MENU_CUR is the cursor row (0-based).
+menu_draw() { # $1 = 1 on the first draw
+  local i mark plain
+  [ "$1" = "1" ] || printf '\033[%dA' "$MENU_LINES" >&2
+  printf '\r\033[K%s\n' "$MENU_TITLE" >&2
+  if [ -n "$MENU_HEADER" ]; then printf '\r\033[K%s\n' "${MENU_HEADER:0:$((TERM_COLS - 1))}" >&2; fi
+  i=0
+  while [ "$i" -lt "$MENU_N" ]; do
+    if [ "$MENU_MODE" = "multi" ]; then
+      mark="[ ]"; [ "${MI_ON[$i]}" = "1" ] && mark="[x]"
+      plain="$(printf '%s %s %-16s %s' "$([ "$i" = "$MENU_CUR" ] && echo '>' || echo ' ')" "$mark" "${MI_LABEL[$i]}" "${MI_DESC[$i]}")"
+    else
+      plain="$(printf '%s %s' "$([ "$i" = "$MENU_CUR" ] && echo '>' || echo ' ')" "${MI_LABEL[$i]}")"
+    fi
+    plain="  ${plain:0:$((TERM_COLS - 3))}"
+    if [ "$i" = "$MENU_CUR" ]; then printf '\r\033[K\033[7m%s\033[0m\n' "$plain" >&2; else printf '\r\033[K%s\n' "$plain" >&2; fi
+    i=$((i + 1))
+  done
+  printf '\r\033[K%s\n' "${MENU_FOOTER:0:$((TERM_COLS - 1))}" >&2
+}
+
+# $1 = multi|single, $2 = title, $3 = header line (may be empty), $4 = initial cursor row (0-based).
+# Items in MI_LABEL / MI_DESC / MI_ON. multi: result is left in MI_ON; single: the chosen row is left in MENU_CUR.
+arrow_menu() {
+  local i
+  MENU_MODE="$1"; MENU_TITLE="$2"; MENU_HEADER="$3"; MENU_CUR="$4"; MENU_N="${#MI_LABEL[@]}"
+  MENU_LINES=$((MENU_N + 2)); [ -n "$MENU_HEADER" ] && MENU_LINES=$((MENU_LINES + 1))
+  if [ "$MENU_MODE" = "multi" ]; then
+    MENU_FOOTER="  Up/Down (or j/k) move | Space toggle | a all | n none | Enter confirm"
+  else
+    MENU_FOOTER="  Up/Down (or j/k) move | Enter select"
+  fi
+  MENU_SAVED_STTY="$(stty -g 2>/dev/null)" || MENU_SAVED_STTY=""
+  trap 'menu_restore; exit 130' INT TERM HUP
+  trap 'menu_restore' EXIT
+  printf '\n\033[?25l' >&2
+  menu_draw 1
+  while true; do
+    menu_read_key
+    case "$MENU_KEY" in
+      up) MENU_CUR=$(( (MENU_CUR + MENU_N - 1) % MENU_N )) ;;
+      down) MENU_CUR=$(( (MENU_CUR + 1) % MENU_N )) ;;
+      space) if [ "$MENU_MODE" = "multi" ]; then if [ "${MI_ON[MENU_CUR]}" = "1" ]; then MI_ON[MENU_CUR]=0; else MI_ON[MENU_CUR]=1; fi; fi ;;
+      all) if [ "$MENU_MODE" = "multi" ]; then i=0; while [ "$i" -lt "$MENU_N" ]; do MI_ON[i]=1; i=$((i + 1)); done; fi ;;
+      none) if [ "$MENU_MODE" = "multi" ]; then i=0; while [ "$i" -lt "$MENU_N" ]; do MI_ON[i]=0; i=$((i + 1)); done; fi ;;
+      enter) break ;;
+      eof) menu_restore; trap - INT TERM HUP EXIT; die "Input closed while a menu was open." ;;
+    esac
+    menu_draw 0
+  done
+  menu_restore
+  trap - INT TERM HUP EXIT
+}
+
+# Single choice: $1 title, $2 default index (1-based), rest labels -> echoes the chosen index (1-based).
+# Arrow-key menu on a terminal, numeric prompt otherwise.
+choose_one() {
+  local title="$1" def="$2"
+  shift 2
+  if [ "$USE_ARROWS" = "1" ] && [ "$(($# + 4))" -le "$TERM_ROWS" ]; then
+    MI_LABEL=("$@"); MI_DESC=(); MI_ON=()
+    arrow_menu single "$title" "" "$((def - 1))" >&2
+    echo "$((MENU_CUR + 1))"
+  else
+    ask_choice "$title" "$def" "$@"
+  fi
+}
+
 # ----------------------------------------------------------------------------- target OS / arch
 if [ -z "$TARGET_OS" ]; then
   if [ "$INTERACTIVE" = "1" ]; then
-    idx="$(ask_choice "Target server OS family (the offline server where SCLAB will be installed):" 1 \
+    idx="$(choose_one "Target server OS family (the offline server where SCLAB will be installed):" 1 \
       "Ubuntu / Debian (and derivatives)" \
       "RHEL / Rocky / AlmaLinux / CentOS / Oracle Linux / Fedora" \
       "Amazon Linux 2 / 2023" \
@@ -283,23 +395,27 @@ if [ -z "$TARGET_OS" ]; then
 fi
 case "$TARGET_OS" in ubuntu|rhel|amzn|suse|alpine|generic) ;; *) die "Unknown --os '$TARGET_OS' (ubuntu|rhel|amzn|suse|alpine|generic)." ;; esac
 
+# aarch64/arm64 is NOT supported yet: onpremise-webapp and bytemark/smtp are published for amd64 only.
+# The aarch64 code paths below are kept on purpose - set ARM_SUPPORTED=1 once those images have arm64 variants.
+ARM_SUPPORTED=0
 if [ -z "$TARGET_ARCH" ]; then
+  # Only x86_64 is offered, so there is nothing to ask. (When ARM_SUPPORTED=1, ask here again:
+  #   choose_one "Target CPU architecture of the SERVER (not of this machine):" 1 "x86_64 (amd64)" "aarch64 (arm64)")
+  TARGET_ARCH="x86_64"
   if [ "$INTERACTIVE" = "1" ]; then
-    # Servers are mostly x86_64: on a Mac (often Apple Silicon) do not default to the Mac's own architecture.
-    def=1; [ "$HOST_OS" != "Darwin" ] && [ "$HOST_ARCH" = "aarch64" ] && def=2
-    idx="$(ask_choice "Target CPU architecture of the SERVER (not of this machine):" "$def" "x86_64 (amd64)" "aarch64 (arm64)")"
-    case "$idx" in 1) TARGET_ARCH=x86_64 ;; *) TARGET_ARCH=aarch64 ;; esac
-  elif [ "$HOST_OS" = "Darwin" ]; then
-    TARGET_ARCH="x86_64"
-    info "No --arch given: assuming an x86_64 server (this Mac is $HOST_ARCH). Use --arch aarch64 for ARM servers."
-  else
-    TARGET_ARCH="$HOST_ARCH"
+    info "Target CPU architecture: x86_64 (amd64). aarch64/arm64 is not supported yet."
+  elif [ "$HOST_ARCH" != "x86_64" ]; then
+    info "No --arch given: building for an x86_64 server (this machine is $HOST_OS/$HOST_ARCH; aarch64 targets are not supported yet)."
   fi
 fi
 case "$TARGET_ARCH" in
   x86_64|amd64) TARGET_ARCH=x86_64; PLATFORM="linux/amd64" ;;
-  aarch64|arm64) TARGET_ARCH=aarch64; PLATFORM="linux/arm64" ;;
-  *) die "Unsupported --arch '$TARGET_ARCH' (x86_64|aarch64)." ;;
+  aarch64|arm64)
+    if [ "$ARM_SUPPORTED" != "1" ]; then
+      die "--arch $TARGET_ARCH is not supported yet (onpremise-webapp and other required images, e.g. bytemark/smtp, are amd64-only). Use --arch x86_64."
+    fi
+    TARGET_ARCH=aarch64; PLATFORM="linux/arm64" ;;
+  *) die "Unsupported --arch '$TARGET_ARCH' (x86_64; aarch64 is not supported yet)." ;;
 esac
 info "Host: $HOST_OS/$HOST_ARCH | Target server: Linux, OS family=$TARGET_OS, architecture=$TARGET_ARCH ($PLATFORM)"
 
@@ -319,7 +435,17 @@ if [ -n "$SERVICES_ARG" ]; then
 else
   for s in $SVC_OPTIONAL; do svc_default_on "$s" && SELECTED="$SELECTED $s"; done
   SELECTED="${SELECTED# }"
-  if [ "$INTERACTIVE" = "1" ]; then
+  if [ "$INTERACTIVE" = "1" ] && [ "$USE_ARROWS" = "1" ] && [ "$(( $(echo "$SVC_OPTIONAL" | wc -w) + 6 ))" -le "$TERM_ROWS" ]; then
+    MI_LABEL=(); MI_DESC=(); MI_ON=()
+    for s in $SVC_OPTIONAL; do
+      MI_LABEL+=("$s"); MI_DESC+=("$(svc_desc "$s")")
+      if is_selected "$s"; then MI_ON+=(1); else MI_ON+=(0); fi
+    done
+    arrow_menu multi "Services to include in the bundle" "  [x] LOCKED, always included: $SVC_REQUIRED" 0
+    SELECTED=""; k=0
+    for s in $SVC_OPTIONAL; do [ "${MI_ON[$k]}" = "1" ] && SELECTED="$SELECTED $s"; k=$((k + 1)); done
+    SELECTED="${SELECTED# }"
+  elif [ "$INTERACTIVE" = "1" ]; then
     while true; do
       printf '\nServices to include in the bundle\n'
       printf '  Required (always included): %s\n' "$SVC_REQUIRED"

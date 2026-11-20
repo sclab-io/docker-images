@@ -55,8 +55,10 @@ cd docker-images
 
 대화식으로 진행됩니다.
 
-1. **대상 OS 계열**과 **CPU 아키텍처** (메뉴).
-2. **서비스 선택** - 체크박스 메뉴. 번호를 입력하면 토글, `a` = 전체, `n` = 없음, Enter = 계속.
+1. **대상 OS 계열** (화살표 메뉴: ↑/↓ 또는 `j`/`k` 이동, Enter 선택). CPU 아키텍처는 x86_64(amd64) 로 고정이며
+   **aarch64/arm64 는 아직 지원되지 않습니다** (`--arch aarch64` 는 오류로 중단).
+2. **서비스 선택** - 체크박스 메뉴. ↑/↓(또는 `j`/`k`)로 이동, **Space** 로 토글, `a` = 전체, `n` = 없음, **Enter** = 계속.
+   필수 서비스는 잠금 표시되며 해제할 수 없습니다. 터미널이 아닐 때(파이프/CI)나 `TERM=dumb` 에서는 번호 입력 방식으로 자동 전환됩니다.
    `mongo redis webapp sclab-proxy mail` 은 항상 포함됩니다. 선택 항목: `qdrant ai-service node-vm-service sclab-agent gis-process
    mqtt-client mqtt-broker kafka-client tileserver gotenberg vision vision-gpu ollama vllm speaches`.
    선택하지 않은 서비스는 이미지를 받지 않고 번들의 `docker-compose.yml` 에서도 빠집니다.
@@ -87,7 +89,7 @@ cd docker-images
   다른 아키텍처로 pull 할 때 대체될 수 있으니, 필요하면 다시 pull 하세요.
 - 디스크: 이미지가 Docker VM 안에 한 번, Mac 의 `<out>/.work` 에 스테이징 파일로 한 번 더, 최종 분할 파일로 또 저장됩니다
   (Mac 에서 이미지 크기의 약 2.5배 + Docker VM 안의 이미지. 필요하면 Docker Desktop 디스크 한도를 늘리세요).
-- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다.
+- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다(현재 미지원).
 - 아카이브는 root 소유로, macOS 메타데이터(`._*` 파일 / 확장 속성) 없이 만들어져 Linux 에서 깨끗하게 풀립니다.
 
 ```bash
