@@ -41,7 +41,7 @@ SCLAB은 여러 데이터를 하나로 묶어 빠르게 시각화할 수 있게 
 ### SCLAB 이미지를 실행할 때 함께 쓰는 이미지
 
 - [mongo](https://hub.docker.com/_/mongo)
-- [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
+- [boky/postfix](https://hub.docker.com/r/boky/postfix)
 - [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
 - [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
 - [nginx](https://hub.docker.com/_/nginx)

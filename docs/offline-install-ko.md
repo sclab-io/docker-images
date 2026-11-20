@@ -89,7 +89,7 @@ cd docker-images
   다른 아키텍처로 pull 할 때 대체될 수 있으니, 필요하면 다시 pull 하세요.
 - 디스크: 이미지가 Docker VM 안에 한 번, Mac 의 `<out>/.work` 에 스테이징 파일로 한 번 더, 최종 분할 파일로 또 저장됩니다
   (Mac 에서 이미지 크기의 약 2.5배 + Docker VM 안의 이미지. 필요하면 Docker Desktop 디스크 한도를 늘리세요).
-- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다(현재 미지원).
+- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 이 아직 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다(현재 미지원). 메일 릴레이는 멀티아키(`boky/postfix`, 아래 참고)로 바뀌었습니다. 멀티아키 `onpremise-webapp` 이 ECR 에 올라오기 전에는 aarch64 번들을 만들 수 없습니다.
 - 아카이브는 root 소유로, macOS 메타데이터(`._*` 파일 / 확장 속성) 없이 만들어져 Linux 에서 깨끗하게 풀립니다.
 
 ```bash
@@ -256,8 +256,12 @@ init 시스템 실패 시 메시지 없이 끝나던 문제, 대상 아키텍처
 
 **한계 / 미검증**
 
-- **현재 필수 이미지로는 aarch64 번들을 만들 수 없습니다**: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `make-offline-zip.sh --arch aarch64` 는 오류로 중단됩니다.
-  aarch64 도구(AWS CLI, Docker, Compose 다운로드)만 확인했습니다.
+- **aarch64 번들은 아직 만들 수 없습니다**: `onpremise-webapp` 이 amd64 전용(ECR 에 arm64 이미지 없음)이라 `make-offline-zip.sh --arch aarch64` 는 중단됩니다.
+  메뉴에는 aarch64 가 나오지 않으며, 시험용으로 `SCLAB_OFFLINE_ARM64=1` 이면 차단이 풀립니다. 이 모드에서는 선택한 서비스의 각 이미지에 `linux/arm64` manifest 가 있는지 *pull 전에*
+  (`docker manifest inspect`) 검사해, 없는 이미지를 하나씩 이름으로 알리고 중단합니다(현재 `onpremise-webapp` 이 그 경우). 선택한 서비스의 이미지만 검사합니다.
+  지금까지 확인: aarch64 도구 다운로드, 그리고 `mongo`, `redis`, `nginx`, `boky/postfix` 의 arm64 manifest 존재.
+- **메일 릴레이 이미지**: `mail` 서비스는 amd64 전용 `bytemark/smtp` 대신 멀티아키(amd64+arm64) `boky/postfix:5.2.1` 을 씁니다. 25 포트로 받아 이전처럼 직접 외부로 발송하며
+  (`MAIL_URL=smtp://mail:25`) 변경이 없습니다. 기존 amd64 설치에서 옛 이미지를 유지하려면 `MAIL_IMAGE=bytemark/smtp` 를 지정하세요(docker-compose.yml 옆 `.env` 등).
 - **라이선스와 외부 접속**: 시험에는 가짜 라이선스 키를 썼습니다. 이 키로는 `webapp` 컨테이너가 (인터넷이 되는 환경에서도) 재시작을 반복하며, 격리 실행 중 `app.sclab.io` 를 반복 조회했습니다.
   라이선스 확인일 가능성이 높고, 그렇다면 **실제 라이선스가 폐쇄망 서버에는 없는 그 호스트 접속을 요구할 수 있습니다**. 유효한 키가 없어 확인하지 못했으니 실제 라이선스로 검증해 주세요.
 - macOS 미검증: **Apple Silicon** 실기기(사용한 Mac 은 Intel 이며 교차 아키텍처 경로는 Intel 호스트에서 arm64 대상으로 pull·inspect(`--platform`)까지만 시험했고(아키텍처 검사에서 중단), `save --platform` 은 같은 아키텍처인 amd64 대상에서만 시험), OrbStack, Colima, `brew install awscli`.

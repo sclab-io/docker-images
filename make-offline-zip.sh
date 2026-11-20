@@ -395,9 +395,11 @@ if [ -z "$TARGET_OS" ]; then
 fi
 case "$TARGET_OS" in ubuntu|rhel|amzn|suse|alpine|generic) ;; *) die "Unknown --os '$TARGET_OS' (ubuntu|rhel|amzn|suse|alpine|generic)." ;; esac
 
-# aarch64/arm64 is NOT supported yet: onpremise-webapp and bytemark/smtp are published for amd64 only.
-# The aarch64 code paths below are kept on purpose - set ARM_SUPPORTED=1 once those images have arm64 variants.
-ARM_SUPPORTED=0
+# aarch64/arm64 is NOT offered yet: onpremise-webapp is published for amd64 only (the mail relay image is multi-arch now).
+# The menu keeps hiding aarch64. Once an arm64 onpremise-webapp is in ECR, flip the default below to 1 (or set
+# SCLAB_OFFLINE_ARM64=1 to try it now): the per-image platform pre-check then stops with the exact image list if any selected image
+# still has no linux/arm64 manifest, and otherwise the bundle is built.
+ARM_SUPPORTED="${SCLAB_OFFLINE_ARM64:-0}"
 if [ -z "$TARGET_ARCH" ]; then
   # Only x86_64 is offered, so there is nothing to ask. (When ARM_SUPPORTED=1, ask here again:
   #   choose_one "Target CPU architecture of the SERVER (not of this machine):" 1 "x86_64 (amd64)" "aarch64 (arm64)")
@@ -412,7 +414,7 @@ case "$TARGET_ARCH" in
   x86_64|amd64) TARGET_ARCH=x86_64; PLATFORM="linux/amd64" ;;
   aarch64|arm64)
     if [ "$ARM_SUPPORTED" != "1" ]; then
-      die "--arch $TARGET_ARCH is not supported yet (onpremise-webapp and other required images, e.g. bytemark/smtp, are amd64-only). Use --arch x86_64."
+      die "--arch $TARGET_ARCH is not supported yet (the onpremise-webapp image is amd64-only until a multi-arch image is published to ECR). Use --arch x86_64. To try aarch64 anyway: SCLAB_OFFLINE_ARM64=1 (the script then checks every selected image for a linux/arm64 manifest and stops naming the ones that lack it)."
     fi
     TARGET_ARCH=aarch64; PLATFORM="linux/arm64" ;;
   *) die "Unsupported --arch '$TARGET_ARCH' (x86_64; aarch64 is not supported yet)." ;;

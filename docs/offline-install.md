@@ -95,7 +95,7 @@ All options: `./make-offline-zip.sh --help` (`--list-services` prints the catalo
   variant of the same tag (for example your own arm64 `mongo:8.2.7`), a pull for the other architecture replaces it - pull it again afterwards if you need it.
 - Disk: the images are stored once inside the Docker VM and once more as staging files in `<out>/.work` on the Mac, plus the final parts
   (about 2.5 x the image size in total on the Mac, plus the images in the Docker VM; raise the Docker Desktop disk limit if needed).
-- Use an x86_64 build for the current SCLAB images: `onpremise-webapp` and `bytemark/smtp` exist only for amd64, so `--arch aarch64` stops with an error (currently not supported).
+- Use an x86_64 build for the current SCLAB images: `onpremise-webapp` is still published for amd64 only, so `--arch aarch64` stops with an error (currently not supported). The mail relay is multi-arch (`boky/postfix`, see below). Once a multi-arch `onpremise-webapp` is in ECR, aarch64 bundles become possible; until then they are not.
 - The archives are created with root ownership and without macOS metadata (`._*` files / extended attributes), so they extract cleanly on Linux.
 
 ```bash
@@ -265,8 +265,12 @@ when an image does not exist for the target architecture (now an error).
 
 **Limits / not verified**
 
-- **aarch64 bundles are not possible with the current required images**: `onpremise-webapp` and `bytemark/smtp` are published for amd64 only,
-  so `make-offline-zip.sh --arch aarch64` stops with an error. Only the aarch64 tooling (AWS CLI, Docker, Compose downloads) was checked.
+- **aarch64 bundles are not possible yet**: `onpremise-webapp` is published for amd64 only (no arm64 image in ECR so far), so `make-offline-zip.sh --arch aarch64` stops.
+  The menu does not offer aarch64; `SCLAB_OFFLINE_ARM64=1` lifts the block for testing. In that mode the script checks every selected image for a `linux/arm64` manifest *before pulling*
+  (`docker manifest inspect`) and stops naming each image that lacks one (this is exactly what happens with `onpremise-webapp` today). Only the images of the selected services are checked.
+  Checked so far: the aarch64 tooling downloads, and `mongo`, `redis`, `nginx`, `boky/postfix` all have arm64 manifests.
+- **Mail relay image**: the `mail` service now uses the multi-arch `boky/postfix:5.2.1` (amd64+arm64) instead of the amd64-only `bytemark/smtp`. It listens on port 25 and relays/delivers outgoing mail itself
+  like before (`MAIL_URL=smtp://mail:25`). To keep the old image on an existing amd64 install set `MAIL_IMAGE=bytemark/smtp` (e.g. in a `.env` file next to docker-compose.yml).
 - **License and outbound access**: the tests used a fake license key. With it the `webapp` container restarts in a loop (also when the internet is available),
   and during the isolated run it repeatedly looked up `app.sclab.io`. That is probably the license check; it means **a real license may need
   access to that host, which an air-gapped server does not have**. This could not be confirmed without a valid key - please verify with a real license.
