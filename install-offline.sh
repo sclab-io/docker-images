@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # install-offline.sh - install SCLAB Studio on an air-gapped (offline) Linux server from a bundle made by make-offline-zip.sh.
 #
-# Put this script, SHA256SUMS, MANIFEST.json and all *.part001 ... files in ONE directory on the server, then run (as root):
+# Put this script, SHA256SUMS, MANIFEST.json and the bundle archive (one *.tar.gz, or all *.tar.gz.part001 ... files) in ONE directory on the server, then run (as root):
 #     sudo bash ./install-offline.sh
 #
 # What it does (no internet access is used at any point):
@@ -47,7 +47,7 @@ install-offline.sh - install SCLAB Studio from an offline bundle (no internet ne
 
 Usage: sudo bash ./install-offline.sh [options]
 
-  --dir DIR           Directory that holds the *.part files, SHA256SUMS, MANIFEST.json (default: this script's directory)
+  --dir DIR           Directory that holds the bundle archive (*.tar.gz or *.part files), SHA256SUMS, MANIFEST.json (default: this script's directory)
   --dest DIR          Install location (default: /opt/sclab). The app goes to <dest>/docker-images.
   --skip-docker       Do not install Docker; require an existing Docker + Compose.
   --force-docker      Install the bundled Docker even if a Docker is already present.
@@ -246,8 +246,8 @@ fi
 ok "Bundle: $BUNDLE_NAME | arch: $TARGET_ARCH | OS family: $TARGET_OS | server: $DISTRO_ID/$HOST_ARCH"
 
 # parts listed in SHA256SUMS
-PARTS="$(awk '{print $2}' "$SRC_DIR/SHA256SUMS" | sed 's/^\*//' | grep '\.part[0-9]*$' || true)"
-[ -n "$PARTS" ] || die "No *.part files are listed in SHA256SUMS."
+PARTS="$(awk '{print $2}' "$SRC_DIR/SHA256SUMS" | sed 's/^\*//' | grep -E '\.tar\.gz(\.part[0-9]+)?$' || true)"
+[ -n "$PARTS" ] || die "No bundle archive (*.tar.gz or *.tar.gz.part*) is listed in SHA256SUMS."
 missing=""
 for p in $PARTS; do [ -f "$SRC_DIR/$p" ] || missing="$missing $p"; done
 [ -z "$missing" ] || die "Missing bundle file(s):$missing - copy every part into $SRC_DIR."
@@ -281,7 +281,7 @@ ok "Disk space OK"
 step "2/7 Verifying checksums"
 if [ -f "$BUNDLE_DIR/.extracted" ]; then
   info "Bundle already extracted in $BUNDLE_DIR - checking only the small files."
-  ( cd "$SRC_DIR" && grep -v '\.part[0-9]*$' SHA256SUMS | $SHA_CHECK - ) || die "Checksum mismatch for MANIFEST.json / install-offline.sh."
+  ( cd "$SRC_DIR" && grep -Ev '\.tar\.gz(\.part[0-9]+)?$' SHA256SUMS | $SHA_CHECK - ) || die "Checksum mismatch for MANIFEST.json / install-offline.sh."
 else
   info "Checking ${parts_bytes} bytes in $(echo "$PARTS" | wc -l | tr -d ' ') part(s) - this can take several minutes."
   if ! ( cd "$SRC_DIR" && $SHA_CHECK SHA256SUMS ); then
@@ -297,7 +297,7 @@ if [ -f "$BUNDLE_DIR/.extracted" ]; then
 else
   rm -rf "$BUNDLE_DIR"
   mkdir -p "$BUNDLE_DIR"
-  info "Joining the parts and extracting to $BUNDLE_DIR"
+  info "Extracting (joining the parts first, if the bundle is split) to $BUNDLE_DIR"
   # shellcheck disable=SC2086
   ( cd "$SRC_DIR" && cat $PARTS ) | tar -xzf - -C "$BUNDLE_DIR" || { rm -rf "$BUNDLE_DIR"; die "Extraction failed (archive damaged or disk full)."; }
   : > "$BUNDLE_DIR/.extracted"

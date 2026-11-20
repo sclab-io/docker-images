@@ -7,7 +7,7 @@
 #   3. downloads the Docker Engine (static binaries) and the Docker Compose plugin for the target,
 #   4. pulls every selected image (docker pull) and exports it (docker save),
 #   5. stores this repository (scripts, compose, env files) and the license key in the bundle,
-#   6. writes ONE compressed archive split into 1 GB parts (*.part001 ...) + SHA256SUMS + MANIFEST.json
+#   6. writes ONE compressed archive optionally split into parts (default 1 GB: *.part001 ...; --no-split / --part-size) + SHA256SUMS + MANIFEST.json
 #      and copies install-offline.sh next to them.
 # Upload the files of the output directory to the air-gapped server and run:  sudo ./install-offline.sh
 #
@@ -24,7 +24,8 @@ COMPOSE_VERSION_DEFAULT="v2.40.3"
 
 OUT_DIR="./sclab-offline-out"
 WORK_DIR=""
-PART_SIZE_MB=1024
+PART_SIZE_ARG=""
+NO_SPLIT=0
 ASSUME_YES=0
 TARGET_OS=""
 TARGET_ARCH=""
@@ -68,7 +69,9 @@ Options:
   --list-services           Print the service catalog and exit.
   --out DIR                 Output directory (default: ./sclab-offline-out)
   --name NAME               Bundle name (default: sclab-offline-<date>-<arch>)
-  --part-size MB            Size of each archive part in MB (default: 1024)
+  --part-size SIZE          Split the archive into parts of SIZE: 500M, 2G (MB/GB), a bare number = MB (e.g. 1024).
+                              Whole numbers only. Default: 1G. Interactive runs ask for the splitting mode.
+  --no-split                Do not split: write ONE single archive file.
   --license-file FILE       File that contains the SCLAB license key (stored in the bundle)
   --license-key KEY         License key as text (or env SCLAB_LICENSE_KEY; visible in the process list - prefer a file)
   --no-license              Do not store a license (install-offline.sh will ask for it on the server)
@@ -143,6 +146,17 @@ svc_images() {
 }
 
 # ----------------------------------------------------------------------------- argument parsing
+# Part size argument: digits with an optional unit: 500 / 500M / 500MB (MB, the historical meaning of a bare number), 2G / 2GB.
+parse_part_size() { # $1 = value -> SPLIT_MODE (gb|mb) and SPLIT_SIZE; returns 1 when the value is not valid
+  local v n u
+  v="$(printf '%s' "$1" | tr 'a-z' 'A-Z')"
+  n="${v%%[!0-9]*}"; u="${v#"$n"}"
+  case "$u" in ''|M|MB|MIB) u=mb ;; G|GB|GIB) u=gb ;; *) return 1 ;; esac
+  n="$(printf '%s' "$n" | sed 's/^0*//')"
+  [ -n "$n" ] && [ "${#n}" -le 9 ] || return 1
+  SPLIT_MODE="$u"; SPLIT_SIZE="$n"
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     -y|--yes) ASSUME_YES=1 ;;
@@ -157,7 +171,8 @@ while [ $# -gt 0 ]; do
       exit 0 ;;
     --out) OUT_DIR="${2:-}"; shift ;;
     --name) BUNDLE_NAME="${2:-}"; shift ;;
-    --part-size) PART_SIZE_MB="${2:-}"; shift ;;
+    --part-size) PART_SIZE_ARG="${2:-}"; shift ;;
+    --no-split) NO_SPLIT=1 ;;
     --license-file) LICENSE_FILE_ARG="${2:-}"; shift ;;
     --license-key) LICENSE_KEY_ARG="${2:-}"; shift ;;
     --no-license) NO_LICENSE=1 ;;
@@ -172,8 +187,13 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-case "$PART_SIZE_MB" in ''|*[!0-9]*) die "--part-size must be a number of MB." ;; esac
-[ "$PART_SIZE_MB" -ge 1 ] || die "--part-size must be at least 1."
+SPLIT_MODE=""; SPLIT_SIZE=0; PART_BYTES=0
+if [ "$NO_SPLIT" = "1" ]; then
+  [ -z "$PART_SIZE_ARG" ] || die "--no-split and --part-size cannot be used together."
+  SPLIT_MODE=none
+elif [ -n "$PART_SIZE_ARG" ]; then
+  parse_part_size "$PART_SIZE_ARG" || die "--part-size must be a positive whole number with an optional unit, e.g. 500M, 2G or 1024 (no unit = MB); got '$PART_SIZE_ARG'."
+fi
 
 # Interactive only when stdin is a terminal and --yes was not given.
 INTERACTIVE=1
@@ -509,6 +529,59 @@ if [ "$NO_LICENSE" = "0" ]; then
   fi
 fi
 
+# ----------------------------------------------------------------------------- archive splitting
+# SPLIT_MODE: none (one single file) | gb | mb (parts of SPLIT_SIZE GB / MB). Default: gb, 1  (= 1 GB parts).
+ask_split_size() { # $1 = gb|mb, $2 = default -> sets SPLIT_SIZE (positive whole number; asks again on bad input)
+  local unit="$1" def="$2" a UNIT_UP
+  UNIT_UP="$(printf '%s' "$unit" | tr 'a-z' 'A-Z')"
+  while true; do
+    printf 'Part size in %s [%s]: ' "$UNIT_UP" "$def" >&2
+    IFS= read -r a || a=""
+    a="${a:-$def}"
+    case "$a" in
+      ''|*[!0-9]*) echo "Please enter a positive whole number (digits only, no decimals or units)." >&2; continue ;;
+    esac
+    a="$(printf '%s' "$a" | sed 's/^0*//')"
+    if [ -z "$a" ] || [ "${#a}" -gt 9 ]; then echo "The size must be between 1 and 999999999 $UNIT_UP." >&2; continue; fi
+    SPLIT_SIZE="$a"
+    return 0
+  done
+}
+
+ask_split_mode() {
+  local idx
+  MI_LABEL=("Do not split (one single file)" "Split into parts, size in GB   (default: 1 GB)" "Split into parts, size in MB   (default: 1024 MB)")
+  MI_DESC=(); MI_ON=()
+  if [ "$USE_ARROWS" = "1" ] && [ "$((${#MI_LABEL[@]} + 5))" -le "$TERM_ROWS" ]; then
+    arrow_menu single "Archive splitting (a part size larger than the whole bundle gives one single file anyway):" "" 1 >&2
+    idx="$((MENU_CUR + 1))"
+  else
+    printf '\nArchive splitting (a part size larger than the whole bundle gives one single file anyway):\n' >&2
+    printf '  1) %s\n  2) %s\n  3) %s\n' "${MI_LABEL[0]}" "${MI_LABEL[1]}" "${MI_LABEL[2]}" >&2
+    while true; do
+      printf 'Select [1-3, Enter = 2]: ' >&2
+      IFS= read -r idx || idx=""
+      idx="${idx:-2}"
+      case "$idx" in 1|2|3) break ;; esac
+      echo "Invalid choice." >&2
+    done
+  fi
+  case "$idx" in
+    1) SPLIT_MODE=none; SPLIT_SIZE=0 ;;
+    2) SPLIT_MODE=gb; ask_split_size gb 1 ;;
+    *) SPLIT_MODE=mb; ask_split_size mb 1024 ;;
+  esac
+}
+
+if [ -z "$SPLIT_MODE" ]; then
+  if [ "$INTERACTIVE" = "1" ]; then ask_split_mode; else SPLIT_MODE=gb; SPLIT_SIZE=1; fi
+fi
+case "$SPLIT_MODE" in
+  none) PART_BYTES=0; info "Archive: one single file (no splitting)" ;;
+  gb) PART_BYTES=$((SPLIT_SIZE * 1024 * 1024 * 1024)); info "Archive: split into parts of ${SPLIT_SIZE} GB (a smaller bundle becomes one single file)" ;;
+  mb) PART_BYTES=$((SPLIT_SIZE * 1024 * 1024)); info "Archive: split into parts of ${SPLIT_SIZE} MB (a smaller bundle becomes one single file)" ;;
+esac
+
 # ----------------------------------------------------------------------------- output / work directories
 mkdir -p "$OUT_DIR"
 OUT_DIR="$(cd "$OUT_DIR" && pwd)"
@@ -518,7 +591,7 @@ WORK_DIR="$(cd "$WORK_DIR" && pwd)"
 STAGE="$WORK_DIR/stage"
 [ -n "$BUNDLE_NAME" ] || BUNDLE_NAME="sclab-offline-$(date +%Y%m%d)-${TARGET_ARCH}"
 case "$BUNDLE_NAME" in *[!A-Za-z0-9._-]*) die "--name may only contain letters, digits, '.', '_' and '-'." ;; esac
-if ls "$OUT_DIR/$BUNDLE_NAME".part* >/dev/null 2>&1; then
+if ls "$OUT_DIR/$BUNDLE_NAME".tar.gz* >/dev/null 2>&1; then
   die "$OUT_DIR already contains parts of '$BUNDLE_NAME'. Remove them or pass another --name / --out."
 fi
 rm -rf "$STAGE"
@@ -912,6 +985,7 @@ write_manifest() { # $1 = output path; $2 = parts list file (may be empty)
     done < "$IMAGES_TSV"
     echo ""
     echo "  ],"
+    echo "  \"split\": {\"mode\": \"$MANIFEST_SPLIT_MODE\", \"size\": $MANIFEST_SPLIT_SIZE},"
     echo "  \"parts\": ["
     if [ -n "$parts" ] && [ -s "$parts" ]; then
       first=1
@@ -926,29 +1000,49 @@ write_manifest() { # $1 = output path; $2 = parts list file (may be empty)
     echo "}"
   } > "$out"
 }
+MANIFEST_SPLIT_MODE="$SPLIT_MODE"; MANIFEST_SPLIT_SIZE="$SPLIT_SIZE"
 write_manifest "$STAGE/MANIFEST.json" ""
 cp "$STAGE/MANIFEST.json" "$STAGE/MANIFEST.inner.json"
 
 # ----------------------------------------------------------------------------- tar | gzip | split
 COMPRESS="gzip -1"
 command_exists pigz && COMPRESS="pigz -1"
-info "Creating the archive and splitting it into ${PART_SIZE_MB} MB parts (compressor: ${COMPRESS%% *})"
-PART_BYTES=$((PART_SIZE_MB * 1024 * 1024))
-PREFIX="$OUT_DIR/$BUNDLE_NAME.tar.gz.part"
-# shellcheck disable=SC2086
-( cd "$STAGE" && tar $TAR_META -cf - . ) | $COMPRESS | split -a 4 -b "$PART_BYTES" - "$PREFIX.tmp_"
-# rename aaaa,aaab,... -> 001,002,...
-n=0
 PARTS_LIST="$WORK_DIR/parts.list"
 : > "$PARTS_LIST"
-for f in "$PREFIX".tmp_*; do
-  n=$((n + 1))
-  new="$(printf '%s%03d' "$PREFIX" "$n")"
-  mv "$f" "$new"
-  basename "$new" >> "$PARTS_LIST"
-done
-[ "$n" -ge 1 ] || die "Archive creation produced no parts."
-ok "$n part(s) written"
+SINGLE="$OUT_DIR/$BUNDLE_NAME.tar.gz"
+PREFIX="$SINGLE.part"
+if [ "$SPLIT_MODE" = "none" ]; then
+  info "Creating the archive as one single file (compressor: ${COMPRESS%% *})"
+  # shellcheck disable=SC2086
+  ( cd "$STAGE" && tar $TAR_META -cf - . ) | $COMPRESS > "$SINGLE.tmp_" || die "Archive creation failed."
+  mv "$SINGLE.tmp_" "$SINGLE"
+  basename "$SINGLE" >> "$PARTS_LIST"
+  ok "1 file written (no splitting)"
+else
+  info "Creating the archive and splitting it into ${SPLIT_SIZE} $(printf '%s' "$SPLIT_MODE" | tr a-z A-Z) parts (compressor: ${COMPRESS%% *})"
+  # shellcheck disable=SC2086
+  ( cd "$STAGE" && tar $TAR_META -cf - . ) | $COMPRESS | split -a 4 -b "$PART_BYTES" - "$PREFIX.tmp_"
+  # rename aaaa,aaab,... -> 001,002,...
+  n=0
+  for f in "$PREFIX".tmp_*; do
+    [ -f "$f" ] || continue
+    n=$((n + 1))
+    new="$(printf '%s%03d' "$PREFIX" "$n")"
+    mv "$f" "$new"
+    basename "$new" >> "$PARTS_LIST"
+  done
+  [ "$n" -ge 1 ] || die "Archive creation produced no parts."
+  if [ "$n" -eq 1 ]; then
+    # The whole archive is smaller than one part: same result as "do not split" - a single file without the .part001 suffix.
+    mv "${PREFIX}001" "$SINGLE"
+    basename "$SINGLE" > "$PARTS_LIST"
+    SPLIT_MODE=none; SPLIT_SIZE=0
+    ok "The archive is smaller than the part size: written as one single file"
+  else
+    ok "$n part(s) written"
+  fi
+fi
+MANIFEST_SPLIT_MODE="$SPLIT_MODE"; MANIFEST_SPLIT_SIZE="$SPLIT_SIZE"
 
 write_manifest "$OUT_DIR/MANIFEST.json" "$PARTS_LIST"
 cp "$STAGE/install-offline.sh" "$OUT_DIR/install-offline.sh"
@@ -973,7 +1067,7 @@ cat <<EOF
 
 Next steps:
   1. Copy EVERY file of $OUT_DIR to the air-gapped server (same directory):
-       *.part*, SHA256SUMS, MANIFEST.json, install-offline.sh
+       *.tar.gz or *.tar.gz.part*, SHA256SUMS, MANIFEST.json, install-offline.sh
   2. On the server (as root):   sudo bash ./install-offline.sh
      (add --yes for an unattended install with defaults; --help for all options)
 
