@@ -121,6 +121,8 @@ sudo ./install.sh
 이미지, Docker Engine, Compose, 이 저장소, 라이선스 키가 1GB 단위 분할 파일과 `SHA256SUMS` 로 묶입니다) 파일을 서버로 옮기고
 `sudo bash ./install-offline.sh` 를 실행합니다. 전체 안내: [docs/offline-install-ko.md](docs/offline-install-ko.md) ([English](docs/offline-install.md)).
 
+나중에 `webapp` 같은 일부 이미지만 업데이트할 때는 전체 번들을 다시 만들 필요 없이 [일부 이미지만 업데이트](docs/offline-install-ko.md#8-일부-이미지만-업데이트-오프라인-업데이트) 를 보세요(`make-offline-update-zip.sh` + `update-offline-images.sh`, [English](docs/offline-install.md#8-update-only-some-images-offline-update)).
+
 ### 보안 참고
 
 - 자동 생성된 비밀번호는 32자리 영숫자입니다.

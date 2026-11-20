@@ -21,6 +21,8 @@ is packed on a machine **with** internet access into a few split files. You copy
 |---|---|---|
 | `make-offline-zip.sh` | machine with internet (any Linux) | asks for the target OS/architecture and the services, installs the AWS CLI if missing, logs in to ECR, downloads Docker Engine + Compose, runs `docker pull` + `docker save` for every selected image, packs everything (plus the license key) into one archive split into 1 GB parts, writes `SHA256SUMS` and `MANIFEST.json` |
 | `install-offline.sh` | air-gapped server (root) | verifies the checksums, joins and extracts the parts, installs Docker + Compose from the bundle (unless Docker is already installed), `docker load`s the images, runs `install.sh --offline` (license key read from the bundle) and starts the services |
+| `make-offline-update-zip.sh` | machine with internet (Linux or macOS) | builds a small **update bundle** with only the images you pick (e.g. `webapp`) - see section 8 |
+| `update-offline-images.sh` | air-gapped server (root) | verifies and loads an update bundle and applies it to the installed system (rolling `webapp` update, health check, rollback, history) - see section 8 |
 
 Design notes
 
@@ -250,13 +252,149 @@ Check that no registry is needed: `grep -c "pull_policy: never" docker-compose.y
 
 - **Re-running** `install-offline.sh` is safe: verified checksums, extraction, Docker, loaded images and an existing
   configuration (`.init`) are detected and skipped; it only (re)starts the services.
-- **Update**: build a new bundle with `make-offline-zip.sh`, copy it, and run `install-offline.sh` again (new bundle name = new
+- **Update only some images** (for example `webapp` after a new release): build a small update bundle with
+  `make-offline-update-zip.sh` and apply it with `update-offline-images.sh` - see section 8 (rolling update, rollback, history).
+- **Update everything**: build a new full bundle with `make-offline-zip.sh`, copy it, and run `install-offline.sh` again (new bundle name = new
   extraction directory, changed images are loaded). Because an existing `.init` keeps the old repository files, apply new
-  compose/env files from `/opt/sclab/bundle-<name>/repo` by hand, then `./run.sh`. `update.sh` / `docker compose pull` are disabled offline. *(In-place upgrade of an existing installation is not automated yet.)*
+  compose/env files from `/opt/sclab/bundle-<name>/repo` by hand, then `./run.sh`. `update.sh` / `docker compose pull` are disabled offline.
 - **Reconfigure**: delete `/opt/sclab/docker-images/.init`, restore the files from the bundle's `repo/` directory, and run `install-offline.sh` again.
 - Add or remove optional services later: `sudo ./service-manage.sh` (only services whose images are loaded will start).
 
-## 8. Troubleshooting
+## 8. Update only some images (offline update)
+
+Use this when the server is already installed and only a few images changed - typically **`webapp`** after a new SCLAB release.
+Instead of building and copying the whole bundle (Docker, every image, ~GBs) again, you build a small **update bundle** that
+contains just the images you pick. The configuration (`.env` files, `settings.json`, certificates, `data/`) of the server is not touched.
+No license key and no Docker Engine are part of an update bundle.
+
+```
+ PC / server WITH internet                              air-gapped server
+ ───────────────────────────                            ───────────────────────────
+ ./make-offline-update-zip.sh  ──►  <name>.tar.gz.part*  ──►  sudo bash ./update-offline-images.sh
+   (pick services, pull,             <name>.SHA256SUMS         (verify, extract, docker load, show changes,
+    docker save, split)              <name>.MANIFEST.json       roll out, health check, history, rollback)
+                                     update-offline-images.sh
+```
+
+### 8.1 Build the update bundle (machine with internet; Linux or macOS)
+
+Run it from a checkout of this repository, like the full bundle (see section 3, including "Building the bundle on a Mac"):
+
+```bash
+./make-offline-update-zip.sh                      # interactive: Up/Down (or j/k) move, Space check, Enter confirm
+# or unattended:
+./make-offline-update-zip.sh --yes --services webapp,ai-service --out ./sclab-update-out
+```
+
+The menu lists all services (the five required ones included); `webapp` is checked by default. Without a terminal a numeric
+prompt is used. The script installs the AWS CLI if it is missing, logs in to ECR, runs `docker pull --platform linux/amd64` and
+`docker save` for the selected images only, and writes a compressed archive split into 1 GB parts.
+
+| Option | Meaning |
+|---|---|
+| `--services LIST` | comma separated services, e.g. `webapp,mail` (`--list-services` shows them all) |
+| `--arch x86_64` | target CPU architecture (default and only supported value for now; `aarch64` is refused) |
+| `--out DIR` | output directory (default `./sclab-update-out`) |
+| `--name NAME` | bundle name (default `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
+| `--part-size MB` | size of each part (default 1024) |
+| `--with-compose` | also pack this repository's compose / script / config files (see 8.3); default is images only |
+| `--base-bundle NAME` / `--base-manifest FILE` | record which full bundle this update belongs to (shown / checked on the server) |
+| `--no-pull` | use the images that already exist locally (no AWS CLI, no ECR login) |
+
+Every output file starts with the bundle name, so you can build several update bundles into the **same** output directory
+without mixing them up:
+
+```
+sclab-update-20261120-153045-x86_64.tar.gz.part001   (... .part002 ...)
+sclab-update-20261120-153045-x86_64.SHA256SUMS
+sclab-update-20261120-153045-x86_64.MANIFEST.json     (kind, creation time, per image: tag / image ID / repo digest / size, services, architecture)
+update-offline-images.sh                              (the same script for every bundle)
+```
+
+### 8.2 Copy the files to the server
+
+Copy **all** files of the bundle (`<name>.*` and `update-offline-images.sh`) into **one directory** on the server (USB, `scp`, ...).
+Files of several update bundles can sit in the same directory; each bundle is recognised by its name prefix.
+
+### 8.3 Apply the update on the server
+
+```bash
+cd /path/to/the/copied/files
+sudo bash ./update-offline-images.sh                # menu / confirmation
+sudo bash ./update-offline-images.sh --yes --bundle sclab-update-20261120-153045-x86_64    # unattended
+```
+
+- The script looks at the current directory (or `--dir`) and lists the update bundles: name, date, services, size and status
+  (`new` / `applied <date>`). With **one** bundle it only asks for a confirmation. With **several** bundles an arrow-key menu is shown
+  (Up/Down move, **Enter** applies the highlighted one, or check several with **Space** and press Enter to apply them **in date order**).
+  `--all` applies every bundle that was not applied yet, oldest first; `--bundle NAME[,NAME]` picks bundles without a menu.
+- The installation is found automatically (the current directory if it has a `docker-compose.yml`, else `/opt/sclab/docker-images`);
+  use `--install-dir DIR` otherwise.
+- Steps: checksum verification (a damaged or missing part stops everything) → architecture check → the parts are joined and extracted to a
+  temporary directory (next to the bundle, or `--work-dir`) → `docker load` → the new image IDs are compared with what the
+  running containers use, and **only changed services** are listed → you confirm → the update is applied → health check.
+- **Rollout:** `webapp` is replaced in a rolling way (the new container starts next to the old one, runs for 30 s, then the old one
+  is stopped; `sclab-proxy` is restarted afterwards). Every other service is recreated with `docker compose up -d --no-deps <service>`.
+  Nothing is pulled and no registry is contacted (offline mode / `pull_policy: never`).
+- A service is considered healthy when its container is running (and `healthy` if it has a health check) and stays up for a few seconds.
+  If the new webapp container does not become healthy, the old one keeps running and the new one is removed.
+- **Before** anything changes, the images that ran so far are kept as `<repository>:rollback-<time>` tags and a rollback record is
+  written to `<install dir>/.offline-updates/<bundle>/`. These tags are never pruned; remove them yourself with `docker image rm <tag>` when no longer needed.
+- **Config files (bundles made with `--with-compose`):** the new compose / script files are compared with your installed copy and
+  merged: files you never changed are replaced, files you changed are 3-way merged (your values win; on a conflict your file is kept and the new version is written next to it as `<file>.upstream`),
+  new files are added. `*.env`, `settings.json`, `cert/`, `jwt/`, `data/`, `.init` and `.offline` are **never** overwritten. The differences are shown and you confirm first
+  (`--no-config` skips this part). The replaced files are backed up under `.offline-updates/<bundle>/config-backup/`.
+- `--dry-run` only verifies the checksums and shows what would change; `--list` only lists the bundles.
+
+Example (two bundles in the directory, the second one checked in the menu):
+
+```
+$ sudo bash ./update-offline-images.sh
+[ ok ] Found 2 update bundle(s) in /srv/updates:
+  sclab-update-20261118-101500-x86_64
+      2026-11-18T01:15:03 | webapp | 1.2 GB | applied 2026-11-18
+  sclab-update-20261120-153045-x86_64
+      2026-11-20T06:30:58 | webapp,mail | 1.5 GB | new
+...
+== Changes in sclab-update-20261120-153045-x86_64 ==
+  SERVICE   IMAGE                    RUNNING       NEW           ACTION
+  webapp    onpremise-webapp:latest   510fb0d29314  b329f6a69817  UPDATE (rolling, no downtime)
+  mail      postfix:5.2.1             4e07dabae3fb  4e07dabae3fb  unchanged
+Apply sclab-update-20261120-153045-x86_64 now? (1 service(s) will be restarted) [Y/n]:
+```
+
+### 8.4 Roll back
+
+```bash
+sudo bash ./update-offline-images.sh --rollback            # the most recently applied bundle
+sudo bash ./update-offline-images.sh --rollback <bundle-name>
+```
+
+The previous images are tagged back, the services are recreated from them and the config files the update changed are restored.
+If the health check fails during an update, you are asked whether to roll back right away (with `--yes` it happens
+automatically; `--no-auto-rollback` turns that off).
+
+### 8.5 History and duplicate detection
+
+Every run is recorded in `<install dir>/.offline-updates/history.tsv` (time, bundle, `applied` / `failed` / `rolled-back`).
+If you select a bundle that is already applied, the script tells you when it was applied and asks whether to apply it again
+(`--yes` skips it, `--force` applies it again). A rolled-back bundle can be applied again.
+
+### 8.6 Troubleshooting (update)
+
+| Message / symptom | Cause / fix |
+|---|---|
+| `No update bundle found in ...` | run the script in the directory with the files, or use `--dir`; the `<name>.MANIFEST.json` files must be there |
+| `Missing bundle file(s): ...` | a part was not copied; copy every `<name>.tar.gz.partNNN` next to `<name>.SHA256SUMS` |
+| `Checksum verification FAILED` | a file was damaged in transfer; copy that file again. Nothing was changed |
+| `Architecture mismatch` | the bundle was built for another CPU architecture; rebuild it with `--arch` for this server |
+| `Several update bundles found and no terminal` | use `--bundle NAME` or `--all` for unattended runs |
+| `Could not find the installed docker-images directory` | run the script from the install directory or pass `--install-dir /opt/sclab/docker-images` |
+| `Not enough free disk space ...` | free space, or use `--work-dir` on a bigger disk (the images are also loaded into Docker's data directory) |
+| `... failed its health check` | the old webapp keeps running; read the logs shown, fix the cause, or roll back (8.4) |
+| `CONFLICT <file>` (config merge) | you and the bundle changed the same lines; merge `<file>.upstream` into `<file>` by hand and delete the `.upstream` file |
+
+## 9. Troubleshooting
 
 | Message / symptom | Cause / fix |
 |---|---|
