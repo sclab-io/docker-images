@@ -262,39 +262,3 @@ sudo ./logs.sh                  # 로그 보기
 | `ai-service` 의 Qdrant 문제 | `qdrant` 없이 `ai-service` 만 선택함. 둘 다 선택해 번들 다시 생성 |
 | `vllm` 이 시작되지 않음 | vllm compose 가 시작할 때 `apt-get`/`pip` 를 실행(인터넷 필요)하고 모델도 번들에 없음 |
 | ollama / speaches 에 모델이 없음 | 모델은 번들에 없음. 서버로 따로 복사 |
-
-## 9. 검증한 것과 하지 못한 것
-
-모든 시험은 Docker(Docker Desktop, x86_64 호스트)에서 했고, 서버는 **네트워크가 없는**(`--network none`) 특권 컨테이너로 모의했습니다.
-따라서 어느 설치도 인터넷에 접속하지 않았습니다.
-
-| 항목 | 방법 | 결과 |
-|---|---|---|
-| 실제 ECR 이미지 + AWS CLI 자동 설치 | curl/unzip/aws 가 없는 `ubuntu:24.04` 컨테이너에서 실제 AWS 자격 증명으로 `make-offline-zip.sh` | 없는 도구와 AWS CLI 가 자동 설치되고, ECR 로그인과 실제 `onpremise-webapp` pull 이 성공했으며 실제 1GiB 분할 파일이 만들어짐 |
-| aarch64 의 AWS CLI | `linux/arm64` 컨테이너(QEMU)에서 동일 실행 | AWS CLI, Docker, Compose 의 aarch64 다운로드와 ECR 로그인 성공 |
-| 9개 배포판 오프라인 설치 | 실제 이미지로 만든 번들로 `install-offline.sh --yes` | Ubuntu 22.04/24.04, Debian 12, Rocky 9, Alma 8/9, Fedora, Amazon Linux 2023, openSUSE Leap 15.6, Alpine 3.20 모두 설치되어 mongo, redis, mail, webapp, sclab-proxy 기동 |
-| systemd 서비스 | systemd 컨테이너(Ubuntu 24.04, Debian 12), `docker restart` 로 재부팅 모사 | 유닛 등록·enable, 재시작 후 Docker 와 모든 컨테이너가 자동 기동, 재실행 시 끝난 단계 건너뜀 |
-| OpenRC | OpenRC 가 있는 Alpine | 서비스 등록, OpenRC 로 Docker 기동, 설치 완료 |
-| macOS 빌드(Intel Mac, bash 3.2, Docker Desktop) | Mac 에서 실제 ECR 이미지로 `make-offline-zip.sh` 실행 후 격리된 Linux amd64 컨테이너에 설치 | 번들 생성(실제 1GiB 분할), `install-offline.sh` 가 체크섬을 검증하고 설치, 5개 서비스 기동, 파일은 root 소유로 풀림. 대화식 메뉴와 Docker 미실행/미설치 안내도 확인. sudo 없는 AWS CLI `.pkg` 설치 방식은 `aws` 가 이미 있어 스크립트 대신 직접 확인 |
-| 오류 경로 | 손상/누락 분할 파일, 아키텍처 불일치, root 아님 | 모두 설치 전에 명확한 메시지와 함께 중단 |
-| shellcheck | 경고 수준 | 깨끗함 |
-
-시험 중 찾아 고친 것: `curl`/`unzip` 이 없는 머신에서 `make-offline-zip.sh` 가 중단되던 문제(이제 없는 도구를 설치), OpenRC 서비스가 `dockerd` 와 pid 파일을 공유해 기동에 실패하던 문제,
-init 시스템 실패 시 메시지 없이 끝나던 문제, 대상 아키텍처용 이미지가 없어도 번들이 만들어지던 문제(이제 오류).
-
-**한계 / 미검증**
-
-- **aarch64 번들은 아직 만들 수 없습니다**: `onpremise-webapp` 이 amd64 전용(ECR 에 arm64 이미지 없음)이라 `make-offline-zip.sh --arch aarch64` 는 중단됩니다.
-  메뉴에는 aarch64 가 나오지 않으며, 시험용으로 `SCLAB_OFFLINE_ARM64=1` 이면 차단이 풀립니다. 이 모드에서는 선택한 서비스의 각 이미지에 `linux/arm64` manifest 가 있는지 *pull 전에*
-  (`docker manifest inspect`) 검사해, 없는 이미지를 하나씩 이름으로 알리고 중단합니다(현재 `onpremise-webapp` 이 그 경우). 선택한 서비스의 이미지만 검사합니다.
-  지금까지 확인: aarch64 도구 다운로드, 그리고 `mongo`, `redis`, `nginx`, `boky/postfix` 의 arm64 manifest 존재.
-- **메일 릴레이 이미지**: `mail` 서비스는 amd64 전용 `bytemark/smtp` 대신 멀티아키(amd64+arm64) `boky/postfix:5.2.1` 을 씁니다. 25 포트로 받아 이전처럼 직접 외부로 발송하며
-  (`MAIL_URL=smtp://mail:25`) 변경이 없습니다. 기존 amd64 설치에서 옛 이미지를 유지하려면 `MAIL_IMAGE=bytemark/smtp` 를 지정하세요(docker-compose.yml 옆 `.env` 등).
-- **라이선스와 외부 접속**: 시험에는 가짜 라이선스 키를 썼습니다. 이 키로는 `webapp` 컨테이너가 (인터넷이 되는 환경에서도) 재시작을 반복하며, 격리 실행 중 `app.sclab.io` 를 반복 조회했습니다.
-  라이선스 확인일 가능성이 높고, 그렇다면 **실제 라이선스가 폐쇄망 서버에는 없는 그 호스트 접속을 요구할 수 있습니다**. 유효한 키가 없어 확인하지 못했으니 실제 라이선스로 검증해 주세요.
-- macOS 미검증: **Apple Silicon** 실기기(사용한 Mac 은 Intel 이며 교차 아키텍처 경로는 Intel 호스트에서 arm64 대상으로 pull·inspect(`--platform`)까지만 시험했고(아키텍처 검사에서 중단), `save --platform` 은 같은 아키텍처인 amd64 대상에서만 시험), OrbStack, Colima, `brew install awscli`.
-- 미검증: SELinux enforcing 호스트(시험 컨테이너는 Docker Desktop VM 커널을 공유), 실제 하드웨어/실제 부팅(재부팅이 아니라 컨테이너 재시작), RHEL 자체(Rocky/Alma 사용),
-  위 버전 외의 SUSE/Amazon Linux, Vision / Ollama / vLLM / Speaches / 타일 서버 / Gotenberg 부가 구성, CPU 부하가 큰 상황의 `dockerd` 기동
-  (openSUSE 병렬 실행 한 번에서 containerd 시작 시간 초과가 났고 재실행은 통과).
-- 최소 컨테이너 이미지에는 실제 서버에 있는 도구(`iptables`, `openssl`, Amazon Linux 최소판의 `groupadd` 등)가 빠져 있습니다. 시험 이미지에는 일반 서버 설치처럼
-  `openssl`, `iptables`, `procps`, `hostname` 을 추가했습니다.
