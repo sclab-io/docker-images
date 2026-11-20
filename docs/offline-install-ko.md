@@ -21,6 +21,8 @@
 |---|---|---|
 | `make-offline-zip.sh` | 인터넷이 되는 머신(모든 Linux) | 대상 OS/아키텍처와 서비스를 고르게 하고, AWS CLI 가 없으면 설치하고, ECR 에 로그인하고, Docker Engine + Compose 를 내려받고, 선택한 모든 이미지를 `docker pull` + `docker save` 한 뒤, 라이선스 키와 함께 하나의 압축 파일로 묶어 1GB 단위로 분할하고 `SHA256SUMS`, `MANIFEST.json` 을 만듭니다 |
 | `install-offline.sh` | 폐쇄망 서버(root) | 체크섬을 검증하고, 분할 파일을 합쳐 압축을 풀고, 번들의 Docker + Compose 를 설치하고(이미 Docker 가 있으면 건너뜀), 이미지를 `docker load` 하고, `install.sh --offline` 을 실행(라이선스는 번들에서 자동 적용)한 뒤 서비스를 기동합니다 |
+| `make-offline-update-zip.sh` | 인터넷이 되는 머신(Linux 또는 macOS) | 고른 이미지(예: `webapp`)만 담은 작은 **업데이트 번들**을 만듭니다 - 8절 참고 |
+| `update-offline-images.sh` | 폐쇄망 서버(root) | 업데이트 번들을 검증·적재하고 설치된 시스템에 적용합니다(`webapp` 롤링 업데이트, 헬스 확인, 롤백, 이력) - 8절 참고 |
 
 설계 메모
 
@@ -241,13 +243,139 @@ sudo ./logs.sh                  # 로그 보기
 ## 7. 업데이트 / 재설치
 
 - `install-offline.sh` 를 **다시 실행**해도 안전합니다. 검증된 체크섬, 압축 해제, Docker, 적재된 이미지, 기존 설정(`.init`)을 감지해 건너뛰고 서비스만 (재)기동합니다.
-- **업데이트**: `make-offline-zip.sh` 로 새 번들을 만들어 옮긴 뒤 `install-offline.sh` 를 다시 실행합니다(번들 이름이 다르면 새 디렉터리에 풀리고 바뀐 이미지가 적재됩니다).
+- **일부 이미지만 업데이트**(예: 새 릴리스의 `webapp`): `make-offline-update-zip.sh` 로 작은 업데이트 번들을 만들어 `update-offline-images.sh` 로 적용합니다 - 8절 참고(롤링 업데이트, 롤백, 이력).
+- **전체 업데이트**: `make-offline-zip.sh` 로 새 번들을 만들어 옮긴 뒤 `install-offline.sh` 를 다시 실행합니다(번들 이름이 다르면 새 디렉터리에 풀리고 바뀐 이미지가 적재됩니다).
   기존 `.init` 이 있으면 예전 저장소 파일을 그대로 두므로, 새 compose/env 변경은 `/opt/sclab/bundle-<이름>/repo` 에서 직접 반영한 뒤 `./run.sh` 하세요.
-  오프라인에서는 `update.sh` / `docker compose pull` 이 비활성화됩니다. *(기존 설치의 제자리 업그레이드 자동화는 아직 없습니다.)*
+  오프라인에서는 `update.sh` / `docker compose pull` 이 비활성화됩니다.
 - **재설정**: `/opt/sclab/docker-images/.init` 을 지우고 번들의 `repo/` 파일로 복원한 뒤 `install-offline.sh` 를 다시 실행합니다.
 - 나중에 선택 서비스를 켜고 끄기: `sudo ./service-manage.sh` (이미지가 적재된 서비스만 기동됩니다).
 
-## 8. 문제 해결
+## 8. 일부 이미지만 업데이트 (오프라인 업데이트)
+
+이미 설치된 서버에서 몇 개의 이미지만 바뀌었을 때 - 대개 새 SCLAB 릴리스의 **`webapp`** - 사용합니다.
+전체 번들(Docker, 모든 이미지, 수 GB)을 다시 만들어 옮기는 대신, 고른 이미지만 담은 작은 **업데이트 번들**을 만듭니다.
+서버의 설정(`.env` 파일, `settings.json`, 인증서, `data/`)은 건드리지 않습니다. 업데이트 번들에는 라이선스 키도, Docker Engine 도 들어 있지 않습니다.
+
+```
+ 인터넷이 되는 PC / 서버                                폐쇄망 서버
+ ───────────────────────────                            ───────────────────────────
+ ./make-offline-update-zip.sh  ──►  <이름>.tar.gz.part*  ──►  sudo bash ./update-offline-images.sh
+   (서비스 선택, pull,               <이름>.SHA256SUMS          (검증, 압축 해제, docker load, 변경점 표시,
+    docker save, 분할)               <이름>.MANIFEST.json        적용, 헬스 확인, 이력, 롤백)
+                                     update-offline-images.sh
+```
+
+### 8.1 업데이트 번들 만들기 (인터넷이 되는 머신, Linux 또는 macOS)
+
+전체 번들과 마찬가지로 이 저장소를 받은 곳에서 실행합니다(3절 및 "Mac 에서 번들 만들기" 참고).
+
+```bash
+./make-offline-update-zip.sh                      # 대화식: ↑/↓(또는 j/k) 이동, Space 체크, Enter 확정
+# 또는 무인 실행:
+./make-offline-update-zip.sh --yes --services webapp,ai-service --out ./sclab-update-out
+```
+
+메뉴에는 필수 5개를 포함한 모든 서비스가 나오며 `webapp` 이 기본 체크되어 있습니다. 터미널이 없으면 번호 입력 방식으로 바뀝니다.
+AWS CLI 가 없으면 설치하고, ECR 에 로그인한 뒤, 선택한 이미지만 `docker pull --platform linux/amd64` + `docker save` 하여
+압축한 아카이브를 1GB 단위로 나눕니다.
+
+| 옵션 | 의미 |
+|---|---|
+| `--services 목록` | 쉼표로 구분한 서비스. 예: `webapp,mail` (`--list-services` 로 전체 확인) |
+| `--arch x86_64` | 대상 CPU 아키텍처(현재 기본값이자 유일한 지원값. `aarch64` 는 거부됨) |
+| `--out 디렉터리` | 출력 디렉터리(기본 `./sclab-update-out`) |
+| `--name 이름` | 번들 이름(기본 `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
+| `--part-size MB` | 분할 파일 크기(기본 1024) |
+| `--with-compose` | 이 저장소의 compose / 스크립트 / 설정 파일도 함께 담기(8.3 참고). 기본은 이미지만 |
+| `--base-bundle 이름` / `--base-manifest 파일` | 이 업데이트가 어느 전체 번들용인지 기록(서버에서 표시/확인) |
+| `--no-pull` | 로컬에 이미 있는 이미지를 사용(AWS CLI, ECR 로그인 생략) |
+
+출력 파일은 모두 번들 이름으로 시작하므로, **같은** 출력 디렉터리에 업데이트 번들을 여러 번 만들어도 파일이 섞이지 않습니다.
+
+```
+sclab-update-20261120-153045-x86_64.tar.gz.part001   (... .part002 ...)
+sclab-update-20261120-153045-x86_64.SHA256SUMS
+sclab-update-20261120-153045-x86_64.MANIFEST.json     (종류, 생성 시각, 이미지별 태그 / 이미지 ID / repo digest / 크기, 서비스, 아키텍처)
+update-offline-images.sh                              (모든 번들에 공통인 같은 스크립트)
+```
+
+### 8.2 파일을 서버로 옮기기
+
+번들의 **모든** 파일(`<이름>.*` 과 `update-offline-images.sh`)을 서버의 **한 디렉터리**에 복사합니다(USB, `scp` 등).
+여러 업데이트 번들의 파일이 같은 디렉터리에 있어도 되며, 번들은 이름 접두사로 구분됩니다.
+
+### 8.3 서버에서 업데이트 적용하기
+
+```bash
+cd /복사한/파일이/있는/디렉터리
+sudo bash ./update-offline-images.sh                # 메뉴 / 확인 질문
+sudo bash ./update-offline-images.sh --yes --bundle sclab-update-20261120-153045-x86_64    # 무인 실행
+```
+
+- 현재 디렉터리(또는 `--dir`)를 살펴 업데이트 번들을 이름, 날짜, 서비스, 크기, 상태(`new` / `applied <날짜>`)와 함께 보여 줍니다.
+  번들이 **하나**면 확인만 묻고, **여러 개**면 화살표 메뉴가 나옵니다(↑/↓ 이동, **Enter** 는 강조된 하나 적용, **Space** 로 여러 개를 체크한 뒤
+  Enter 하면 **날짜순**으로 차례로 적용). `--all` 은 아직 적용하지 않은 번들을 오래된 것부터 모두 적용하고, `--bundle 이름[,이름]` 은 메뉴 없이 지정합니다.
+- 설치 위치는 자동으로 찾습니다(현재 디렉터리에 `docker-compose.yml` 이 있으면 그곳, 아니면 `/opt/sclab/docker-images`). 다르면 `--install-dir 디렉터리`.
+- 순서: 체크섬 검증(손상/누락된 파일이 있으면 중단) → 아키텍처 확인 → 분할 파일을 합쳐 임시 디렉터리(번들 옆, 또는 `--work-dir`)에 해제 → `docker load` →
+  새 이미지 ID 와 실행 중인 컨테이너의 이미지를 비교해 **바뀐 서비스만** 표시 → 확인 → 적용 → 헬스 확인.
+- **적용 방식:** `webapp` 은 롤링으로 교체합니다(새 컨테이너를 기존 것 옆에 띄우고 30초 동안 동작을 확인한 뒤 이전 컨테이너를 종료, 이어서 `sclab-proxy` 재시작).
+  그 밖의 서비스는 `docker compose up -d --no-deps <서비스>` 로 재생성합니다. 이미지 pull 이나 레지스트리 접속은 하지 않습니다(오프라인 모드 / `pull_policy: never`).
+- 컨테이너가 실행 중이고(헬스체크가 있으면 `healthy`) 몇 초 동안 유지되면 정상으로 봅니다. 새 webapp 컨테이너가 정상이 되지 않으면 기존 컨테이너는 그대로 두고 새 컨테이너만 제거합니다.
+- 변경 **전에** 지금까지 쓰던 이미지를 `<저장소>:rollback-<시각>` 태그로 보존하고, `<설치 디렉터리>/.offline-updates/<번들>/` 에 롤백 정보를 기록합니다.
+  이 태그는 자동으로 지우지 않으니, 필요 없어지면 `docker image rm <태그>` 로 직접 정리하세요.
+- **설정 파일(`--with-compose` 로 만든 번들):** 새 compose / 스크립트 파일을 설치된 파일과 비교해 반영합니다. 직접 바꾸지 않은 파일은 교체하고,
+  바꾼 파일은 3-way 병합(내 값 유지, 충돌 시 내 파일은 그대로 두고 새 버전을 `<파일>.upstream` 으로 옆에 저장)하며, 새 파일은 추가합니다.
+  `*.env`, `settings.json`, `cert/`, `jwt/`, `data/`, `.init`, `.offline` 은 **절대** 덮어쓰지 않습니다. 변경 내용(diff)을 보여 주고 확인을 받으며(`--no-config` 로 이 부분 생략),
+  교체되는 파일은 `.offline-updates/<번들>/config-backup/` 에 백업됩니다.
+- `--dry-run` 은 체크섬 검증과 변경 예정 표시까지만 하고, `--list` 는 번들 목록만 보여 줍니다.
+
+예시(디렉터리에 번들 2개, 메뉴에서 두 번째 선택):
+
+```
+$ sudo bash ./update-offline-images.sh
+[ ok ] Found 2 update bundle(s) in /srv/updates:
+  sclab-update-20261118-101500-x86_64
+      2026-11-18T01:15:03 | webapp | 1.2 GB | applied 2026-11-18
+  sclab-update-20261120-153045-x86_64
+      2026-11-20T06:30:58 | webapp,mail | 1.5 GB | new
+...
+== Changes in sclab-update-20261120-153045-x86_64 ==
+  SERVICE   IMAGE                    RUNNING       NEW           ACTION
+  webapp    onpremise-webapp:latest   510fb0d29314  b329f6a69817  UPDATE (rolling, no downtime)
+  mail      postfix:5.2.1             4e07dabae3fb  4e07dabae3fb  unchanged
+Apply sclab-update-20261120-153045-x86_64 now? (1 service(s) will be restarted) [Y/n]:
+```
+
+### 8.4 롤백
+
+```bash
+sudo bash ./update-offline-images.sh --rollback            # 가장 최근에 적용한 번들
+sudo bash ./update-offline-images.sh --rollback <번들-이름>
+```
+
+이전 이미지를 원래 태그로 되돌리고, 그 이미지로 서비스를 다시 만들며, 업데이트가 바꾼 설정 파일도 복원합니다.
+업데이트 중 헬스 확인에 실패하면 바로 롤백할지 묻습니다(`--yes` 에서는 자동으로 롤백하며, `--no-auto-rollback` 으로 끌 수 있습니다).
+
+### 8.5 적용 이력과 중복 적용 감지
+
+실행 결과는 `<설치 디렉터리>/.offline-updates/history.tsv`(시각, 번들, `applied` / `failed` / `rolled-back`)에 남습니다.
+이미 적용한 번들을 다시 고르면 언제 적용했는지 알려 주고 다시 적용할지 묻습니다(`--yes` 는 건너뛰고, `--force` 는 다시 적용). 롤백한 번들은 다시 적용할 수 있습니다.
+
+### 8.6 문제 해결 (업데이트)
+
+| 메시지 / 증상 | 원인 / 해결 |
+|---|---|
+| `No update bundle found in ...` | 파일이 있는 디렉터리에서 실행하거나 `--dir` 사용. `<이름>.MANIFEST.json` 이 있어야 함 |
+| `Missing bundle file(s): ...` | 분할 파일 일부를 복사하지 않음. 모든 `<이름>.tar.gz.partNNN` 을 `<이름>.SHA256SUMS` 옆에 복사 |
+| `Checksum verification FAILED` | 전송 중 파일 손상. 해당 파일을 다시 복사. 아무것도 변경되지 않았음 |
+| `Architecture mismatch` | 번들과 서버의 CPU 아키텍처가 다름. 서버에 맞게 `--arch` 로 다시 만들기 |
+| `Several update bundles found and no terminal` | 무인 실행에서는 `--bundle 이름` 또는 `--all` 사용 |
+| `Could not find the installed docker-images directory` | 설치 디렉터리에서 실행하거나 `--install-dir /opt/sclab/docker-images` 지정 |
+| `Not enough free disk space ...` | 공간 확보 또는 더 큰 디스크에 `--work-dir`(이미지는 Docker 데이터 디렉터리에도 적재됨) |
+| `... failed its health check` | 기존 webapp 은 계속 동작. 표시된 로그로 원인을 확인하거나 롤백(8.4) |
+| `CONFLICT <파일>` (설정 병합) | 나와 번들이 같은 줄을 바꿈. `<파일>.upstream` 내용을 `<파일>` 에 직접 병합한 뒤 `.upstream` 삭제 |
+
+## 9. 문제 해결
 
 | 메시지 / 증상 | 원인 / 해결 |
 |---|---|
