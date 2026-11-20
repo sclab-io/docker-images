@@ -33,7 +33,7 @@
 
 ## 2. 준비물
 
-인터넷이 되는 머신(Linux, x86_64 또는 aarch64):
+인터넷이 되는 머신(Linux 또는 macOS Intel/Apple Silicon - "Mac 에서 번들 만들기" 참고):
 
 - `bash`, `tar`, `gzip`, `split`, `sha256sum`, `curl` 또는 `wget`, Docker (없으면 OS 패키지 관리자로 설치할지 물어봅니다)
 - SCLAB ECR 레지스트리용 AWS 자격 증명(SCLAB 지원팀 제공) - ECR 이미지를 받을 때만 필요, AWS CLI 는 없으면 자동 설치
@@ -73,6 +73,27 @@ cd docker-images
 
 전체 옵션은 `./make-offline-zip.sh --help` (`--list-services` 로 서비스 목록 확인, `--part-size MB`, `--no-license`,
 `--docker-version`, `--compose-version`, `--work-dir`, 로컬에 이미 있는 이미지를 쓰는 `--no-pull`).
+
+### Mac(Intel / Apple Silicon)에서 번들 만들기
+
+`make-offline-zip.sh` 는 macOS 에서도 실행됩니다(번들은 항상 **Linux** 서버용이며 `install-offline.sh` 는 Linux 전용입니다).
+
+- 준비물: 실행 중인 Docker 엔진(**Docker Desktop**, **OrbStack**, **Colima**), Homebrew(선택, AWS CLI 설치에 사용), macOS 기본 도구
+  (기본 bash 3.2 와 BSD 도구로 동작). AWS CLI 가 없으면 자동 설치합니다: `brew install awscli`, 없으면 공식 설치 프로그램을 현재 사용자 전용(`~/.local/aws-cli`, sudo 불필요)으로 설치합니다.
+- **대상**은 메뉴 / `--os` / `--arch` 로 고른 서버이며 Mac 의 CPU 가 아닙니다. Apple Silicon 에서도 메뉴 기본값은 x86_64 입니다.
+  이미지는 `docker pull --platform linux/amd64`(또는 `linux/arm64`)로 받아 `docker save --platform ...` 로 저장하며, 다른 아키텍처 코드는 실행하지 않습니다(에뮬레이션 없음).
+  서버용 Docker Engine tgz 와 Compose 바이너리는 번들에 **내려받기만** 하고 Mac 에는 설치하지 않습니다.
+- 이미지는 로컬 Docker 엔진에 pull 되어 같은 이름의 로컬 태그를 바꿉니다. 엔진에 같은 태그의 다른 아키텍처 이미지(예: 직접 받은 arm64 `mongo:8.2.7`)가 있으면
+  다른 아키텍처로 pull 할 때 대체될 수 있으니, 필요하면 다시 pull 하세요.
+- 디스크: 이미지가 Docker VM 안에 한 번, Mac 의 `<out>/.work` 에 스테이징 파일로 한 번 더, 최종 분할 파일로 또 저장됩니다
+  (Mac 에서 이미지 크기의 약 2.5배 + Docker VM 안의 이미지. 필요하면 Docker Desktop 디스크 한도를 늘리세요).
+- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다.
+- 아카이브는 root 소유로, macOS 메타데이터(`._*` 파일 / 확장 속성) 없이 만들어져 Linux 에서 깨끗하게 풀립니다.
+
+```bash
+./make-offline-zip.sh                       # 대화식
+./make-offline-zip.sh --yes --os ubuntu --arch x86_64 --services none --license-file ./license.txt
+```
 
 실제 실행 결과 발췌(100MB 분할로 만든 샘플 번들):
 
@@ -224,6 +245,7 @@ sudo ./logs.sh                  # 로그 보기
 | 9개 배포판 오프라인 설치 | 실제 이미지로 만든 번들로 `install-offline.sh --yes` | Ubuntu 22.04/24.04, Debian 12, Rocky 9, Alma 8/9, Fedora, Amazon Linux 2023, openSUSE Leap 15.6, Alpine 3.20 모두 설치되어 mongo, redis, mail, webapp, sclab-proxy 기동 |
 | systemd 서비스 | systemd 컨테이너(Ubuntu 24.04, Debian 12), `docker restart` 로 재부팅 모사 | 유닛 등록·enable, 재시작 후 Docker 와 모든 컨테이너가 자동 기동, 재실행 시 끝난 단계 건너뜀 |
 | OpenRC | OpenRC 가 있는 Alpine | 서비스 등록, OpenRC 로 Docker 기동, 설치 완료 |
+| macOS 빌드(Intel Mac, bash 3.2, Docker Desktop) | Mac 에서 실제 ECR 이미지로 `make-offline-zip.sh` 실행 후 격리된 Linux amd64 컨테이너에 설치 | 번들 생성(실제 1GiB 분할), `install-offline.sh` 가 체크섬을 검증하고 설치, 5개 서비스 기동, 파일은 root 소유로 풀림. 대화식 메뉴와 Docker 미실행/미설치 안내도 확인. sudo 없는 AWS CLI `.pkg` 설치 방식은 `aws` 가 이미 있어 스크립트 대신 직접 확인 |
 | 오류 경로 | 손상/누락 분할 파일, 아키텍처 불일치, root 아님 | 모두 설치 전에 명확한 메시지와 함께 중단 |
 | shellcheck | 경고 수준 | 깨끗함 |
 
@@ -236,6 +258,7 @@ init 시스템 실패 시 메시지 없이 끝나던 문제, 대상 아키텍처
   aarch64 도구(AWS CLI, Docker, Compose 다운로드)만 확인했습니다.
 - **라이선스와 외부 접속**: 시험에는 가짜 라이선스 키를 썼습니다. 이 키로는 `webapp` 컨테이너가 (인터넷이 되는 환경에서도) 재시작을 반복하며, 격리 실행 중 `app.sclab.io` 를 반복 조회했습니다.
   라이선스 확인일 가능성이 높고, 그렇다면 **실제 라이선스가 폐쇄망 서버에는 없는 그 호스트 접속을 요구할 수 있습니다**. 유효한 키가 없어 확인하지 못했으니 실제 라이선스로 검증해 주세요.
+- macOS 미검증: **Apple Silicon** 실기기(사용한 Mac 은 Intel 이며 교차 아키텍처 경로는 Intel 호스트에서 arm64 대상으로 pull·inspect(`--platform`)까지만 시험했고(아키텍처 검사에서 중단), `save --platform` 은 같은 아키텍처인 amd64 대상에서만 시험), OrbStack, Colima, `brew install awscli`.
 - 미검증: SELinux enforcing 호스트(시험 컨테이너는 Docker Desktop VM 커널을 공유), 실제 하드웨어/실제 부팅(재부팅이 아니라 컨테이너 재시작), RHEL 자체(Rocky/Alma 사용),
   위 버전 외의 SUSE/Amazon Linux, Vision / Ollama / vLLM / Speaches / 타일 서버 / Gotenberg 부가 구성, CPU 부하가 큰 상황의 `dockerd` 기동
   (openSUSE 병렬 실행 한 번에서 containerd 시작 시간 초과가 났고 재실행은 통과).

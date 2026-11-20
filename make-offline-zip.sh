@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # make-offline-zip.sh - build an offline (air-gapped) install bundle for SCLAB Studio.
 #
-# Run this on a Linux machine WITH internet access. It
+# Run this on a Linux or macOS (Intel / Apple Silicon) machine WITH internet access. It
 #   1. asks for the target OS family / CPU architecture and the services to include (checkbox menu),
 #   2. installs the AWS CLI if it is missing and logs in to the private ECR registry,
 #   3. downloads the Docker Engine (static binaries) and the Docker Compose plugin for the target,
@@ -50,6 +50,7 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 usage() {
   cat <<'EOF'
 make-offline-zip.sh - build an offline (air-gapped) install bundle for SCLAB Studio
+(runs on Linux or macOS; the bundle is for a LINUX server - see --os / --arch)
 
 Usage: ./make-offline-zip.sh [options]
 
@@ -178,7 +179,11 @@ INTERACTIVE=1
 if [ "$ASSUME_YES" = "1" ] || [ ! -t 0 ]; then INTERACTIVE=0; fi
 
 # ----------------------------------------------------------------------------- preflight
-[ "$(uname -s)" = "Linux" ] || die "This script must run on Linux (detected: $(uname -s))."
+HOST_OS="$(uname -s)"
+case "$HOST_OS" in
+  Linux|Darwin) ;;
+  *) die "This script runs on Linux or macOS (detected: $HOST_OS)." ;;
+esac
 
 HOST_ARCH_RAW="$(uname -m)"
 case "$HOST_ARCH_RAW" in
@@ -188,7 +193,8 @@ case "$HOST_ARCH_RAW" in
 esac
 
 SUDO=""
-if [ "$(id -u)" -ne 0 ]; then command_exists sudo && SUDO="sudo"; fi
+# macOS: tools come from Homebrew (never run as root) - no sudo for package installs.
+if [ "$HOST_OS" != "Darwin" ] && [ "$(id -u)" -ne 0 ]; then command_exists sudo && SUDO="sudo"; fi
 
 download() { # $1 url, $2 output
   if command_exists curl; then curl -fL --retry 3 --connect-timeout 20 -o "$2" "$1"
@@ -198,6 +204,10 @@ download() { # $1 url, $2 output
 # Host package manager (used only to install missing helper tools such as unzip / docker / awscli).
 pkg_install() {
   local run="$SUDO"
+  if [ "$HOST_OS" = "Darwin" ]; then
+    command_exists brew && brew install "$@"
+    return
+  fi
   if command_exists apt-get; then $run apt-get update -y >/dev/null 2>&1 || true; $run apt-get install -y "$@"
   elif command_exists dnf; then $run dnf install -y "$@"
   elif command_exists yum; then $run yum install -y "$@"
@@ -214,6 +224,7 @@ ensure_tools() {
   command_exists curl || command_exists wget || missing="$missing curl"
   if command_exists sha256sum || command_exists shasum; then :; else missing="$missing sha256sum"; fi
   [ -z "$missing" ] && return 0
+  if [ "$HOST_OS" = "Darwin" ]; then die "Required tool(s) missing on macOS:$missing (install the Xcode command line tools: xcode-select --install)."; fi
   warn "Missing tools:$missing - trying to install them with the package manager."
   pk=""
   for c in $missing; do
@@ -274,9 +285,13 @@ case "$TARGET_OS" in ubuntu|rhel|amzn|suse|alpine|generic) ;; *) die "Unknown --
 
 if [ -z "$TARGET_ARCH" ]; then
   if [ "$INTERACTIVE" = "1" ]; then
-    def=1; [ "$HOST_ARCH" = "aarch64" ] && def=2
-    idx="$(ask_choice "Target CPU architecture:" "$def" "x86_64 (amd64)" "aarch64 (arm64)")"
+    # Servers are mostly x86_64: on a Mac (often Apple Silicon) do not default to the Mac's own architecture.
+    def=1; [ "$HOST_OS" != "Darwin" ] && [ "$HOST_ARCH" = "aarch64" ] && def=2
+    idx="$(ask_choice "Target CPU architecture of the SERVER (not of this machine):" "$def" "x86_64 (amd64)" "aarch64 (arm64)")"
     case "$idx" in 1) TARGET_ARCH=x86_64 ;; *) TARGET_ARCH=aarch64 ;; esac
+  elif [ "$HOST_OS" = "Darwin" ]; then
+    TARGET_ARCH="x86_64"
+    info "No --arch given: assuming an x86_64 server (this Mac is $HOST_ARCH). Use --arch aarch64 for ARM servers."
   else
     TARGET_ARCH="$HOST_ARCH"
   fi
@@ -286,7 +301,7 @@ case "$TARGET_ARCH" in
   aarch64|arm64) TARGET_ARCH=aarch64; PLATFORM="linux/arm64" ;;
   *) die "Unsupported --arch '$TARGET_ARCH' (x86_64|aarch64)." ;;
 esac
-info "Target: OS family=$TARGET_OS, architecture=$TARGET_ARCH ($PLATFORM)"
+info "Host: $HOST_OS/$HOST_ARCH | Target server: Linux, OS family=$TARGET_OS, architecture=$TARGET_ARCH ($PLATFORM)"
 
 # ----------------------------------------------------------------------------- service selection (checkbox menu)
 SELECTED=""   # space separated optional services
@@ -387,12 +402,22 @@ cleanup() {
 
 # ----------------------------------------------------------------------------- stage the repository
 info "Staging the repository files"
+# macOS: do not store AppleDouble "._*" files / extended attributes in the archives.
+export COPYFILE_DISABLE=1
+TAR_META=""
+if tar --version 2>&1 | grep -qi bsdtar; then
+  # bsdtar (macOS): force root ownership; GNU tar below does the same with --owner/--group.
+  TAR_META="--uid 0 --gid 0 --uname root --gname root"
+  tar --no-xattrs -cf /dev/null /dev/null 2>/dev/null && TAR_META="$TAR_META --no-xattrs"
+else
+  TAR_META="--owner=0 --group=0 --numeric-owner"
+fi
 (
   cd "$SCRIPT_DIR"
   # Exclude VCS data, runtime state and secrets of a running installation, and the output/work directories.
   tar -cf - --exclude='./.git' --exclude='./data' --exclude='./cert' --exclude='./jwt' --exclude='./.init' \
     --exclude='./.offline' --exclude='*.bak' --exclude='./vision/data' --exclude='./vision/.env' \
-    --exclude='./sclab-offline-out' --exclude='./node_modules' . 2>/dev/null
+    --exclude='./sclab-offline-out' --exclude='./node_modules' --exclude='._*' --exclude='.DS_Store' . 2>/dev/null
 ) | (cd "$STAGE/repo" && tar -xf -)
 REPO="$STAGE/repo"
 GIT_REV="unknown"
@@ -441,6 +466,16 @@ done
 dk() { if [ -n "${DOCKER_SUDO:-}" ]; then $DOCKER_SUDO docker "$@"; else docker "$@"; fi; }
 DOCKER_SUDO=""
 ensure_build_docker() {
+  if [ "$HOST_OS" = "Darwin" ]; then
+    if ! command_exists docker; then
+      die "Docker is not installed. Install Docker Desktop (https://www.docker.com/products/docker-desktop/), OrbStack (brew install --cask orbstack) or Colima (brew install colima docker && colima start), start it, and run this script again."
+    fi
+    if ! docker info >/dev/null 2>&1; then
+      die "The Docker engine is not running. Start Docker Desktop / OrbStack (or: colima start) and run this script again. (docker context: $(docker context show 2>/dev/null || echo unknown))"
+    fi
+    ok "Docker: $(docker --version) (engine: $(docker info --format '{{.OperatingSystem}} {{.Architecture}}' 2>/dev/null || echo unknown))"
+    return 0
+  fi
   if ! command_exists docker; then
     warn "Docker is not installed on this (build) machine; it is needed for docker pull / docker save."
     if [ "$INTERACTIVE" = "1" ]; then
@@ -470,7 +505,40 @@ ensure_build_docker() {
 }
 
 # ----------------------------------------------------------------------------- AWS CLI (only needed to pull ECR images)
+install_aws_cli_macos() {
+  local tmp choices dest bindir
+  if command_exists brew; then
+    info "Installing the AWS CLI with Homebrew (brew install awscli)"
+    brew install awscli && command_exists aws && return 0
+    warn "brew install awscli failed; trying the official installer."
+  fi
+  # Official universal .pkg installed for the current user only (no sudo): ~/.local/aws-cli + symlink in ~/.local/bin
+  tmp="$(mktemp -d)"; dest="$HOME/.local/aws-cli"; bindir="$HOME/.local/bin"
+  mkdir -p "$dest" "$bindir"
+  choices="$tmp/choices.xml"
+  cat > "$choices" <<EOC
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><array><dict>
+<key>choiceAttribute</key><string>customLocation</string>
+<key>attributeSetting</key><string>$dest</string>
+<key>choiceIdentifier</key><string>default</string>
+</dict></array></plist>
+EOC
+  if download "https://awscli.amazonaws.com/AWSCLIV2.pkg" "$tmp/AWSCLIV2.pkg" \
+     && installer -pkg "$tmp/AWSCLIV2.pkg" -target CurrentUserHomeDirectory -applyChoiceChangesXML "$choices" >/dev/null \
+     && ln -sf "$dest/aws-cli/aws" "$bindir/aws"; then
+    rm -rf "$tmp"
+    export PATH="$bindir:$PATH"
+    command_exists aws && return 0
+  fi
+  rm -rf "$tmp"
+  warn "Could not install the AWS CLI automatically. Install it with 'brew install awscli' or from https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html and run again."
+  return 1
+}
+
 install_aws_cli() {
+  if [ "$HOST_OS" = "Darwin" ]; then install_aws_cli_macos; return; fi
   info "Installing the AWS CLI for $HOST_ARCH ..."
   local libc_musl=0 tmp url bindir
   if [ -e /lib/ld-musl-x86_64.so.1 ] || [ -e /lib/ld-musl-aarch64.so.1 ] || { command_exists ldd && ldd --version 2>&1 | grep -qi musl; }; then libc_musl=1; fi
@@ -592,15 +660,20 @@ for ref in $UNIQ_REFS; do
     dk image inspect "$ref" >/dev/null 2>&1 || die "--no-pull: image not present locally: $ref"
     info "[$idx/$total] using local image $ref"
   fi
-  img_arch="$(dk image inspect -f '{{.Architecture}}' "$ref" 2>/dev/null || echo unknown)"
+  # inspect the target platform variant when the engine supports --platform (containerd image store)
+  INSPECT_PLAT=""
+  if dk image inspect --help 2>&1 | grep -q -- '--platform'; then INSPECT_PLAT="--platform $PLATFORM"; fi
+  # shellcheck disable=SC2086
+  img_arch="$(dk image inspect $INSPECT_PLAT -f '{{.Architecture}}' "$ref" 2>/dev/null || echo unknown)"
   want_arch=amd64; [ "$TARGET_ARCH" = "aarch64" ] && want_arch=arm64
   if [ "$img_arch" != "$want_arch" ]; then
     err "$ref only exists for '$img_arch', but the target architecture is '$want_arch'."
     ARCH_MISMATCH="$ARCH_MISMATCH $ref"
   fi
-  id="$(dk image inspect -f '{{.Id}}' "$ref")"
-  digest="$(dk image inspect -f '{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}' "$ref" 2>/dev/null || true)"
-  size="$(dk image inspect -f '{{.Size}}' "$ref" 2>/dev/null || echo 0)"
+  # shellcheck disable=SC2086
+  id="$(dk image inspect $INSPECT_PLAT -f '{{.Id}}' "$ref")"
+  digest="$(dk image inspect $INSPECT_PLAT -f '{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}' "$ref" 2>/dev/null || true)"
+  size="$(dk image inspect $INSPECT_PLAT -f '{{.Size}}' "$ref" 2>/dev/null || echo 0)"
   TOTAL_BYTES=$((TOTAL_BYTES + size))
   fname="$(printf '%03d' "$idx")-$(safe_name "$ref").tar"
   svcs="$(awk -F'\t' -v r="$ref" '$2 == r { printf "%s%s", (n++ ? "," : ""), $1 }' "$IMAGE_LIST")"
@@ -626,7 +699,12 @@ idx=0
 while IFS="$(printf '\t')" read -r ref id fname digest size svcs; do
   idx=$((idx + 1))
   info "[$idx/$total] docker save $ref"
-  dk save -o "$STAGE/images/$fname" "$ref" || die "docker save failed for $ref"
+  # Save exactly the target platform (the Docker engine may hold several, e.g. an amd64 pull on an Apple Silicon Mac).
+  if dk save --help 2>&1 | grep -q -- '--platform'; then
+    dk save --platform "$PLATFORM" -o "$STAGE/images/$fname" "$ref" || die "docker save failed for $ref"
+  else
+    dk save -o "$STAGE/images/$fname" "$ref" || die "docker save failed for $ref"
+  fi
   [ -n "$SUDO" ] && [ -n "$DOCKER_SUDO" ] && $SUDO chown "$(id -u):$(id -g)" "$STAGE/images/$fname" 2>/dev/null || true
 done < "$IMAGES_TSV"
 
@@ -701,7 +779,8 @@ command_exists pigz && COMPRESS="pigz -1"
 info "Creating the archive and splitting it into ${PART_SIZE_MB} MB parts (compressor: ${COMPRESS%% *})"
 PART_BYTES=$((PART_SIZE_MB * 1024 * 1024))
 PREFIX="$OUT_DIR/$BUNDLE_NAME.tar.gz.part"
-( cd "$STAGE" && tar -cf - . ) | $COMPRESS | split -a 4 -b "$PART_BYTES" - "$PREFIX.tmp_"
+# shellcheck disable=SC2086
+( cd "$STAGE" && tar $TAR_META -cf - . ) | $COMPRESS | split -a 4 -b "$PART_BYTES" - "$PREFIX.tmp_"
 # rename aaaa,aaab,... -> 001,002,...
 n=0
 PARTS_LIST="$WORK_DIR/parts.list"

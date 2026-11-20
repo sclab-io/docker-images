@@ -36,7 +36,7 @@ Design notes
 
 ## 2. What you need
 
-On the machine with internet access (Linux, x86_64 or aarch64):
+On the machine with internet access (Linux, or macOS Intel/Apple Silicon - see "Building the bundle on a Mac"):
 
 - `bash`, `tar`, `gzip`, `split`, `sha256sum`, `curl` or `wget`, and Docker (the script offers to install it with the OS package manager if missing)
 - AWS credentials for the SCLAB ECR registry (provided by SCLAB support) - only needed if images are pulled from ECR; the AWS CLI is installed automatically if missing
@@ -76,6 +76,29 @@ Non-interactive example:
 
 All options: `./make-offline-zip.sh --help` (`--list-services` prints the catalog; `--part-size MB`, `--no-license`,
 `--docker-version`, `--compose-version`, `--work-dir`, `--no-pull` to use images that already exist locally).
+
+### Building the bundle on a Mac (Intel or Apple Silicon)
+
+`make-offline-zip.sh` also runs on macOS (the bundle is always for a **Linux** server; `install-offline.sh` is Linux-only).
+
+- Requirements: a running Docker engine (**Docker Desktop**, **OrbStack**, or **Colima**), Homebrew (optional, used to install the AWS CLI),
+  the stock macOS tools (the script works with the default bash 3.2 and BSD tools). The AWS CLI is installed automatically
+  if it is missing: `brew install awscli`, otherwise the official installer for the current user only (`~/.local/aws-cli`, no sudo).
+- The **target** is what you pick in the menu / `--os` / `--arch`, not the Mac's own CPU. The menu defaults to x86_64 even on Apple Silicon.
+  Images are pulled with `docker pull --platform linux/amd64` (or `linux/arm64`) and exported with `docker save --platform ...`; nothing of the
+  other architecture is executed (no emulation). The Docker Engine tarball and the Compose binary for the server are only **downloaded** into the bundle,
+  never installed on the Mac.
+- Images are pulled into your local Docker engine and replace local tags of the same name. If the engine still holds a different-architecture
+  variant of the same tag (for example your own arm64 `mongo:8.2.7`), a pull for the other architecture replaces it - pull it again afterwards if you need it.
+- Disk: the images are stored once inside the Docker VM and once more as staging files in `<out>/.work` on the Mac, plus the final parts
+  (about 2.5 x the image size in total on the Mac, plus the images in the Docker VM; raise the Docker Desktop disk limit if needed).
+- Use an x86_64 build for the current SCLAB images: `onpremise-webapp` and `bytemark/smtp` exist only for amd64, so `--arch aarch64` stops with an error.
+- The archives are created with root ownership and without macOS metadata (`._*` files / extended attributes), so they extract cleanly on Linux.
+
+```bash
+./make-offline-zip.sh                       # interactive
+./make-offline-zip.sh --yes --os ubuntu --arch x86_64 --services none --license-file ./license.txt
+```
 
 Result (excerpt of a real run, sample bundle with 100 MB parts):
 
@@ -229,6 +252,7 @@ All tests ran in Docker (Docker Desktop, x86_64 host). Servers were simulated by
 | Offline install on 9 distributions | `install-offline.sh --yes`, bundle built with the real images | Ubuntu 22.04/24.04, Debian 12, Rocky 9, Alma 8/9, Fedora, Amazon Linux 2023, openSUSE Leap 15.6, Alpine 3.20: all installed and started mongo, redis, mail, webapp and sclab-proxy |
 | systemd service | systemd containers (Ubuntu 24.04, Debian 12), `docker restart` as "reboot" | unit registered and enabled, Docker and all containers came back by themselves, a second run skipped finished steps |
 | OpenRC | Alpine with OpenRC | service registered, Docker started by OpenRC, installation completed |
+| macOS build (Intel Mac, bash 3.2, Docker Desktop) | `make-offline-zip.sh` run on a Mac with real ECR images, then installed in an isolated Linux amd64 container | bundle built (real 1 GiB part), `install-offline.sh` verified the checksums and installed; 5 services up; files extracted as root. The interactive menu, Docker-not-running and no-Docker messages were checked. The no-sudo AWS CLI `.pkg` install method was checked by hand (not through the script, since `aws` was already installed) |
 | Error paths | damaged part, missing part, wrong architecture, not root | each stops before anything is installed with a clear message |
 | shellcheck | warning level | clean |
 
@@ -243,6 +267,7 @@ when an image does not exist for the target architecture (now an error).
 - **License and outbound access**: the tests used a fake license key. With it the `webapp` container restarts in a loop (also when the internet is available),
   and during the isolated run it repeatedly looked up `app.sclab.io`. That is probably the license check; it means **a real license may need
   access to that host, which an air-gapped server does not have**. This could not be confirmed without a valid key - please verify with a real license.
+- Not verified on macOS: **Apple Silicon** hardware (the Mac used was Intel; the cross-architecture path was only exercised as an arm64 target on the Intel host (pull and inspect with `--platform`; the run stops at the architecture check), and `save --platform` only for the native amd64 target), OrbStack and Colima, `brew install awscli`.
 - Not verified: SELinux-enforcing hosts (the test containers share the Docker Desktop VM kernel), real hardware / real boot sequences (containers were restarted, not rebooted),
   RHEL itself (Rocky/Alma were used), SUSE/Amazon Linux other than the versions above, the Vision / Ollama / vLLM / Speaches / tile server / Gotenberg add-ons,
   and starting `dockerd` under heavy CPU load (one parallel run of openSUSE hit containerd's start timeout; a re-run passed).
