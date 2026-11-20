@@ -217,7 +217,7 @@ WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
   systemctl enable docker >/dev/null 2>&1 || true
-  systemctl restart docker
+  systemctl restart docker || warn "systemctl restart docker failed (see: journalctl -u docker)"
 }
 
 write_openrc_service() {
@@ -226,7 +226,8 @@ write_openrc_service() {
 description="Docker Application Container Engine (SCLAB offline install)"
 command="/usr/local/bin/dockerd"
 command_background=true
-pidfile="/run/docker.pid"
+# not /run/docker.pid: dockerd writes its own pid file there and would refuse to start
+pidfile="/run/dockerd-openrc.pid"
 output_log="/var/log/docker.log"
 error_log="/var/log/docker.log"
 depend() {
@@ -238,7 +239,7 @@ EOF
   rc-update add cgroups boot >/dev/null 2>&1 || true
   rc-service cgroups start >/dev/null 2>&1 || true
   rc-update add docker default >/dev/null 2>&1 || true
-  rc-service docker restart
+  rc-service docker restart || warn "rc-service docker restart failed (see /var/log/docker.log)"
 }
 
 install_docker_from_bundle() {

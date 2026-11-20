@@ -214,19 +214,30 @@ sudo ./logs.sh                  # 로그 보기
 
 ## 9. 검증한 것과 하지 못한 것
 
-이 스크립트들을 실제로 실행해 검증한 항목:
+모든 시험은 Docker(Docker Desktop, x86_64 호스트)에서 했고, 서버는 **네트워크가 없는**(`--network none`) 특권 컨테이너로 모의했습니다.
+따라서 어느 설치도 인터넷에 접속하지 않았습니다.
 
-- **Alpine Linux**(BusyBox 도구, musl) 컨테이너 안에서 `--no-pull` 과 로컬 이미지(mongo, redis, nginx, bytemark/smtp 및 `webapp` 대역 이미지)로 `make-offline-zip.sh` 실행:
-  서비스 제거, `pull_policy: never`, Docker + Compose 다운로드와 Compose 체크섬 검증, `docker save`, tar/gzip/split 번호 분할, `SHA256SUMS`, `MANIFEST.json`.
-- **네트워크 인터페이스가 없는**(`--network none`, DNS 조회 실패) **Ubuntu 22.04** 특권 컨테이너 안에서 `install-offline.sh` 실행:
-  체크섬 검증, 압축 해제, 정적 Docker 설치(컨테이너에 systemd 가 없어 백그라운드 `dockerd` 경로 사용), `docker load`,
-  번들 라이선스를 적용한 `install.sh --offline --yes`, 키 생성, `docker compose up`, 그리고 끝난 단계를 모두 건너뛴 두 번째 실행.
-- 오류 경로(모두 설치 전에 중단): 손상된 분할 파일(`sha256sum: WARNING: 1 computed checksum did NOT match` / `Checksum verification FAILED ...`),
-  누락된 분할 파일(`Missing bundle file(s): ...part003 ...`), 아키텍처 불일치(`Architecture mismatch: this server is 'x86_64' but the bundle was built for 'aarch64'`),
-  root 가 아닌 실행(`Root privileges are required`).
-- `make-offline-zip.sh`, `install-offline.sh`, `install.sh` 모두 `shellcheck` 경고 수준에서 깨끗합니다.
+| 항목 | 방법 | 결과 |
+|---|---|---|
+| 실제 ECR 이미지 + AWS CLI 자동 설치 | curl/unzip/aws 가 없는 `ubuntu:24.04` 컨테이너에서 실제 AWS 자격 증명으로 `make-offline-zip.sh` | 없는 도구와 AWS CLI 가 자동 설치되고, ECR 로그인과 실제 `onpremise-webapp` pull 이 성공했으며 실제 1GiB 분할 파일이 만들어짐 |
+| aarch64 의 AWS CLI | `linux/arm64` 컨테이너(QEMU)에서 동일 실행 | AWS CLI, Docker, Compose 의 aarch64 다운로드와 ECR 로그인 성공 |
+| 9개 배포판 오프라인 설치 | 실제 이미지로 만든 번들로 `install-offline.sh --yes` | Ubuntu 22.04/24.04, Debian 12, Rocky 9, Alma 8/9, Fedora, Amazon Linux 2023, openSUSE Leap 15.6, Alpine 3.20 모두 설치되어 mongo, redis, mail, webapp, sclab-proxy 기동 |
+| systemd 서비스 | systemd 컨테이너(Ubuntu 24.04, Debian 12), `docker restart` 로 재부팅 모사 | 유닛 등록·enable, 재시작 후 Docker 와 모든 컨테이너가 자동 기동, 재실행 시 끝난 단계 건너뜀 |
+| OpenRC | OpenRC 가 있는 Alpine | 서비스 등록, OpenRC 로 Docker 기동, 설치 완료 |
+| 오류 경로 | 손상/누락 분할 파일, 아키텍처 불일치, root 아님 | 모두 설치 전에 명확한 메시지와 함께 중단 |
+| shellcheck | 경고 수준 | 깨끗함 |
 
-**검증하지 못한 항목**(적합한 환경 없음): 실제 ECR 레지스트리 pull 과 AWS CLI 자동 설치(`--no-pull` 경로만 사용), 실제 호스트의 systemd/OpenRC 서비스 유닛,
-aarch64, RHEL/SUSE/Amazon Linux 호스트, SELinux enforcing 호스트, 수 GB 번들의 1GB 분할(100MB 분할로 시험), 실제 `onpremise-*` 이미지(webapp 은 대역 이미지 사용),
-GPU 이미지, Vision / Ollama / vLLM / Speaches / 타일 서버 추가 구성. SCLAB 애플리케이션 자체가 외부로 호출하는지(라이선스 서버, 텔레메트리, CDN, 지도 타일)는
-이미지 내부 사항이라 **확인하지 못했습니다**.
+시험 중 찾아 고친 것: `curl`/`unzip` 이 없는 머신에서 `make-offline-zip.sh` 가 중단되던 문제(이제 없는 도구를 설치), OpenRC 서비스가 `dockerd` 와 pid 파일을 공유해 기동에 실패하던 문제,
+init 시스템 실패 시 메시지 없이 끝나던 문제, 대상 아키텍처용 이미지가 없어도 번들이 만들어지던 문제(이제 오류).
+
+**한계 / 미검증**
+
+- **현재 필수 이미지로는 aarch64 번들을 만들 수 없습니다**: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `make-offline-zip.sh --arch aarch64` 는 오류로 중단됩니다.
+  aarch64 도구(AWS CLI, Docker, Compose 다운로드)만 확인했습니다.
+- **라이선스와 외부 접속**: 시험에는 가짜 라이선스 키를 썼습니다. 이 키로는 `webapp` 컨테이너가 (인터넷이 되는 환경에서도) 재시작을 반복하며, 격리 실행 중 `app.sclab.io` 를 반복 조회했습니다.
+  라이선스 확인일 가능성이 높고, 그렇다면 **실제 라이선스가 폐쇄망 서버에는 없는 그 호스트 접속을 요구할 수 있습니다**. 유효한 키가 없어 확인하지 못했으니 실제 라이선스로 검증해 주세요.
+- 미검증: SELinux enforcing 호스트(시험 컨테이너는 Docker Desktop VM 커널을 공유), 실제 하드웨어/실제 부팅(재부팅이 아니라 컨테이너 재시작), RHEL 자체(Rocky/Alma 사용),
+  위 버전 외의 SUSE/Amazon Linux, Vision / Ollama / vLLM / Speaches / 타일 서버 / Gotenberg 부가 구성, CPU 부하가 큰 상황의 `dockerd` 기동
+  (openSUSE 병렬 실행 한 번에서 containerd 시작 시간 초과가 났고 재실행은 통과).
+- 최소 컨테이너 이미지에는 실제 서버에 있는 도구(`iptables`, `openssl`, Amazon Linux 최소판의 `groupadd` 등)가 빠져 있습니다. 시험 이미지에는 일반 서버 설치처럼
+  `openssl`, `iptables`, `procps`, `hostname` 을 추가했습니다.

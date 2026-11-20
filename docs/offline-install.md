@@ -219,22 +219,32 @@ Check that no registry is needed: `grep -c "pull_policy: never" docker-compose.y
 
 ## 9. What was verified (and what was not)
 
-Verified with real runs of these scripts:
+All tests ran in Docker (Docker Desktop, x86_64 host). Servers were simulated by privileged containers **without network access**
+(`--network none`), which is why the installer never touched the internet in any of them.
 
-- `make-offline-zip.sh` inside an **Alpine Linux** (BusyBox tools, musl) container with `--no-pull` and local images
-  (mongo, redis, nginx, bytemark/smtp; the `webapp` image was a stand-in): service trimming, `pull_policy: never`, Docker +
-  Compose download and Compose checksum verification, `docker save`, tar/gzip/split into numbered parts, `SHA256SUMS`, `MANIFEST.json`.
-- `install-offline.sh` inside an **Ubuntu 22.04** privileged container with **no network interface** (`--network none`, DNS lookups fail):
-  checksum verification, extraction, static Docker installation (the container has no systemd, so the background-`dockerd` fallback was used),
-  `docker load`, `install.sh --offline --yes` with the license applied from the bundle, key generation, `docker compose up`, and a second run
-  that skipped every finished step.
-- Error paths (each stops before anything is installed): a damaged part (`sha256sum: WARNING: 1 computed checksum did NOT match` /
-  `Checksum verification FAILED ...`), a missing part (`Missing bundle file(s): ...part003 ...`), an architecture mismatch
-  (`Architecture mismatch: this server is 'x86_64' but the bundle was built for 'aarch64'`) and a non-root run (`Root privileges are required`).
-- `shellcheck` is clean at warning level for `make-offline-zip.sh`, `install-offline.sh` and `install.sh`.
+| Item | Method | Result |
+|---|---|---|
+| Real ECR images + AWS CLI auto-install | `make-offline-zip.sh` in a bare `ubuntu:24.04` container (no curl, unzip, aws), real AWS credentials | missing tools and the AWS CLI were installed automatically, ECR login and real `onpremise-webapp` pull worked, real 1 GiB parts were produced |
+| AWS CLI on aarch64 | same, in a `linux/arm64` container (QEMU) | AWS CLI, Docker and Compose aarch64 downloads and ECR login worked |
+| Offline install on 9 distributions | `install-offline.sh --yes`, bundle built with the real images | Ubuntu 22.04/24.04, Debian 12, Rocky 9, Alma 8/9, Fedora, Amazon Linux 2023, openSUSE Leap 15.6, Alpine 3.20: all installed and started mongo, redis, mail, webapp and sclab-proxy |
+| systemd service | systemd containers (Ubuntu 24.04, Debian 12), `docker restart` as "reboot" | unit registered and enabled, Docker and all containers came back by themselves, a second run skipped finished steps |
+| OpenRC | Alpine with OpenRC | service registered, Docker started by OpenRC, installation completed |
+| Error paths | damaged part, missing part, wrong architecture, not root | each stops before anything is installed with a clear message |
+| shellcheck | warning level | clean |
 
-**Not verified** (no suitable environment): pulling from the real ECR registry and the automatic AWS CLI installation (the `--no-pull` path was
-used), the systemd and OpenRC service units on real hosts, aarch64, RHEL/SUSE/Amazon Linux hosts, SELinux-enforcing hosts, 1 GB part size with a
-multi-GB bundle (100 MB parts were used), the real `onpremise-*` images (a stand-in was used for webapp), GPU images, and the
-Vision / Ollama / vLLM / Speaches / tile server add-ons. Whether the SCLAB application itself makes outbound calls (license server, telemetry, CDN, map tiles) is
-inside the images and was **not** checked.
+Things the tests found and fixed: `make-offline-zip.sh` stopped on machines without `curl`/`unzip` (now installs missing tools), the OpenRC
+service shared a pid file with `dockerd` and failed to start, init-system failures ended the script silently, and a bundle was built even
+when an image does not exist for the target architecture (now an error).
+
+**Limits / not verified**
+
+- **aarch64 bundles are not possible with the current required images**: `onpremise-webapp` and `bytemark/smtp` are published for amd64 only,
+  so `make-offline-zip.sh --arch aarch64` stops with an error. Only the aarch64 tooling (AWS CLI, Docker, Compose downloads) was checked.
+- **License and outbound access**: the tests used a fake license key. With it the `webapp` container restarts in a loop (also when the internet is available),
+  and during the isolated run it repeatedly looked up `app.sclab.io`. That is probably the license check; it means **a real license may need
+  access to that host, which an air-gapped server does not have**. This could not be confirmed without a valid key - please verify with a real license.
+- Not verified: SELinux-enforcing hosts (the test containers share the Docker Desktop VM kernel), real hardware / real boot sequences (containers were restarted, not rebooted),
+  RHEL itself (Rocky/Alma were used), SUSE/Amazon Linux other than the versions above, the Vision / Ollama / vLLM / Speaches / tile server / Gotenberg add-ons,
+  and starting `dockerd` under heavy CPU load (one parallel run of openSUSE hit containerd's start timeout; a re-run passed).
+- Minimal container images lack some tools a real server has (for example `iptables`, `openssl`, `groupadd` on Amazon Linux minimal); the test images added
+  `openssl`, `iptables`, `procps` and `hostname` the way a normal server install has them.

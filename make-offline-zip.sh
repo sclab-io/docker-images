@@ -180,14 +180,6 @@ if [ "$ASSUME_YES" = "1" ] || [ ! -t 0 ]; then INTERACTIVE=0; fi
 # ----------------------------------------------------------------------------- preflight
 [ "$(uname -s)" = "Linux" ] || die "This script must run on Linux (detected: $(uname -s))."
 
-for c in tar gzip split awk sed grep df find; do
-  command_exists "$c" || die "Required command not found: $c"
-done
-if command_exists sha256sum; then SHA256="sha256sum"
-elif command_exists shasum; then SHA256="shasum -a 256"
-else die "sha256sum (or shasum) is required."; fi
-command_exists curl || command_exists wget || die "curl or wget is required to download Docker / AWS CLI."
-
 HOST_ARCH_RAW="$(uname -m)"
 case "$HOST_ARCH_RAW" in
   x86_64|amd64) HOST_ARCH="x86_64" ;;
@@ -214,6 +206,39 @@ pkg_install() {
   elif command_exists pacman; then $run pacman -Sy --noconfirm "$@"
   else return 1; fi
 }
+
+# Make sure the basic tools exist; install the missing ones with the package manager (this machine has internet).
+ensure_tools() {
+  local missing="" c pk
+  for c in tar gzip split awk sed grep df find; do command_exists "$c" || missing="$missing $c"; done
+  command_exists curl || command_exists wget || missing="$missing curl"
+  if command_exists sha256sum || command_exists shasum; then :; else missing="$missing sha256sum"; fi
+  [ -z "$missing" ] && return 0
+  warn "Missing tools:$missing - trying to install them with the package manager."
+  pk=""
+  for c in $missing; do
+    case "$c" in
+      split|df|sha256sum) pk="$pk coreutils" ;;
+      find) pk="$pk findutils" ;;
+      awk) pk="$pk gawk" ;;
+      *) pk="$pk $c" ;;
+    esac
+  done
+  # shellcheck disable=SC2086
+  pk="$(printf '%s\n' $pk | sort -u | tr '\n' ' ')"
+  pkg_install $pk >/dev/null 2>&1 || true
+  for c in $missing; do
+    case "$c" in
+      curl) command_exists curl || command_exists wget || die "Could not install curl. Install curl or wget and run again." ;;
+      sha256sum) command_exists sha256sum || command_exists shasum || die "Could not install sha256sum." ;;
+      *) command_exists "$c" || die "Required command not found and could not be installed: $c" ;;
+    esac
+  done
+}
+ensure_tools
+if command_exists sha256sum; then SHA256="sha256sum"
+elif command_exists shasum; then SHA256="shasum -a 256"
+fi
 
 # ----------------------------------------------------------------------------- prompts
 ask_choice() { # $1 title, $2 default index, rest "label" ... -> echoes the chosen index (1-based)
@@ -552,6 +577,7 @@ IMAGES_TSV="$STAGE/images.tsv"   # ref<TAB>image id<TAB>file<TAB>repo digest<TAB
 total="$(printf '%s\n' "$UNIQ_REFS" | wc -l | tr -d ' ')"
 idx=0
 TOTAL_BYTES=0
+ARCH_MISMATCH=""
 for ref in $UNIQ_REFS; do
   idx=$((idx + 1))
   if [ "$NO_PULL" = "0" ]; then
@@ -568,7 +594,10 @@ for ref in $UNIQ_REFS; do
   fi
   img_arch="$(dk image inspect -f '{{.Architecture}}' "$ref" 2>/dev/null || echo unknown)"
   want_arch=amd64; [ "$TARGET_ARCH" = "aarch64" ] && want_arch=arm64
-  [ "$img_arch" = "$want_arch" ] || warn "$ref has architecture '$img_arch' but the target is '$want_arch'."
+  if [ "$img_arch" != "$want_arch" ]; then
+    err "$ref only exists for '$img_arch', but the target architecture is '$want_arch'."
+    ARCH_MISMATCH="$ARCH_MISMATCH $ref"
+  fi
   id="$(dk image inspect -f '{{.Id}}' "$ref")"
   digest="$(dk image inspect -f '{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}' "$ref" 2>/dev/null || true)"
   size="$(dk image inspect -f '{{.Size}}' "$ref" 2>/dev/null || echo 0)"
@@ -577,6 +606,11 @@ for ref in $UNIQ_REFS; do
   svcs="$(awk -F'\t' -v r="$ref" '$2 == r { printf "%s%s", (n++ ? "," : ""), $1 }' "$IMAGE_LIST")"
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$ref" "$id" "$fname" "$digest" "$size" "$svcs" >> "$IMAGES_TSV"
 done
+
+if [ -n "$ARCH_MISMATCH" ]; then
+  die "These images are not available for $TARGET_ARCH:$ARCH_MISMATCH
+A bundle with images of another architecture would not run on the target. Build for the architecture the images support (x86_64), or deselect the services that use them."
+fi
 
 # Disk space check (before the big export): staged tars + final parts ~ 2x the image size.
 need_kb=$(( (TOTAL_BYTES / 1024) * 21 / 10 ))
