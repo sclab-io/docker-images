@@ -3,7 +3,10 @@
   mail:
     container_name: mail
     hostname: mail
-    image: "bytemark/smtp"
+    # Multi-arch (amd64+arm64) SMTP relay. Set MAIL_IMAGE=bytemark/smtp to keep the old amd64-only image.
+    image: "${MAIL_IMAGE:-boky/postfix:5.2.1}"
+    environment:
+      - ALLOW_EMPTY_SENDER_DOMAINS=true
     restart: always
     networks:
       - sclab-network

@@ -121,7 +121,7 @@ compose_service_image() { # $1 file, $2 service
     $0 ~ "^  " svc ":[ \t]*$" { in_s = 1; next }
     in_s && /^  [A-Za-z0-9_-]+:/ { in_s = 0 }
     in_s && /^    image:/ { sub(/^    image:[ \t]*/, ""); gsub(/["\047]/, ""); print; exit }
-  ' "$1"
+  ' "$1" | sed 's/\${[A-Za-z_][A-Za-z0-9_]*:-\([^}]*\)}/\1/g'   # ${VAR:-default} -> default
 }
 file_images() { # every image: line of a compose file, ${VAR:-default} resolved to default
   sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$1" | tr -d "\"'" | sed 's/[[:space:]]*#.*$//' \
@@ -760,11 +760,40 @@ fetch_docker_binaries() {
 json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
 safe_name() { printf '%s' "$1" | sed 's#[^A-Za-z0-9._-]#_#g'; }
 
+want_arch=amd64; [ "$TARGET_ARCH" = "aarch64" ] && want_arch=arm64
 NEEDS_ECR=0
 if [ "$NO_PULL" = "0" ] && printf '%s\n' "$UNIQ_REFS" | grep -q '\.dkr\.ecr\.'; then NEEDS_ECR=1; fi
 ensure_build_docker
 [ "$NEEDS_ECR" = "1" ] && ecr_login
 fetch_docker_binaries
+
+# Platform pre-check (no image data is downloaded): when the registry holds a multi-platform manifest list for an image,
+# it must contain the target platform. Names every offending image and its services, then stops before any pull.
+# Single-platform images are checked through their config; whatever cannot be checked here is verified after the pull (ARCH_MISMATCH below).
+if [ "$NO_PULL" = "0" ]; then
+  info "Checking that every image has a $PLATFORM manifest"
+  NO_PLATFORM=""
+  for ref in $UNIQ_REFS; do
+    mf="$(dk manifest inspect "$ref" 2>&1)" || { warn "Could not read the manifest of $ref (will be checked when pulling): $(printf '%s' "$mf" | head -n1)"; continue; }
+    if printf '%s' "$mf" | grep -q '"manifests"'; then
+      if ! printf '%s' "$mf" | tr -d ' \n' | grep -q "\"architecture\":\"$want_arch\",\"os\":\"linux\""; then
+        svcs="$(awk -F'\t' -v r="$ref" '$2 == r { printf "%s%s", (n++ ? "," : ""), $1 }' "$IMAGE_LIST")"
+        err "$ref has no $PLATFORM manifest (used by: $svcs)."
+        NO_PLATFORM="$NO_PLATFORM $ref"
+      fi
+    else
+      # single-platform image: read the architecture from its config (needs buildx; otherwise checked after the pull)
+      one="$(dk buildx imagetools inspect --format '{{json .Image}}' "$ref" 2>/dev/null | tr -d ' \n' | sed -n 's/.*"architecture":"\([^"]*\)","os":"\([^"]*\)".*/\2\/\1/p')" || one=""
+      if [ -n "$one" ] && [ "$one" != "linux/$want_arch" ]; then
+        svcs="$(awk -F'\t' -v r="$ref" '$2 == r { printf "%s%s", (n++ ? "," : ""), $1 }' "$IMAGE_LIST")"
+        err "$ref is published only for $one, not $PLATFORM (used by: $svcs)."
+        NO_PLATFORM="$NO_PLATFORM $ref"
+      fi
+    fi
+  done
+  [ -z "$NO_PLATFORM" ] || die "These images are not published for $PLATFORM:$NO_PLATFORM
+A bundle with images of another architecture would not run on the target. Deselect the services that use them, build for the architecture the images support (x86_64), or wait until a multi-arch image is published."
+fi
 
 IMAGES_TSV="$STAGE/images.tsv"   # ref<TAB>image id<TAB>file<TAB>repo digest<TAB>size bytes<TAB>service(s)
 : > "$IMAGES_TSV"
@@ -791,7 +820,6 @@ for ref in $UNIQ_REFS; do
   if dk image inspect --help 2>&1 | grep -q -- '--platform'; then INSPECT_PLAT="--platform $PLATFORM"; fi
   # shellcheck disable=SC2086
   img_arch="$(dk image inspect $INSPECT_PLAT -f '{{.Architecture}}' "$ref" 2>/dev/null || echo unknown)"
-  want_arch=amd64; [ "$TARGET_ARCH" = "aarch64" ] && want_arch=arm64
   if [ "$img_arch" != "$want_arch" ]; then
     err "$ref only exists for '$img_arch', but the target architecture is '$want_arch'."
     ARCH_MISMATCH="$ARCH_MISMATCH $ref"
