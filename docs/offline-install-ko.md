@@ -9,9 +9,9 @@
 ```
  인터넷이 되는 PC / 서버                           폐쇄망 서버
  ───────────────────────────                       ───────────────────────────
- ./make-offline-zip.sh   ──►  *.part001 ...   ──►   sudo bash ./install-offline.sh
+ ./make-offline-zip.sh   ──►  *.tar.gz[.part*] ──►   sudo bash ./install-offline.sh
    (이미지 pull, Docker,       SHA256SUMS            (검증, 압축 해제, Docker 설치,
-    라이선스, 1GB 분할)        MANIFEST.json          docker load, install.sh, 기동)
+    라이선스, 분할/비분할)        MANIFEST.json          docker load, install.sh, 기동)
                                install-offline.sh
 ```
 
@@ -19,7 +19,7 @@
 
 | 스크립트 | 실행 위치 | 하는 일 |
 |---|---|---|
-| `make-offline-zip.sh` | 인터넷이 되는 머신(모든 Linux) | 대상 OS/아키텍처와 서비스를 고르게 하고, AWS CLI 가 없으면 설치하고, ECR 에 로그인하고, Docker Engine + Compose 를 내려받고, 선택한 모든 이미지를 `docker pull` + `docker save` 한 뒤, 라이선스 키와 함께 하나의 압축 파일로 묶어 1GB 단위로 분할하고 `SHA256SUMS`, `MANIFEST.json` 을 만듭니다 |
+| `make-offline-zip.sh` | 인터넷이 되는 머신(모든 Linux) | 대상 OS/아키텍처와 서비스를 고르게 하고, AWS CLI 가 없으면 설치하고, ECR 에 로그인하고, Docker Engine + Compose 를 내려받고, 선택한 모든 이미지를 `docker pull` + `docker save` 한 뒤, 라이선스 키와 함께 하나의 압축 파일로 묶고(기본 1GB 단위 분할, 분할 안 함 / GB / MB 단위 선택 가능) `SHA256SUMS`, `MANIFEST.json` 을 만듭니다 |
 | `install-offline.sh` | 폐쇄망 서버(root) | 체크섬을 검증하고, 분할 파일을 합쳐 압축을 풀고, 번들의 Docker + Compose 를 설치하고(이미 Docker 가 있으면 건너뜀), 이미지를 `docker load` 하고, `install.sh --offline` 을 실행(라이선스는 번들에서 자동 적용)한 뒤 서비스를 기동합니다 |
 | `make-offline-update-zip.sh` | 인터넷이 되는 머신(Linux 또는 macOS) | 고른 이미지(예: `webapp`)만 담은 작은 **업데이트 번들**을 만듭니다 - 8절 참고 |
 | `update-offline-images.sh` | 폐쇄망 서버(root) | 업데이트 번들을 검증·적재하고 설치된 시스템에 적용합니다(`webapp` 롤링 업데이트, 헬스 확인, 롤백, 이력) - 8절 참고 |
@@ -75,8 +75,21 @@ cd docker-images
   --license-file ./my-license.txt --out ./sclab-offline-out
 ```
 
-전체 옵션은 `./make-offline-zip.sh --help` (`--list-services` 로 서비스 목록 확인, `--part-size MB`, `--no-license`,
+전체 옵션은 `./make-offline-zip.sh --help` (`--list-services` 로 서비스 목록 확인, `--no-split`, `--part-size 5G|500M`, `--no-license`,
 `--docker-version`, `--compose-version`, `--work-dir`, 로컬에 이미 있는 이미지를 쓰는 `--no-pull`).
+
+**분할 방식.** 기본값은 아카이브를 1GB 단위(`*.tar.gz.part001`, `.part002`, ...)로 나누는 것입니다. USB 디스크나 용량 제한이 있는
+전송 도구로 옮길 때 편합니다. 대화식으로 실행하면 분할 방식을 묻습니다. *분할 안 함*(하나의 파일), *GB 단위로 분할*(`Part size in GB [1]` 입력),
+*MB 단위로 분할*(`Part size in MB [1024]` 입력) 중에서 고르며, Enter 만 누르면 기본값(1GB 단위)입니다. 크기는 정수(최소 1MB)로 입력합니다.
+분할 크기가 번들 전체보다 크면 분할하지 않은 것과 같이 하나의 파일이 만들어집니다. 터미널이 없거나 `--yes` 이면 옵션을 주지 않는 한 기본 1GB 입니다.
+
+```bash
+./make-offline-zip.sh --no-split            # 하나의 파일: sclab-offline-<날짜>-<arch>.tar.gz
+./make-offline-zip.sh --part-size 5G        # 5GB 단위 분할
+./make-offline-zip.sh --part-size 500M      # 500MB 단위 분할 (1024 처럼 단위 없는 숫자는 MB)
+```
+
+`--no-split` 과 `--part-size` 는 함께 쓸 수 없습니다. `install-offline.sh` 는 하나의 파일도, 분할 파일도 모두 처리합니다.
 
 ### Mac(Intel / Apple Silicon)에서 번들 만들기
 
@@ -119,10 +132,10 @@ cd docker-images
 서버로 옮길 파일(출력 디렉터리의 모든 파일):
 
 ```
-sclab-offline-20261120-x86_64.tar.gz.part001 ... .part00N   (기본 1GB 단위)
-SHA256SUMS            분할 파일, MANIFEST.json, install-offline.sh 의 체크섬
+sclab-offline-20261120-x86_64.tar.gz.part001 ... .part00N   (기본 1GB 단위. --no-split 이면 sclab-offline-20261120-x86_64.tar.gz 하나)
+SHA256SUMS            아카이브 파일, MANIFEST.json, install-offline.sh 의 체크섬
 MANIFEST.json         번들 이름, 대상 OS/아키텍처, Docker/Compose 버전, 선택한 서비스,
-                      이미지별 태그/이미지 ID/repo digest/크기, 분할 파일 목록
+                      이미지별 태그/이미지 ID/repo digest/크기, 파일 목록
 install-offline.sh    설치 스크립트 (아카이브 안에도 사본이 있습니다)
 ```
 
@@ -259,7 +272,7 @@ sudo ./logs.sh                  # 로그 보기
 ```
  인터넷이 되는 PC / 서버                                폐쇄망 서버
  ───────────────────────────                            ───────────────────────────
- ./make-offline-update-zip.sh  ──►  <이름>.tar.gz.part*  ──►  sudo bash ./update-offline-images.sh
+ ./make-offline-update-zip.sh  ──►  <이름>.tar.gz[.part*]  ──►  sudo bash ./update-offline-images.sh
    (서비스 선택, pull,               <이름>.SHA256SUMS          (검증, 압축 해제, docker load, 변경점 표시,
     docker save, 분할)               <이름>.MANIFEST.json        적용, 헬스 확인, 이력, 롤백)
                                      update-offline-images.sh
@@ -277,7 +290,7 @@ sudo ./logs.sh                  # 로그 보기
 
 메뉴에는 필수 5개를 포함한 모든 서비스가 나오며 `webapp` 이 기본 체크되어 있습니다. 터미널이 없으면 번호 입력 방식으로 바뀝니다.
 AWS CLI 가 없으면 설치하고, ECR 에 로그인한 뒤, 선택한 이미지만 `docker pull --platform linux/amd64` + `docker save` 하여
-압축한 아카이브를 1GB 단위로 나눕니다.
+압축한 아카이브를 만듭니다(기본 1GB 단위 분할, 또는 하나의 파일. 아래 참고).
 
 | 옵션 | 의미 |
 |---|---|
@@ -285,15 +298,20 @@ AWS CLI 가 없으면 설치하고, ECR 에 로그인한 뒤, 선택한 이미�
 | `--arch x86_64` | 대상 CPU 아키텍처(현재 기본값이자 유일한 지원값. `aarch64` 는 거부됨) |
 | `--out 디렉터리` | 출력 디렉터리(기본 `./sclab-update-out`) |
 | `--name 이름` | 번들 이름(기본 `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
-| `--part-size MB` | 분할 파일 크기(기본 1024) |
+| `--part-size 크기` | 분할 파일 크기: `500M`, `5G`, 단위 없는 숫자는 MB (기본 `1G`) |
+| `--no-split` | 분할하지 않고 하나의 `<이름>.tar.gz` 로 만들기 |
 | `--with-compose` | 이 저장소의 compose / 스크립트 / 설정 파일도 함께 담기(8.3 참고). 기본은 이미지만 |
 | `--base-bundle 이름` / `--base-manifest 파일` | 이 업데이트가 어느 전체 번들용인지 기록(서버에서 표시/확인) |
 | `--no-pull` | 로컬에 이미 있는 이미지를 사용(AWS CLI, ECR 로그인 생략) |
 
+**분할 방식.** 전체 번들과 같습니다. 기본값은 1GB 단위 분할이며, 대화식으로 실행하면 *분할 안 함* / *GB 단위* / *MB 단위* 를 묻습니다(Enter = 1GB).
+대화식이 아니면 `--no-split`(하나의 `<이름>.tar.gz`), `--part-size 5G`, `--part-size 500M` 을 사용합니다. 분할 크기가 번들보다 크면 하나의 파일이 만들어집니다.
+`update-offline-images.sh` 는 하나의 파일도, 분할 파일도 모두 처리합니다.
+
 출력 파일은 모두 번들 이름으로 시작하므로, **같은** 출력 디렉터리에 업데이트 번들을 여러 번 만들어도 파일이 섞이지 않습니다.
 
 ```
-sclab-update-20261120-153045-x86_64.tar.gz.part001   (... .part002 ...)
+sclab-update-20261120-153045-x86_64.tar.gz.part001   (... .part002 ...; --no-split 이면 sclab-update-20261120-153045-x86_64.tar.gz)
 sclab-update-20261120-153045-x86_64.SHA256SUMS
 sclab-update-20261120-153045-x86_64.MANIFEST.json     (종류, 생성 시각, 이미지별 태그 / 이미지 ID / repo digest / 크기, 서비스, 아키텍처)
 update-offline-images.sh                              (모든 번들에 공통인 같은 스크립트)

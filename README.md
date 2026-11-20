@@ -128,7 +128,7 @@ The installation script will:
 
 For servers without internet access, build a bundle on a machine that has internet with `./make-offline-zip.sh`
 (pick the target OS/architecture and the services; the images, Docker Engine, Compose, this repository and the
-license key are packed into 1 GB split files with `SHA256SUMS`), copy the files to the server and run
+license key are packed into 1 GB split files by default, or one single file, with `SHA256SUMS`), copy the files to the server and run
 `sudo bash ./install-offline.sh`. Full guide: [docs/offline-install.md](docs/offline-install.md) ([한국어](docs/offline-install-ko.md)).
 
 To update only some images later (e.g. `webapp`) without rebuilding the full bundle, see [Update only some images](docs/offline-install.md#8-update-only-some-images-offline-update) (`make-offline-update-zip.sh` + `update-offline-images.sh`; [한국어](docs/offline-install-ko.md#8-일부-이미지만-업데이트-오프라인-업데이트)).

@@ -9,9 +9,9 @@ is packed on a machine **with** internet access into a few split files. You copy
 ```
  PC / server WITH internet                         air-gapped server
  ───────────────────────────                       ───────────────────────────
- ./make-offline-zip.sh   ──►  *.part001 ...   ──►   sudo bash ./install-offline.sh
+ ./make-offline-zip.sh   ──►  *.tar.gz[.part*] ──►   sudo bash ./install-offline.sh
    (pull images, Docker,       SHA256SUMS            (verify, extract, install Docker,
-    license, split 1 GB)       MANIFEST.json          docker load, install.sh, start)
+    license, split/not)       MANIFEST.json          docker load, install.sh, start)
                                install-offline.sh
 ```
 
@@ -19,7 +19,7 @@ is packed on a machine **with** internet access into a few split files. You copy
 
 | Script | Where | What it does |
 |---|---|---|
-| `make-offline-zip.sh` | machine with internet (any Linux) | asks for the target OS/architecture and the services, installs the AWS CLI if missing, logs in to ECR, downloads Docker Engine + Compose, runs `docker pull` + `docker save` for every selected image, packs everything (plus the license key) into one archive split into 1 GB parts, writes `SHA256SUMS` and `MANIFEST.json` |
+| `make-offline-zip.sh` | machine with internet (any Linux) | asks for the target OS/architecture and the services, installs the AWS CLI if missing, logs in to ECR, downloads Docker Engine + Compose, runs `docker pull` + `docker save` for every selected image, packs everything (plus the license key) into one archive (1 GB parts by default; no split or GB/MB size is selectable), writes `SHA256SUMS` and `MANIFEST.json` |
 | `install-offline.sh` | air-gapped server (root) | verifies the checksums, joins and extracts the parts, installs Docker + Compose from the bundle (unless Docker is already installed), `docker load`s the images, runs `install.sh --offline` (license key read from the bundle) and starts the services |
 | `make-offline-update-zip.sh` | machine with internet (Linux or macOS) | builds a small **update bundle** with only the images you pick (e.g. `webapp`) - see section 8 |
 | `update-offline-images.sh` | air-gapped server (root) | verifies and loads an update bundle and applies it to the installed system (rolling `webapp` update, health check, rollback, history) - see section 8 |
@@ -79,8 +79,22 @@ Non-interactive example:
   --license-file ./my-license.txt --out ./sclab-offline-out
 ```
 
-All options: `./make-offline-zip.sh --help` (`--list-services` prints the catalog; `--part-size MB`, `--no-license`,
+All options: `./make-offline-zip.sh --help` (`--list-services` prints the catalog; `--no-split`, `--part-size 5G|500M`, `--no-license`,
 `--docker-version`, `--compose-version`, `--work-dir`, `--no-pull` to use images that already exist locally).
+
+**Splitting.** By default the archive is cut into 1 GB parts (`*.tar.gz.part001`, `.part002`, ...), which is easier to copy to USB
+disks or through size-limited transfer tools. An interactive run asks how to split: *do not split* (one single file), *split by size
+in GB* (asks `Part size in GB [1]`) or *split by size in MB* (asks `Part size in MB [1024]`); just press Enter for the default (1 GB parts).
+Sizes are whole numbers (at least 1 MB). If the part size is larger than the whole bundle you get one single file anyway. Without a
+terminal (or with `--yes`) the default 1 GB applies unless you pass an option:
+
+```bash
+./make-offline-zip.sh --no-split            # one single file: sclab-offline-<date>-<arch>.tar.gz
+./make-offline-zip.sh --part-size 5G        # 5 GB parts
+./make-offline-zip.sh --part-size 500M      # 500 MB parts (a bare number such as 1024 also means MB)
+```
+
+`--no-split` and `--part-size` cannot be combined. `install-offline.sh` handles both a single file and split parts.
 
 ### Building the bundle on a Mac (Intel or Apple Silicon)
 
@@ -125,10 +139,10 @@ Result (excerpt of a real run, sample bundle with 100 MB parts):
 Files to upload (everything in the output directory):
 
 ```
-sclab-offline-20261120-x86_64.tar.gz.part001 ... .part00N   (1 GB each by default)
-SHA256SUMS            checksums of the parts, MANIFEST.json and install-offline.sh
+sclab-offline-20261120-x86_64.tar.gz.part001 ... .part00N   (1 GB each by default; with --no-split: one sclab-offline-20261120-x86_64.tar.gz)
+SHA256SUMS            checksums of the archive file(s), MANIFEST.json and install-offline.sh
 MANIFEST.json         bundle name, target OS/arch, Docker/Compose versions, selected services,
-                      every image (tag, image id, repo digest, size) and the part list
+                      every image (tag, image id, repo digest, size) and the file list
 install-offline.sh    the installer (a copy is also inside the archive)
 ```
 
@@ -270,7 +284,7 @@ No license key and no Docker Engine are part of an update bundle.
 ```
  PC / server WITH internet                              air-gapped server
  ───────────────────────────                            ───────────────────────────
- ./make-offline-update-zip.sh  ──►  <name>.tar.gz.part*  ──►  sudo bash ./update-offline-images.sh
+ ./make-offline-update-zip.sh  ──►  <name>.tar.gz[.part*]  ──►  sudo bash ./update-offline-images.sh
    (pick services, pull,             <name>.SHA256SUMS         (verify, extract, docker load, show changes,
     docker save, split)              <name>.MANIFEST.json       roll out, health check, history, rollback)
                                      update-offline-images.sh
@@ -288,7 +302,7 @@ Run it from a checkout of this repository, like the full bundle (see section 3, 
 
 The menu lists all services (the five required ones included); `webapp` is checked by default. Without a terminal a numeric
 prompt is used. The script installs the AWS CLI if it is missing, logs in to ECR, runs `docker pull --platform linux/amd64` and
-`docker save` for the selected images only, and writes a compressed archive split into 1 GB parts.
+`docker save` for the selected images only, and writes a compressed archive (split into 1 GB parts by default, or a single file; see below).
 
 | Option | Meaning |
 |---|---|
@@ -296,16 +310,21 @@ prompt is used. The script installs the AWS CLI if it is missing, logs in to ECR
 | `--arch x86_64` | target CPU architecture (default and only supported value for now; `aarch64` is refused) |
 | `--out DIR` | output directory (default `./sclab-update-out`) |
 | `--name NAME` | bundle name (default `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
-| `--part-size MB` | size of each part (default 1024) |
+| `--part-size SIZE` | size of each part: `500M`, `5G`, or a bare number in MB (default `1G`) |
+| `--no-split` | write one single `<name>.tar.gz` instead of parts |
 | `--with-compose` | also pack this repository's compose / script / config files (see 8.3); default is images only |
 | `--base-bundle NAME` / `--base-manifest FILE` | record which full bundle this update belongs to (shown / checked on the server) |
 | `--no-pull` | use the images that already exist locally (no AWS CLI, no ECR login) |
+
+**Splitting.** Same choice as for the full bundle: the default is 1 GB parts; an interactive run asks for *do not split* / *GB* / *MB*
+(Enter = 1 GB). Non-interactively use `--no-split` (one single `<name>.tar.gz`), `--part-size 5G` or `--part-size 500M`. A part size larger
+than the bundle gives one single file anyway. `update-offline-images.sh` accepts both a single file and split parts.
 
 Every output file starts with the bundle name, so you can build several update bundles into the **same** output directory
 without mixing them up:
 
 ```
-sclab-update-20261120-153045-x86_64.tar.gz.part001   (... .part002 ...)
+sclab-update-20261120-153045-x86_64.tar.gz.part001   (... .part002 ...; with --no-split: sclab-update-20261120-153045-x86_64.tar.gz)
 sclab-update-20261120-153045-x86_64.SHA256SUMS
 sclab-update-20261120-153045-x86_64.MANIFEST.json     (kind, creation time, per image: tag / image ID / repo digest / size, services, architecture)
 update-offline-images.sh                              (the same script for every bundle)

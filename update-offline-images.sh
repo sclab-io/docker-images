@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # update-offline-images.sh - apply an UPDATE bundle (made by make-offline-update-zip.sh) to an installed, air-gapped SCLAB Studio.
 #
-# Put the update bundle files (<name>.tar.gz.part001 ..., <name>.SHA256SUMS, <name>.MANIFEST.json) of one or more update
+# Put the update bundle files (<name>.tar.gz or <name>.tar.gz.part001 ..., <name>.SHA256SUMS, <name>.MANIFEST.json) of one or more update
 # bundles in ONE directory on the server and run (as root, from that directory or with --dir):
 #     sudo bash ./update-offline-images.sh
 #
@@ -608,8 +608,8 @@ verify_checksums() { # $1 dir, $2 stem
   local d="$1" stem="$2" sums parts p missing=""
   sums="$d/$stem.SHA256SUMS"
   [ -f "$sums" ] || die "$sums not found. Copy ALL files of the bundle into one directory."
-  parts="$(awk '{print $2}' "$sums" | sed 's/^\*//' | grep '\.part[0-9]*$' || true)"
-  [ -n "$parts" ] || die "No *.part files are listed in $stem.SHA256SUMS."
+  parts="$(awk '{print $2}' "$sums" | sed 's/^\*//' | grep -E '\.tar\.gz(\.part[0-9]+)?$' || true)"
+  [ -n "$parts" ] || die "No bundle archive (*.tar.gz or *.tar.gz.part*) is listed in $stem.SHA256SUMS."
   for p in $parts; do [ -f "$d/$p" ] || missing="$missing $p"; done
   [ -z "$missing" ] || die "Missing bundle file(s):$missing - copy every part next to $stem.SHA256SUMS."
   info "Verifying SHA256 checksums of $(echo "$parts" | wc -l | tr -d ' ') part(s) - this can take a while for big bundles"
