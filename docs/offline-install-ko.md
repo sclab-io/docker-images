@@ -55,8 +55,10 @@ cd docker-images
 
 대화식으로 진행됩니다.
 
-1. **대상 OS 계열**과 **CPU 아키텍처** (메뉴).
-2. **서비스 선택** - 체크박스 메뉴. 번호를 입력하면 토글, `a` = 전체, `n` = 없음, Enter = 계속.
+1. **대상 OS 계열** (화살표 메뉴: ↑/↓ 또는 `j`/`k` 이동, Enter 선택). CPU 아키텍처는 x86_64(amd64) 로 고정이며
+   **aarch64/arm64 는 아직 지원되지 않습니다** (`--arch aarch64` 는 오류로 중단).
+2. **서비스 선택** - 체크박스 메뉴. ↑/↓(또는 `j`/`k`)로 이동, **Space** 로 토글, `a` = 전체, `n` = 없음, **Enter** = 계속.
+   필수 서비스는 잠금 표시되며 해제할 수 없습니다. 터미널이 아닐 때(파이프/CI)나 `TERM=dumb` 에서는 번호 입력 방식으로 자동 전환됩니다.
    `mongo redis webapp sclab-proxy mail` 은 항상 포함됩니다. 선택 항목: `qdrant ai-service node-vm-service sclab-agent gis-process
    mqtt-client mqtt-broker kafka-client tileserver gotenberg vision vision-gpu ollama vllm speaches`.
    선택하지 않은 서비스는 이미지를 받지 않고 번들의 `docker-compose.yml` 에서도 빠집니다.
@@ -87,7 +89,7 @@ cd docker-images
   다른 아키텍처로 pull 할 때 대체될 수 있으니, 필요하면 다시 pull 하세요.
 - 디스크: 이미지가 Docker VM 안에 한 번, Mac 의 `<out>/.work` 에 스테이징 파일로 한 번 더, 최종 분할 파일로 또 저장됩니다
   (Mac 에서 이미지 크기의 약 2.5배 + Docker VM 안의 이미지. 필요하면 Docker Desktop 디스크 한도를 늘리세요).
-- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다.
+- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 이 아직 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다(현재 미지원). 메일 릴레이는 멀티아키(`boky/postfix`, 아래 참고)로 바뀌었습니다. 멀티아키 `onpremise-webapp` 이 ECR 에 올라오기 전에는 aarch64 번들을 만들 수 없습니다.
 - 아카이브는 root 소유로, macOS 메타데이터(`._*` 파일 / 확장 속성) 없이 만들어져 Linux 에서 깨끗하게 풀립니다.
 
 ```bash
@@ -194,6 +196,34 @@ docker-images-sclab-proxy-1   nginx:alpine3.18         Up 3 seconds
 
 일반 `install.sh` 실행과 마찬가지로 마지막에 **관리자 이메일과 비밀번호**가 출력됩니다. 반드시 기록해 두세요.
 
+### 데이터 저장 위치 지정 (별도 디스크)
+
+`install-offline.sh` 는 용량이 큰 두 데이터를 다른 디스크에 둘 수 있습니다. 대화식 실행에서는 두 질문 모두 나오며(**Enter = 기본값**),
+`--yes` 에서는 옵션/환경변수 또는 기본값을 사용합니다.
+
+| 대상 | 프롬프트 기본값 | 옵션 / 환경변수 | 적용 방식 |
+|---|---|---|---|
+| Docker 데이터(이미지·컨테이너·볼륨) | `/var/lib/docker` | `--docker-data-root DIR` / `SCLAB_DOCKER_DATA_ROOT` | dockerd 시작 **전에** `/etc/docker/daemon.json` 에 `"data-root"` 를 병합(다른 설정 보존, 기존 파일은 `daemon.json.sclab-bak-<시각>` 로 백업)하므로 `docker load` 가 처음부터 그 경로에 씁니다. systemd·OpenRC·폴백 모두 `--data-root` 플래그 없이 dockerd 를 시작하므로 같은 파일을 읽으며, 마지막에 `docker info` 로 Docker Root Dir 을 검증합니다. |
+| 앱 데이터(MongoDB, Redis, Qdrant, 업로드 파일, 로그) | `<dest>/docker-images/data` | `--data-dir DIR` / `SCLAB_DATA_DIR` | `<dest>/docker-images/data` 가 `DIR` 로의 **심볼릭 링크**가 됩니다. 모든 스크립트와 compose 파일이 그대로 `./data/...` 를 쓰므로 run.sh, update.sh, logs.sh, optional-services 파일이 수정 없이 동작하고 업데이트 후에도 유지됩니다. |
+
+주의:
+
+- **마운트된** 디스크의 절대경로를 쓰세요. 먼저 마운트(+ `/etc/fstab` 등록)하지 않으면 데이터가 루트 디스크에 쌓입니다.
+  스크립트는 파일시스템·마운트 위치·여유 용량을 보여주고, 경로가 `/` 위이거나 NFS/CIFS/FUSE 이거나 (Docker 의 경우) `noexec`/`nosuid`/`nodev` 마운트이면 경고하며,
+  Docker 디스크가 이미지 크기(MANIFEST `images_bytes` x 1.2)보다 작으면 중단합니다.
+- SELinux(enforcing): 디렉터리에 레이블을 지정하세요. 예: Docker `semanage fcontext -a -e /var/lib/docker /data/docker && restorecon -R /data/docker`,
+  앱 데이터 `semanage fcontext -a -t container_file_t '/data/sclab(/.*)?' && restorecon -R /data/sclab` (해당 명령을 스크립트가 출력).
+- 권한: root 가 쓸 수 있어야 하며 하위 디렉터리는 컨테이너가 직접 만들고 `chown` 합니다. root-squash 가 켜진 NFS 는 쓰지 마세요.
+- Docker 가 **이미 설치된** 경우: 현재 데이터 경로를 보여주고 건드리지 않습니다. 다른 경로를 요청하면 기존 이미지·컨테이너·볼륨이 보이지 않게 되는 위험을 설명하고
+  확인을 받으며(무인 실행은 기존 경로 유지), `--migrate-docker-data` 를 주면 Docker 를 멈추고 기존 디렉터리를 새 경로로 복사(rsync 또는 `cp -a`)합니다. 원본은 삭제하지 않습니다.
+- 내용이 있는 기존 `<dest>/docker-images/data` 나 다른 곳을 가리키는 기존 링크는 자동으로 바꾸거나 옮기지 않습니다.
+- 같은 값으로 다시 실행해도 변경 없음(멱등)입니다.
+- `jq`/`python3` 가 없으면 `sed`/`awk` 로 병합합니다(일반적인 `daemon.json` 에는 충분하며, 시작 시 Docker 가 최종 검증).
+
+```bash
+sudo bash ./install-offline.sh --yes --docker-data-root /data/docker --data-dir /data/sclab
+```
+
 ## 6. 설치 확인
 
 ```bash
@@ -232,35 +262,3 @@ sudo ./logs.sh                  # 로그 보기
 | `ai-service` 의 Qdrant 문제 | `qdrant` 없이 `ai-service` 만 선택함. 둘 다 선택해 번들 다시 생성 |
 | `vllm` 이 시작되지 않음 | vllm compose 가 시작할 때 `apt-get`/`pip` 를 실행(인터넷 필요)하고 모델도 번들에 없음 |
 | ollama / speaches 에 모델이 없음 | 모델은 번들에 없음. 서버로 따로 복사 |
-
-## 9. 검증한 것과 하지 못한 것
-
-모든 시험은 Docker(Docker Desktop, x86_64 호스트)에서 했고, 서버는 **네트워크가 없는**(`--network none`) 특권 컨테이너로 모의했습니다.
-따라서 어느 설치도 인터넷에 접속하지 않았습니다.
-
-| 항목 | 방법 | 결과 |
-|---|---|---|
-| 실제 ECR 이미지 + AWS CLI 자동 설치 | curl/unzip/aws 가 없는 `ubuntu:24.04` 컨테이너에서 실제 AWS 자격 증명으로 `make-offline-zip.sh` | 없는 도구와 AWS CLI 가 자동 설치되고, ECR 로그인과 실제 `onpremise-webapp` pull 이 성공했으며 실제 1GiB 분할 파일이 만들어짐 |
-| aarch64 의 AWS CLI | `linux/arm64` 컨테이너(QEMU)에서 동일 실행 | AWS CLI, Docker, Compose 의 aarch64 다운로드와 ECR 로그인 성공 |
-| 9개 배포판 오프라인 설치 | 실제 이미지로 만든 번들로 `install-offline.sh --yes` | Ubuntu 22.04/24.04, Debian 12, Rocky 9, Alma 8/9, Fedora, Amazon Linux 2023, openSUSE Leap 15.6, Alpine 3.20 모두 설치되어 mongo, redis, mail, webapp, sclab-proxy 기동 |
-| systemd 서비스 | systemd 컨테이너(Ubuntu 24.04, Debian 12), `docker restart` 로 재부팅 모사 | 유닛 등록·enable, 재시작 후 Docker 와 모든 컨테이너가 자동 기동, 재실행 시 끝난 단계 건너뜀 |
-| OpenRC | OpenRC 가 있는 Alpine | 서비스 등록, OpenRC 로 Docker 기동, 설치 완료 |
-| macOS 빌드(Intel Mac, bash 3.2, Docker Desktop) | Mac 에서 실제 ECR 이미지로 `make-offline-zip.sh` 실행 후 격리된 Linux amd64 컨테이너에 설치 | 번들 생성(실제 1GiB 분할), `install-offline.sh` 가 체크섬을 검증하고 설치, 5개 서비스 기동, 파일은 root 소유로 풀림. 대화식 메뉴와 Docker 미실행/미설치 안내도 확인. sudo 없는 AWS CLI `.pkg` 설치 방식은 `aws` 가 이미 있어 스크립트 대신 직접 확인 |
-| 오류 경로 | 손상/누락 분할 파일, 아키텍처 불일치, root 아님 | 모두 설치 전에 명확한 메시지와 함께 중단 |
-| shellcheck | 경고 수준 | 깨끗함 |
-
-시험 중 찾아 고친 것: `curl`/`unzip` 이 없는 머신에서 `make-offline-zip.sh` 가 중단되던 문제(이제 없는 도구를 설치), OpenRC 서비스가 `dockerd` 와 pid 파일을 공유해 기동에 실패하던 문제,
-init 시스템 실패 시 메시지 없이 끝나던 문제, 대상 아키텍처용 이미지가 없어도 번들이 만들어지던 문제(이제 오류).
-
-**한계 / 미검증**
-
-- **현재 필수 이미지로는 aarch64 번들을 만들 수 없습니다**: `onpremise-webapp` 과 `bytemark/smtp` 가 amd64 전용이라 `make-offline-zip.sh --arch aarch64` 는 오류로 중단됩니다.
-  aarch64 도구(AWS CLI, Docker, Compose 다운로드)만 확인했습니다.
-- **라이선스와 외부 접속**: 시험에는 가짜 라이선스 키를 썼습니다. 이 키로는 `webapp` 컨테이너가 (인터넷이 되는 환경에서도) 재시작을 반복하며, 격리 실행 중 `app.sclab.io` 를 반복 조회했습니다.
-  라이선스 확인일 가능성이 높고, 그렇다면 **실제 라이선스가 폐쇄망 서버에는 없는 그 호스트 접속을 요구할 수 있습니다**. 유효한 키가 없어 확인하지 못했으니 실제 라이선스로 검증해 주세요.
-- macOS 미검증: **Apple Silicon** 실기기(사용한 Mac 은 Intel 이며 교차 아키텍처 경로는 Intel 호스트에서 arm64 대상으로 pull·inspect(`--platform`)까지만 시험했고(아키텍처 검사에서 중단), `save --platform` 은 같은 아키텍처인 amd64 대상에서만 시험), OrbStack, Colima, `brew install awscli`.
-- 미검증: SELinux enforcing 호스트(시험 컨테이너는 Docker Desktop VM 커널을 공유), 실제 하드웨어/실제 부팅(재부팅이 아니라 컨테이너 재시작), RHEL 자체(Rocky/Alma 사용),
-  위 버전 외의 SUSE/Amazon Linux, Vision / Ollama / vLLM / Speaches / 타일 서버 / Gotenberg 부가 구성, CPU 부하가 큰 상황의 `dockerd` 기동
-  (openSUSE 병렬 실행 한 번에서 containerd 시작 시간 초과가 났고 재실행은 통과).
-- 최소 컨테이너 이미지에는 실제 서버에 있는 도구(`iptables`, `openssl`, Amazon Linux 최소판의 `groupadd` 등)가 빠져 있습니다. 시험 이미지에는 일반 서버 설치처럼
-  `openssl`, `iptables`, `procps`, `hostname` 을 추가했습니다.

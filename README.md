@@ -47,7 +47,7 @@ SCLAB provides a platform to quickly build data visualizations by integrating al
 ## Other image list for running SCLAB images
 
 * [mongo](https://hub.docker.com/_/mongo)
-- [bytemark/smtp](https://hub.docker.com/r/bytemark/smtp)
+- [boky/postfix](https://hub.docker.com/r/boky/postfix)
 - [bitnami/redis](https://hub.docker.com/r/bitnami/redis)
 - [qdrant/qdrant](https://hub.docker.com/r/qdrant/qdrant)
 - [nginx](https://hub.docker.com/_/nginx)
