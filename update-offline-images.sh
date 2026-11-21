@@ -127,7 +127,11 @@ if docker compose version >/dev/null 2>&1; then DC="docker compose"
 elif command_exists docker-compose; then DC="docker-compose"
 else die "Docker Compose is not available (need 'docker compose' or docker-compose)."; fi
 HOST_ARCH="$(uname -m)"
-case "$HOST_ARCH" in x86_64|amd64) HOST_ARCH=x86_64; HOST_DOCKER_ARCH=amd64 ;; aarch64|arm64) HOST_ARCH=aarch64; HOST_DOCKER_ARCH=arm64 ;; *) HOST_DOCKER_ARCH="$HOST_ARCH" ;; esac
+case "$HOST_ARCH" in
+  x86_64|amd64) HOST_ARCH=x86_64; HOST_DOCKER_ARCH=amd64 ;;
+  aarch64|arm64) HOST_ARCH=aarch64; HOST_DOCKER_ARCH=arm64 ;;
+  *) die "This server's CPU architecture is '$HOST_ARCH'. Supported: x86_64 (amd64) and aarch64 (arm64)." ;;
+esac
 
 # installed directory
 if [ -z "$INSTALL_DIR" ]; then
