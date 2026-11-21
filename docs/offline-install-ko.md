@@ -44,7 +44,7 @@
 
 폐쇄망 서버(root 권한):
 
-- 번들과 **같은 CPU 아키텍처**의 Linux, `bash`, `tar`, `gzip`, `sha256sum`, `openssl`, `awk`, `sed`, `grep`, `iptables` 또는 `nftables`
+- **x86_64(amd64)** 또는 **aarch64(arm64)** Linux - 번들을 만들 때 고른 CPU 아키텍처와 같아야 함, `bash`, `tar`, `gzip`, `sha256sum`, `openssl`, `awk`, `sed`, `grep`, `iptables` 또는 `nftables`
 - 여유 디스크: 번들 크기(압축 해제) **+** 이미지 크기(Docker 데이터 디렉터리, 보통 `/var/lib/docker`)
 
 ## 3. 1단계 - 번들 만들기 (인터넷이 되는 머신)
@@ -57,15 +57,17 @@ cd docker-images
 
 대화식으로 진행됩니다.
 
-1. **대상 OS 계열** (화살표 메뉴: ↑/↓ 또는 `j`/`k` 이동, Enter 선택). CPU 아키텍처는 x86_64(amd64) 로 고정이며
-   **aarch64/arm64 는 아직 지원되지 않습니다** (`--arch aarch64` 는 오류로 중단).
-2. **서비스 선택** - 체크박스 메뉴. ↑/↓(또는 `j`/`k`)로 이동, **Space** 로 토글, `a` = 전체, `n` = 없음, **Enter** = 계속.
+1. **대상 OS 계열** (화살표 메뉴: ↑/↓ 또는 `j`/`k` 이동, Enter 선택).
+2. 서버의 **대상 CPU 아키텍처**: `x86_64 (amd64)`(기본값) 또는 `aarch64 (arm64)`. 둘 다 지원합니다. 일부 선택 서비스는 **x86_64 전용**입니다 -
+   GPU(`vision-gpu`, 이미지 `vision-aio-gpu`)와 일부 서드파티 이미지(예: `ollama` ROCm 변형). aarch64 번들에 이런 서비스를 고르면
+   스크립트가 해당 서비스를 알려 주고 아무것도 내려받기 전에 중단하므로, 선택에서 빼고 다시 실행하세요.
+3. **서비스 선택** - 체크박스 메뉴. ↑/↓(또는 `j`/`k`)로 이동, **Space** 로 토글, `a` = 전체, `n` = 없음, **Enter** = 계속.
    필수 서비스는 잠금 표시되며 해제할 수 없습니다. 터미널이 아닐 때(파이프/CI)나 `TERM=dumb` 에서는 번호 입력 방식으로 자동 전환됩니다.
    `mongo redis webapp sclab-proxy mail` 은 항상 포함됩니다. 선택 항목: `qdrant ai-service node-vm-service sclab-agent gis-process
    mqtt-client mqtt-broker kafka-client tileserver gotenberg vision vision-gpu ollama vllm speaches`.
    선택하지 않은 서비스는 이미지를 받지 않고 번들의 `docker-compose.yml` 에서도 빠집니다.
-3. **라이선스 키**(입력 숨김) - 번들 안 `license/LICENSE.key`(권한 600)로 저장되고 서버에서 자동 적용됩니다.
-4. 필요하면 AWS CLI 설치 / `aws configure` / ECR 로그인, 이어서 pull, save, 압축, 분할.
+4. **라이선스 키**(입력 숨김) - 번들 안 `license/LICENSE.key`(권한 600)로 저장되고 서버에서 자동 적용됩니다.
+5. 필요하면 AWS CLI 설치 / `aws configure` / ECR 로그인, 이어서 pull, save, 압축, 분할.
 
 비대화식 예:
 
@@ -97,14 +99,14 @@ cd docker-images
 
 - 준비물: 실행 중인 Docker 엔진(**Docker Desktop**, **OrbStack**, **Colima**), Homebrew(선택, AWS CLI 설치에 사용), macOS 기본 도구
   (기본 bash 3.2 와 BSD 도구로 동작). AWS CLI 가 없으면 자동 설치합니다: `brew install awscli`, 없으면 공식 설치 프로그램을 현재 사용자 전용(`~/.local/aws-cli`, sudo 불필요)으로 설치합니다.
-- **대상**은 메뉴 / `--os` / `--arch` 로 고른 서버이며 Mac 의 CPU 가 아닙니다. Apple Silicon 에서도 메뉴 기본값은 x86_64 입니다.
+- **대상**은 메뉴 / `--os` / `--arch` 로 고른 서버이며 Mac 의 CPU 가 아닙니다. Apple Silicon 에서도 메뉴 기본값은 x86_64 이며, arm64 서버용이면 aarch64 를 고르세요.
   이미지는 `docker pull --platform linux/amd64`(또는 `linux/arm64`)로 받아 `docker save --platform ...` 로 저장하며, 다른 아키텍처 코드는 실행하지 않습니다(에뮬레이션 없음).
   서버용 Docker Engine tgz 와 Compose 바이너리는 번들에 **내려받기만** 하고 Mac 에는 설치하지 않습니다.
 - 이미지는 로컬 Docker 엔진에 pull 되어 같은 이름의 로컬 태그를 바꿉니다. 엔진에 같은 태그의 다른 아키텍처 이미지(예: 직접 받은 arm64 `mongo:8.2.7`)가 있으면
   다른 아키텍처로 pull 할 때 대체될 수 있으니, 필요하면 다시 pull 하세요.
 - 디스크: 이미지가 Docker VM 안에 한 번, Mac 의 `<out>/.work` 에 스테이징 파일로 한 번 더, 최종 분할 파일로 또 저장됩니다
   (Mac 에서 이미지 크기의 약 2.5배 + Docker VM 안의 이미지. 필요하면 Docker Desktop 디스크 한도를 늘리세요).
-- 현재 SCLAB 이미지는 x86_64 로 만드세요: `onpremise-webapp` 이 아직 amd64 전용이라 `--arch aarch64` 는 오류로 중단됩니다(현재 미지원). 메일 릴레이는 멀티아키(`boky/postfix`, 아래 참고)로 바뀌었습니다. 멀티아키 `onpremise-webapp` 이 ECR 에 올라오기 전에는 aarch64 번들을 만들 수 없습니다.
+- x86_64 번들과 aarch64 번들 모두 어떤 Mac 에서든 만들 수 있습니다. GPU 와 일부 서드파티 선택 서비스는 x86_64 전용입니다(위 2단계 참고).
 - 아카이브는 root 소유로, macOS 메타데이터(`._*` 파일 / 확장 속성) 없이 만들어져 Linux 에서 깨끗하게 풀립니다.
 
 ```bash
@@ -171,7 +173,7 @@ sudo bash ./install-offline.sh --yes
 
 | 단계 | 동작 |
 |---|---|
-| 1/7 | root, Linux, 번들과 CPU 아키텍처 일치, 디스크 여유, 분할 파일 누락 여부 |
+| 1/7 | root, Linux, x86_64 또는 aarch64 CPU 가 번들과 일치, 디스크 여유, 분할 파일 누락 여부 |
 | 2/7 | `sha256sum -c SHA256SUMS` - 손상/누락 시 아무것도 바꾸기 전에 중단 |
 | 3/7 | 분할 파일을 합쳐 `/opt/sclab/bundle-<이름>` 에 압축 해제(스트리밍: 전체 크기 사본을 따로 만들지 않음) |
 | 4/7 | 번들의 Docker Engine + Compose 설치(systemd 유닛, OpenRC 서비스, 없으면 백그라운드 `dockerd`). **Docker 와 Compose 가 이미 동작하면 건너뜀** |
@@ -289,13 +291,13 @@ sudo ./logs.sh                  # 로그 보기
 ```
 
 메뉴에는 필수 5개를 포함한 모든 서비스가 나오며 `webapp` 이 기본 체크되어 있습니다. 터미널이 없으면 번호 입력 방식으로 바뀝니다.
-AWS CLI 가 없으면 설치하고, ECR 에 로그인한 뒤, 선택한 이미지만 `docker pull --platform linux/amd64` + `docker save` 하여
+AWS CLI 가 없으면 설치하고, ECR 에 로그인한 뒤, 선택한 이미지만 `docker pull --platform linux/amd64`(`--arch aarch64` 이면 `linux/arm64`) + `docker save` 하여
 압축한 아카이브를 만듭니다(기본 1GB 단위 분할, 또는 하나의 파일. 아래 참고).
 
 | 옵션 | 의미 |
 |---|---|
 | `--services 목록` | 쉼표로 구분한 서비스. 예: `webapp,mail` (`--list-services` 로 전체 확인) |
-| `--arch x86_64` | 대상 CPU 아키텍처(현재 기본값이자 유일한 지원값. `aarch64` 는 거부됨) |
+| `--arch ARCH` | 대상 CPU 아키텍처: `x86_64`(= `amd64`, 기본값) 또는 `aarch64`(= `arm64`). 대화식 실행에서는 메뉴로 묻습니다. GPU 와 일부 선택 서비스는 x86_64 전용 |
 | `--out 디렉터리` | 출력 디렉터리(기본 `./sclab-update-out`) |
 | `--name 이름` | 번들 이름(기본 `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
 | `--part-size 크기` | 분할 파일 크기: `500M`, `5G`, 단위 없는 숫자는 MB (기본 `1G`) |
@@ -386,7 +388,7 @@ sudo bash ./update-offline-images.sh --rollback <번들-이름>
 | `No update bundle found in ...` | 파일이 있는 디렉터리에서 실행하거나 `--dir` 사용. `<이름>.MANIFEST.json` 이 있어야 함 |
 | `Missing bundle file(s): ...` | 분할 파일 일부를 복사하지 않음. 모든 `<이름>.tar.gz.partNNN` 을 `<이름>.SHA256SUMS` 옆에 복사 |
 | `Checksum verification FAILED` | 전송 중 파일 손상. 해당 파일을 다시 복사. 아무것도 변경되지 않았음 |
-| `Architecture mismatch` | 번들과 서버의 CPU 아키텍처가 다름. 서버에 맞게 `--arch` 로 다시 만들기 |
+| `Architecture mismatch` | 번들과 서버의 CPU 아키텍처가 다름. 서버에 맞게 `--arch x86_64` 또는 `--arch aarch64` 로 다시 만들기 |
 | `Several update bundles found and no terminal` | 무인 실행에서는 `--bundle 이름` 또는 `--all` 사용 |
 | `Could not find the installed docker-images directory` | 설치 디렉터리에서 실행하거나 `--install-dir /opt/sclab/docker-images` 지정 |
 | `Not enough free disk space ...` | 공간 확보 또는 더 큰 디스크에 `--work-dir`(이미지는 Docker 데이터 디렉터리에도 적재됨) |
@@ -399,7 +401,7 @@ sudo bash ./update-offline-images.sh --rollback <번들-이름>
 |---|---|
 | `Missing bundle file(s): ...` | 분할 파일 일부를 복사하지 않음. 모든 `*.partNNN` 을 `SHA256SUMS` 옆에 복사 |
 | `Checksum verification FAILED` | 전송 중 파일 손상. 해당 파일을 다시 복사. 아무것도 설치되지 않았음 |
-| `Architecture mismatch` | 번들과 서버의 CPU 아키텍처가 다름. `--arch` 로 다시 만들기 |
+| `Architecture mismatch` | 번들과 서버의 CPU 아키텍처가 다름. 서버에 맞게 `--arch x86_64` 또는 `--arch aarch64` 로 다시 만들기 |
 | `Not enough disk space ...` | 공간 확보 또는 더 큰 디스크에 `--dest`. Docker 이미지는 `/var/lib/docker` 에도 공간이 필요 |
 | `Docker was installed but the daemon did not start` | `journalctl -u docker`(systemd) 또는 `/var/log/dockerd.log` 확인, `iptables`/`nft` 와 커널 `overlay` 지원 확인 |
 | 컨테이너에 네트워크가 없음 | OS 설치 매체에서 `iptables`(또는 nftables) 설치. firewalld 를 쓰는 RHEL 계열은 firewalld 기동 후 `systemctl restart docker` |

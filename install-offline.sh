@@ -223,7 +223,11 @@ if [ -n "$DOCKER_DATA_ROOT" ]; then
 fi
 
 HOST_ARCH="$(uname -m)"
-case "$HOST_ARCH" in x86_64|amd64) HOST_ARCH=x86_64 ;; aarch64|arm64) HOST_ARCH=aarch64 ;; esac
+case "$HOST_ARCH" in
+  x86_64|amd64) HOST_ARCH=x86_64 ;;
+  aarch64|arm64) HOST_ARCH=aarch64 ;;
+  *) die "This server's CPU architecture is '$HOST_ARCH'. Supported: x86_64 (amd64) and aarch64 (arm64)." ;;
+esac
 [ "$HOST_ARCH" = "$TARGET_ARCH" ] || die "Architecture mismatch: this server is '$HOST_ARCH' but the bundle was built for '$TARGET_ARCH'. Build a bundle for this server with make-offline-zip.sh."
 
 DISTRO_ID="unknown"; DISTRO_LIKE=""

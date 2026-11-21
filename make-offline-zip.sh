@@ -63,7 +63,8 @@ Options:
   --os NAME                 Target OS family: ubuntu | rhel | amzn | suse | alpine | generic
                               ubuntu = Ubuntu/Debian, rhel = RHEL/Rocky/Alma/CentOS/Oracle/Fedora,
                               amzn = Amazon Linux, suse = SUSE/openSUSE, alpine = Alpine, generic = other.
-  --arch ARCH               Target architecture: x86_64 (default). aarch64/arm64 is not supported yet.
+  --arch ARCH               Target architecture: x86_64 (= amd64, default) | aarch64 (= arm64).
+                              GPU / some optional services are x86_64 only (the script names them and stops).
   --services LIST           Comma separated OPTIONAL services to include (required ones are always included).
                               "none" = only the required ones. See --list-services.
   --list-services           Print the service catalog and exit.
@@ -415,29 +416,24 @@ if [ -z "$TARGET_OS" ]; then
 fi
 case "$TARGET_OS" in ubuntu|rhel|amzn|suse|alpine|generic) ;; *) die "Unknown --os '$TARGET_OS' (ubuntu|rhel|amzn|suse|alpine|generic)." ;; esac
 
-# aarch64/arm64 is NOT offered yet: onpremise-webapp is published for amd64 only (the mail relay image is multi-arch now).
-# The menu keeps hiding aarch64. Once an arm64 onpremise-webapp is in ECR, flip the default below to 1 (or set
-# SCLAB_OFFLINE_ARM64=1 to try it now): the per-image platform pre-check then stops with the exact image list if any selected image
-# still has no linux/arm64 manifest, and otherwise the bundle is built.
-ARM_SUPPORTED="${SCLAB_OFFLINE_ARM64:-0}"
+# Target CPU architecture of the SERVER: x86_64 (amd64, default) or aarch64 (arm64). The SCLAB images are multi-arch;
+# a few optional images are amd64-only (e.g. vision-aio-gpu) - the per-image platform pre-check below names them and stops.
+# (SCLAB_OFFLINE_ARM64 is no longer needed; it is ignored.)
 if [ -z "$TARGET_ARCH" ]; then
-  # Only x86_64 is offered, so there is nothing to ask. (When ARM_SUPPORTED=1, ask here again:
-  #   choose_one "Target CPU architecture of the SERVER (not of this machine):" 1 "x86_64 (amd64)" "aarch64 (arm64)")
-  TARGET_ARCH="x86_64"
   if [ "$INTERACTIVE" = "1" ]; then
-    info "Target CPU architecture: x86_64 (amd64). aarch64/arm64 is not supported yet."
-  elif [ "$HOST_ARCH" != "x86_64" ]; then
-    info "No --arch given: building for an x86_64 server (this machine is $HOST_OS/$HOST_ARCH; aarch64 targets are not supported yet)."
+    idx="$(choose_one "Target CPU architecture of the SERVER (not of this machine):" 1 \
+      "x86_64 (amd64)" \
+      "aarch64 (arm64)   (GPU / some optional services are x86_64 only)")"
+    case "$idx" in 2) TARGET_ARCH=aarch64 ;; *) TARGET_ARCH=x86_64 ;; esac
+  else
+    TARGET_ARCH="x86_64"
+    [ "$HOST_ARCH" = "x86_64" ] || info "No --arch given: building for an x86_64 server (this machine is $HOST_OS/$HOST_ARCH; use --arch aarch64 for an arm64 server)."
   fi
 fi
 case "$TARGET_ARCH" in
   x86_64|amd64) TARGET_ARCH=x86_64; PLATFORM="linux/amd64" ;;
-  aarch64|arm64)
-    if [ "$ARM_SUPPORTED" != "1" ]; then
-      die "--arch $TARGET_ARCH is not supported yet (the onpremise-webapp image is amd64-only until a multi-arch image is published to ECR). Use --arch x86_64. To try aarch64 anyway: SCLAB_OFFLINE_ARM64=1 (the script then checks every selected image for a linux/arm64 manifest and stops naming the ones that lack it)."
-    fi
-    TARGET_ARCH=aarch64; PLATFORM="linux/arm64" ;;
-  *) die "Unsupported --arch '$TARGET_ARCH' (x86_64; aarch64 is not supported yet)." ;;
+  aarch64|arm64) TARGET_ARCH=aarch64; PLATFORM="linux/arm64" ;;
+  *) die "Unsupported --arch '$TARGET_ARCH' (x86_64 | amd64 | aarch64 | arm64)." ;;
 esac
 info "Host: $HOST_OS/$HOST_ARCH | Target server: Linux, OS family=$TARGET_OS, architecture=$TARGET_ARCH ($PLATFORM)"
 
@@ -840,21 +836,20 @@ NEEDS_ECR=0
 if [ "$NO_PULL" = "0" ] && printf '%s\n' "$UNIQ_REFS" | grep -q '\.dkr\.ecr\.'; then NEEDS_ECR=1; fi
 ensure_build_docker
 [ "$NEEDS_ECR" = "1" ] && ecr_login
-fetch_docker_binaries
 
 # Platform pre-check (no image data is downloaded): when the registry holds a multi-platform manifest list for an image,
 # it must contain the target platform. Names every offending image and its services, then stops before any pull.
 # Single-platform images are checked through their config; whatever cannot be checked here is verified after the pull (ARCH_MISMATCH below).
 if [ "$NO_PULL" = "0" ]; then
   info "Checking that every image has a $PLATFORM manifest"
-  NO_PLATFORM=""
+  NO_PLATFORM=""; NO_PLATFORM_SVCS=""
   for ref in $UNIQ_REFS; do
     mf="$(dk manifest inspect "$ref" 2>&1)" || { warn "Could not read the manifest of $ref (will be checked when pulling): $(printf '%s' "$mf" | head -n1)"; continue; }
     if printf '%s' "$mf" | grep -q '"manifests"'; then
       if ! printf '%s' "$mf" | tr -d ' \n' | grep -q "\"architecture\":\"$want_arch\",\"os\":\"linux\""; then
         svcs="$(awk -F'\t' -v r="$ref" '$2 == r { printf "%s%s", (n++ ? "," : ""), $1 }' "$IMAGE_LIST")"
         err "$ref has no $PLATFORM manifest (used by: $svcs)."
-        NO_PLATFORM="$NO_PLATFORM $ref"
+        NO_PLATFORM="$NO_PLATFORM $ref"; NO_PLATFORM_SVCS="$NO_PLATFORM_SVCS,$svcs"
       fi
     else
       # single-platform image: read the architecture from its config (needs buildx; otherwise checked after the pull)
@@ -862,13 +857,20 @@ if [ "$NO_PULL" = "0" ]; then
       if [ -n "$one" ] && [ "$one" != "linux/$want_arch" ]; then
         svcs="$(awk -F'\t' -v r="$ref" '$2 == r { printf "%s%s", (n++ ? "," : ""), $1 }' "$IMAGE_LIST")"
         err "$ref is published only for $one, not $PLATFORM (used by: $svcs)."
-        NO_PLATFORM="$NO_PLATFORM $ref"
+        NO_PLATFORM="$NO_PLATFORM $ref"; NO_PLATFORM_SVCS="$NO_PLATFORM_SVCS,$svcs"
       fi
     fi
   done
-  [ -z "$NO_PLATFORM" ] || die "These images are not published for $PLATFORM:$NO_PLATFORM
-A bundle with images of another architecture would not run on the target. Deselect the services that use them, build for the architecture the images support (x86_64), or wait until a multi-arch image is published."
+  if [ -n "$NO_PLATFORM" ]; then
+    NO_PLATFORM_SVCS="$(printf '%s' "$NO_PLATFORM_SVCS" | tr ',' '\n' | sed '/^$/d' | sort -u | paste -sd, -)"
+    die "These images are not published for $PLATFORM:$NO_PLATFORM
+Services that need them: $NO_PLATFORM_SVCS
+A bundle with images of another architecture would not run on the target. Remove these services from the selection (--services without them),
+or build for x86_64 (--arch x86_64) if the server is x86_64. GPU services (e.g. vision-gpu) and some optional third-party images are x86_64 only."
+  fi
 fi
+
+fetch_docker_binaries
 
 IMAGES_TSV="$STAGE/images.tsv"   # ref<TAB>image id<TAB>file<TAB>repo digest<TAB>size bytes<TAB>service(s)
 : > "$IMAGES_TSV"
@@ -911,7 +913,7 @@ done
 
 if [ -n "$ARCH_MISMATCH" ]; then
   die "These images are not available for $TARGET_ARCH:$ARCH_MISMATCH
-A bundle with images of another architecture would not run on the target. Build for the architecture the images support (x86_64), or deselect the services that use them."
+A bundle with images of another architecture would not run on the target. Deselect the services that use them (GPU and some optional images are x86_64 only), or build with --arch x86_64 for an x86_64 server."
 fi
 
 # Disk space check (before the big export): staged tars + final parts ~ 2x the image size.

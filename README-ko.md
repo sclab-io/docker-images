@@ -63,7 +63,7 @@ SCLAB Docker 이미지를 내려받으려면 AWS 자격 증명이 필요합니�
 ##### 하드웨어
 - 메모리: 최소 8GB
 - 저장 공간: 최소 40GB
-- 아키텍처: x86_64 (AMD64)
+- 아키텍처: x86_64 (AMD64) 또는 aarch64 (ARM64). GPU 서비스(예: `vision-gpu`)와 일부 서드파티 선택 이미지는 x86_64 전용
 
 ##### 소프트웨어
 - Linux OS
@@ -117,7 +117,7 @@ sudo ./install.sh
 
 ### 폐쇄망(오프라인) 설치
 
-인터넷이 없는 서버에는 인터넷이 되는 머신에서 `./make-offline-zip.sh` 로 번들을 만든 뒤(대상 OS/아키텍처와 서비스를 선택하면
+인터넷이 없는 서버에는 인터넷이 되는 머신에서 `./make-offline-zip.sh` 로 번들을 만든 뒤(대상 OS, 아키텍처(x86_64 또는 aarch64), 서비스를 선택하면
 이미지, Docker Engine, Compose, 이 저장소, 라이선스 키가 기본 1GB 단위 분할 파일(분할 안 함 / GB / MB 단위 선택 가능)과 `SHA256SUMS` 로 묶입니다) 파일을 서버로 옮기고
 `sudo bash ./install-offline.sh` 를 실행합니다. 전체 안내: [docs/offline-install-ko.md](docs/offline-install-ko.md) ([English](docs/offline-install.md)).
 
