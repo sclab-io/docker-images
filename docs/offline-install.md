@@ -19,7 +19,7 @@ is packed on a machine **with** internet access into a few split files. You copy
 
 | Script | Where | What it does |
 |---|---|---|
-| `make-offline-zip.sh` | machine with internet (any Linux) | asks for the target OS family and the services (the target is always x86_64/amd64), installs the AWS CLI if missing, logs in to ECR, downloads Docker Engine + Compose, runs `docker pull` + `docker save` for every selected image, packs everything (plus the license key) into one archive (1 GB parts by default; no split or GB/MB size is selectable), writes `SHA256SUMS` and `MANIFEST.json` |
+| `make-offline-zip.sh` | machine with internet (any Linux) | asks for the target OS/architecture and the services, installs the AWS CLI if missing, logs in to ECR, downloads Docker Engine + Compose, runs `docker pull` + `docker save` for every selected image, packs everything (plus the license key) into one archive (1 GB parts by default; no split or GB/MB size is selectable), writes `SHA256SUMS` and `MANIFEST.json` |
 | `install-offline.sh` | air-gapped server (root) | verifies the checksums, joins and extracts the parts, installs Docker + Compose from the bundle (unless Docker is already installed), `docker load`s the images, runs `install.sh --offline` (license key read from the bundle) and starts the services |
 | `make-offline-update-zip.sh` | machine with internet (Linux or macOS) | builds a small **update bundle** with only the images you pick (e.g. `webapp`) - see section 8 |
 | `update-offline-images.sh` | air-gapped server (root) | verifies and loads an update bundle and applies it to the installed system (rolling `webapp` update, health check, rollback, history) - see section 8 |
@@ -47,7 +47,7 @@ On the machine with internet access (Linux, or macOS Intel/Apple Silicon - see "
 
 On the air-gapped server (root access):
 
-- Linux on **x86_64 (amd64)** (other CPU architectures such as aarch64/arm64 are not supported), `bash`, `tar`, `gzip`, `sha256sum`, `openssl`, `awk`, `sed`, `grep`, and `iptables` or `nftables`
+- Linux with the **same CPU architecture** as the bundle, `bash`, `tar`, `gzip`, `sha256sum`, `openssl`, `awk`, `sed`, `grep`, and `iptables` or `nftables`
 - free disk space of about the bundle size (extraction) **plus** the image size (Docker data directory, usually `/var/lib/docker`)
 
 ## 3. Step 1 - build the bundle (machine with internet)
@@ -60,8 +60,8 @@ cd docker-images
 
 The script is interactive:
 
-1. **Target OS family** (arrow-key menu: Up/Down or `j`/`k` to move, Enter to select). There is no architecture choice: SCLAB Studio
-   supports **x86_64 (amd64) servers only** (`--arch` accepts only `x86_64`/`amd64`; any other value stops with an error).
+1. **Target OS family** (arrow-key menu: Up/Down or `j`/`k` to move, Enter to select). The CPU architecture is fixed to x86_64 (amd64);
+   **aarch64/arm64 is not supported yet** (`--arch aarch64` stops with an error).
 2. **Services** - a checkbox menu. Up/Down (or `j`/`k`) move, **Space** toggles, `a` = all, `n` = none, **Enter** = continue.
    The required services are shown as locked and cannot be unchecked. Without a terminal (pipe/CI) or with `TERM=dumb` the script falls back to
    numbered prompts (type a number to toggle).
@@ -103,14 +103,15 @@ terminal (or with `--yes`) the default 1 GB applies unless you pass an option:
 - Requirements: a running Docker engine (**Docker Desktop**, **OrbStack**, or **Colima**), Homebrew (optional, used to install the AWS CLI),
   the stock macOS tools (the script works with the default bash 3.2 and BSD tools). The AWS CLI is installed automatically
   if it is missing: `brew install awscli`, otherwise the official installer for the current user only (`~/.local/aws-cli`, no sudo).
-- The **target** is always an x86_64 (amd64) Linux server, whatever the Mac's own CPU is - an Apple Silicon Mac builds an amd64 bundle.
-  Images are pulled with `docker pull --platform linux/amd64` and exported with `docker save --platform linux/amd64`; nothing of the
+- The **target** is what you pick in the menu / `--os` / `--arch`, not the Mac's own CPU. The menu defaults to x86_64 even on Apple Silicon.
+  Images are pulled with `docker pull --platform linux/amd64` (or `linux/arm64`) and exported with `docker save --platform ...`; nothing of the
   other architecture is executed (no emulation). The Docker Engine tarball and the Compose binary for the server are only **downloaded** into the bundle,
   never installed on the Mac.
 - Images are pulled into your local Docker engine and replace local tags of the same name. If the engine still holds a different-architecture
-  variant of the same tag (for example your own arm64 `mongo:8.2.7` on an Apple Silicon Mac), the amd64 pull replaces it - pull it again afterwards if you need it.
+  variant of the same tag (for example your own arm64 `mongo:8.2.7`), a pull for the other architecture replaces it - pull it again afterwards if you need it.
 - Disk: the images are stored once inside the Docker VM and once more as staging files in `<out>/.work` on the Mac, plus the final parts
   (about 2.5 x the image size in total on the Mac, plus the images in the Docker VM; raise the Docker Desktop disk limit if needed).
+- Use an x86_64 build for the current SCLAB images: `onpremise-webapp` is still published for amd64 only, so `--arch aarch64` stops with an error (currently not supported). The mail relay is multi-arch (`boky/postfix`, see below). Once a multi-arch `onpremise-webapp` is in ECR, aarch64 bundles become possible; until then they are not.
 - The archives are created with root ownership and without macOS metadata (`._*` files / extended attributes), so they extract cleanly on Linux.
 
 ```bash
@@ -177,7 +178,7 @@ The script runs these steps (each prints a `== n/7 ... ==` header):
 
 | Step | Action |
 |---|---|
-| 1/7 | root, Linux, x86_64 (amd64) CPU, free disk space, all parts present |
+| 1/7 | root, Linux, CPU architecture equals the bundle, free disk space, all parts present |
 | 2/7 | `sha256sum -c SHA256SUMS` - a damaged or incomplete file stops the installation before anything is changed |
 | 3/7 | joins the parts and extracts to `/opt/sclab/bundle-<name>` (streamed: no second full-size copy) |
 | 4/7 | installs Docker Engine + Compose from the bundle (systemd unit, OpenRC service, or a background `dockerd` as fallback). **Skipped if Docker and Compose already work** |
@@ -211,7 +212,7 @@ Offline mode: skipping AWS CLI / AWS credentials / ECR login (images are loaded 
 NAME                          IMAGE              ...   STATUS
 mongo                         mongo:8.2.7              Up 3 seconds
 redis                         redis:8.2.1              Up 3 seconds
-mail                          boky/postfix:5.2.1       Up 3 seconds
+mail                          bytemark/smtp            Up 3 seconds
 docker-images-sclab-proxy-1   nginx:alpine3.18         Up 3 seconds
 ```
 
@@ -306,7 +307,7 @@ prompt is used. The script installs the AWS CLI if it is missing, logs in to ECR
 | Option | Meaning |
 |---|---|
 | `--services LIST` | comma separated services, e.g. `webapp,mail` (`--list-services` shows them all) |
-| `--arch x86_64` | target CPU architecture: only `x86_64` (`amd64`) is supported, which is also the default; any other value is refused |
+| `--arch x86_64` | target CPU architecture (default and only supported value for now; `aarch64` is refused) |
 | `--out DIR` | output directory (default `./sclab-update-out`) |
 | `--name NAME` | bundle name (default `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
 | `--part-size SIZE` | size of each part: `500M`, `5G`, or a bare number in MB (default `1G`) |
@@ -405,7 +406,7 @@ If you select a bundle that is already applied, the script tells you when it was
 | `No update bundle found in ...` | run the script in the directory with the files, or use `--dir`; the `<name>.MANIFEST.json` files must be there |
 | `Missing bundle file(s): ...` | a part was not copied; copy every `<name>.tar.gz.partNNN` next to `<name>.SHA256SUMS` |
 | `Checksum verification FAILED` | a file was damaged in transfer; copy that file again. Nothing was changed |
-| `only x86_64 (amd64) servers` | the server is not x86_64 (e.g. aarch64/arm64); only x86_64 (amd64) servers are supported |
+| `Architecture mismatch` | the bundle was built for another CPU architecture; rebuild it with `--arch` for this server |
 | `Several update bundles found and no terminal` | use `--bundle NAME` or `--all` for unattended runs |
 | `Could not find the installed docker-images directory` | run the script from the install directory or pass `--install-dir /opt/sclab/docker-images` |
 | `Not enough free disk space ...` | free space, or use `--work-dir` on a bigger disk (the images are also loaded into Docker's data directory) |
@@ -418,7 +419,7 @@ If you select a bundle that is already applied, the script tells you when it was
 |---|---|
 | `Missing bundle file(s): ...` | a part was not copied; copy every `*.partNNN` next to `SHA256SUMS` |
 | `Checksum verification FAILED` | a file was damaged in transfer; copy that file again. Nothing has been installed |
-| `only x86_64 (amd64) servers` / `only x86_64 (amd64) is supported` | the server is not x86_64, or the bundle was not built for x86_64; use an x86_64 server and a bundle from the current scripts |
+| `Architecture mismatch` | the bundle was built for another CPU architecture; rebuild with `--arch` |
 | `Not enough disk space ...` | free space or use `--dest` on a bigger disk; Docker images also need space under `/var/lib/docker` |
 | `Docker was installed but the daemon did not start` | `journalctl -u docker` (systemd) or `/var/log/dockerd.log`; check that `iptables`/`nft` exists and the kernel supports `overlay` |
 | containers have no network | install `iptables` (or nftables) from your OS media; on RHEL-family with firewalld run `systemctl restart docker` after `firewalld` is up |

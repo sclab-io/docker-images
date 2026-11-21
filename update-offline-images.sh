@@ -126,12 +126,8 @@ docker info >/dev/null 2>&1 || die "The Docker daemon is not running (or not rea
 if docker compose version >/dev/null 2>&1; then DC="docker compose"
 elif command_exists docker-compose; then DC="docker-compose"
 else die "Docker Compose is not available (need 'docker compose' or docker-compose)."; fi
-# Only x86_64 (amd64) servers are supported.
 HOST_ARCH="$(uname -m)"
-case "$HOST_ARCH" in
-  x86_64|amd64) HOST_ARCH=x86_64; HOST_DOCKER_ARCH=amd64 ;;
-  *) die "This server's CPU architecture is '$HOST_ARCH'. SCLAB Studio supports only x86_64 (amd64) servers." ;;
-esac
+case "$HOST_ARCH" in x86_64|amd64) HOST_ARCH=x86_64; HOST_DOCKER_ARCH=amd64 ;; aarch64|arm64) HOST_ARCH=aarch64; HOST_DOCKER_ARCH=arm64 ;; *) HOST_DOCKER_ARCH="$HOST_ARCH" ;; esac
 
 # installed directory
 if [ -z "$INSTALL_DIR" ]; then
@@ -762,7 +758,7 @@ process_bundle() { # $1 index
   name="${B_NAME[$bi]}"; dir="${B_DIR[$bi]}"; stem="${B_STEM[$bi]}"; arch="${B_ARCH[$bi]}"
   local manifest="$dir/$stem.MANIFEST.json"
   step "Bundle $name"
-  [ "$arch" = "x86_64" ] || die "Bundle '$name' was built for '$arch', but only x86_64 (amd64) is supported. Build a new update bundle with make-offline-update-zip.sh."
+  [ "$arch" = "$HOST_ARCH" ] || die "Architecture mismatch: this server is '$HOST_ARCH' but bundle '$name' was built for '$arch'. Build a matching update bundle with make-offline-update-zip.sh --arch $HOST_ARCH."
   want_platform_arch="$HOST_DOCKER_ARCH"
   ok "Architecture: $arch (matches this server)"
 
