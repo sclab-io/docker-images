@@ -222,13 +222,9 @@ if [ -n "$DOCKER_DATA_ROOT" ]; then
   if [ "$WILL_INSTALL_DOCKER" = "1" ] || [ "$TARGET_DOCKER_ROOT" = "$EXISTING_DOCKER_ROOT" ]; then DOCKER_ROOT="$TARGET_DOCKER_ROOT"; fi
 fi
 
-# Only x86_64 (amd64) servers are supported.
 HOST_ARCH="$(uname -m)"
-case "$HOST_ARCH" in
-  x86_64|amd64) HOST_ARCH=x86_64 ;;
-  *) die "This server's CPU architecture is '$HOST_ARCH'. SCLAB Studio offline install supports only x86_64 (amd64) servers." ;;
-esac
-[ "$TARGET_ARCH" = "x86_64" ] || die "The bundle was built for '$TARGET_ARCH', but only x86_64 (amd64) is supported. Build a new bundle with make-offline-zip.sh."
+case "$HOST_ARCH" in x86_64|amd64) HOST_ARCH=x86_64 ;; aarch64|arm64) HOST_ARCH=aarch64 ;; esac
+[ "$HOST_ARCH" = "$TARGET_ARCH" ] || die "Architecture mismatch: this server is '$HOST_ARCH' but the bundle was built for '$TARGET_ARCH'. Build a bundle for this server with make-offline-zip.sh."
 
 DISTRO_ID="unknown"; DISTRO_LIKE=""
 if [ -f /etc/os-release ]; then

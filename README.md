@@ -72,7 +72,7 @@ The installation script will prompt you to configure them.
 #### Hardware
 - Memory: 8GB minimum
 - Storage: 40GB free space minimum
-- Architecture: x86_64 (AMD64) only - aarch64/arm64 servers are not supported
+- Architecture: x86_64 (AMD64)
 
 #### Software
 - Linux OS (see compatibility below)
@@ -128,7 +128,7 @@ The installation script will:
 ### Offline (air-gapped) installation
 
 For servers without internet access, build a bundle on a machine that has internet with `./make-offline-zip.sh`
-(pick the target OS family and the services; x86_64 (amd64) servers only; the images, Docker Engine, Compose, this repository and the
+(pick the target OS/architecture and the services; the images, Docker Engine, Compose, this repository and the
 license key are packed into 1 GB split files by default, or one single file, with `SHA256SUMS`), copy the files to the server and run
 `sudo bash ./install-offline.sh`. Full guide: [docs/offline-install.md](docs/offline-install.md) ([한국어](docs/offline-install-ko.md)).
 
