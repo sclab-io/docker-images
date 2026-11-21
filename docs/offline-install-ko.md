@@ -93,6 +93,17 @@ cd docker-images
 
 `--no-split` 과 `--part-size` 는 함께 쓸 수 없습니다. `install-offline.sh` 는 하나의 파일도, 분할 파일도 모두 처리합니다.
 
+**번들 저장 위치.** 완성된 파일은 기본적으로 `./sclab-offline-out`, 즉 스크립트를 실행한 폴더 안의 `sclab-offline-out` 폴더에 저장됩니다.
+다른 곳(예: USB 디스크)에 바로 저장하려면 `--out 디렉터리` 를 지정합니다.
+만드는 동안 이미지는 먼저 작업용 임시 폴더 `--work-dir 디렉터리`(기본값 `<out>/.work`)에 내보내지며, 선택한 이미지 전체 크기만큼의
+공간이 필요하고 끝나면 삭제됩니다(`--keep-work` 를 주면 남김). 출력 디렉터리에 같은 이름의 번들 파일이 이미 있으면 스크립트가 멈추므로
+다른 `--out` 이나 `--name` 을 지정하세요. 디스크 공간이 부족하면 `--out` 과/또는 `--work-dir` 을 큰 디스크로 지정합니다:
+
+```bash
+./make-offline-zip.sh --out /Volumes/USB/sclab-bundle                        # USB 디스크에 바로 저장
+./make-offline-zip.sh --out ~/bundles --work-dir /Volumes/BigDisk/tmp       # 작업용 임시 파일은 더 큰 다른 디스크에
+```
+
 ### Mac(Intel / Apple Silicon)에서 번들 만들기
 
 `make-offline-zip.sh` 는 macOS 에서도 실행됩니다(번들은 항상 **Linux** 서버용이며 `install-offline.sh` 는 Linux 전용입니다).
@@ -131,7 +142,7 @@ cd docker-images
 [ ok ] SHA256SUMS written
 ```
 
-서버로 옮길 파일(출력 디렉터리의 모든 파일):
+서버로 옮길 파일(출력 디렉터리의 모든 파일 - 기본 `./sclab-offline-out`, 또는 `--out` 으로 지정한 디렉터리):
 
 ```
 sclab-offline-20261120-x86_64.tar.gz.part001 ... .part00N   (기본 1GB 단위. --no-split 이면 sclab-offline-20261120-x86_64.tar.gz 하나)
@@ -145,7 +156,8 @@ install-offline.sh    설치 스크립트 (아카이브 안에도 사본이 있�
 
 ## 4. 2단계 - 파일을 서버로 옮기기
 
-**모든** 파일을 서버의 한 디렉터리에 복사합니다(USB 디스크, 내부 파일 공유, 점프 호스트를 통한 `scp` 등).
+출력 디렉터리(기본 `./sclab-offline-out`, 또는 `--out` 으로 지정한 디렉터리)의 **모든** 파일을 서버의 한 디렉터리에 복사합니다
+(USB 디스크, 내부 파일 공유, 점프 호스트를 통한 `scp` 등. 작업용 `.work` 폴더는 필요 없습니다).
 `install-offline.sh` 가 다시 검증하므로 여기서의 확인은 선택이지만, 전송 오류를 빨리 찾는 방법입니다.
 
 ```bash
@@ -299,6 +311,7 @@ AWS CLI 가 없으면 설치하고, ECR 에 로그인한 뒤, 선택한 이미�
 | `--services 목록` | 쉼표로 구분한 서비스. 예: `webapp,mail` (`--list-services` 로 전체 확인) |
 | `--arch ARCH` | 대상 CPU 아키텍처: `x86_64`(= `amd64`, 기본값) 또는 `aarch64`(= `arm64`). 대화식 실행에서는 메뉴로 묻습니다. GPU 와 일부 선택 서비스는 x86_64 전용 |
 | `--out 디렉터리` | 출력 디렉터리(기본 `./sclab-update-out`) |
+| `--work-dir 디렉터리` | 작업용 임시 폴더(기본 `<out>/.work-<이름>`, 이미지 크기만큼 공간 필요) |
 | `--name 이름` | 번들 이름(기본 `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
 | `--part-size 크기` | 분할 파일 크기: `500M`, `5G`, 단위 없는 숫자는 MB (기본 `1G`) |
 | `--no-split` | 분할하지 않고 하나의 `<이름>.tar.gz` 로 만들기 |
@@ -319,9 +332,21 @@ sclab-update-20261120-153045-x86_64.MANIFEST.json     (종류, 생성 시각, �
 update-offline-images.sh                              (모든 번들에 공통인 같은 스크립트)
 ```
 
+**업데이트 번들 저장 위치.** 파일은 기본적으로 `./sclab-update-out`(스크립트를 실행한 폴더 안)에 저장되며 `--out 디렉터리` 로 바꿀 수 있습니다.
+모든 파일 이름은 번들 이름(`--name`, 기본값 `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`)으로 시작합니다.
+작업용 임시 폴더는 `--work-dir 디렉터리`(기본값 `<out>/.work-<이름>`)이며, 선택한 이미지 크기만큼의 공간이 필요하고 끝나면 삭제됩니다
+(`--keep-work` 를 주면 남김). 출력 디렉터리에 같은 이름의 번들 파일이 이미 있으면 스크립트가 멈추므로 다른 `--out` 이나 `--name` 을 지정하세요.
+디스크 공간이 부족하면 `--out` 과/또는 `--work-dir` 을 큰 디스크로 지정합니다:
+
+```bash
+./make-offline-update-zip.sh --services webapp --out /Volumes/USB/sclab-update
+./make-offline-update-zip.sh --services webapp --out ~/bundles --work-dir /Volumes/BigDisk/tmp
+```
+
 ### 8.2 파일을 서버로 옮기기
 
-번들의 **모든** 파일(`<이름>.*` 과 `update-offline-images.sh`)을 서버의 **한 디렉터리**에 복사합니다(USB, `scp` 등).
+출력 디렉터리(기본 `./sclab-update-out`, 또는 `--out` 으로 지정한 디렉터리)에서 번들의 **모든** 파일(`<이름>.*` 과
+`update-offline-images.sh`)을 서버의 **한 디렉터리**에 복사합니다(USB, `scp` 등).
 여러 업데이트 번들의 파일이 같은 디렉터리에 있어도 되며, 번들은 이름 접두사로 구분됩니다.
 
 ### 8.3 서버에서 업데이트 적용하기

@@ -98,6 +98,18 @@ terminal (or with `--yes`) the default 1 GB applies unless you pass an option:
 
 `--no-split` and `--part-size` cannot be combined. `install-offline.sh` handles both a single file and split parts.
 
+**Where the bundle is stored.** By default the finished files go to `./sclab-offline-out` - a folder named `sclab-offline-out` inside
+the directory you ran the script from. Use `--out DIR` to write them somewhere else (for example straight to a USB disk).
+While building, the images are first exported to a staging directory, `--work-dir DIR` (default `<out>/.work`); it needs roughly the
+size of all selected images and is deleted at the end (`--keep-work` keeps it). If the output directory already contains files of a
+bundle with the same name, the script stops - pass another `--out` or `--name`. If a disk is too small, point `--out` and/or
+`--work-dir` to a bigger disk:
+
+```bash
+./make-offline-zip.sh --out /Volumes/USB/sclab-bundle                        # write the bundle to a USB disk
+./make-offline-zip.sh --out ~/bundles --work-dir /Volumes/BigDisk/tmp       # staging files on another, bigger disk
+```
+
 ### Building the bundle on a Mac (Intel or Apple Silicon)
 
 `make-offline-zip.sh` also runs on macOS (the bundle is always for a **Linux** server; `install-offline.sh` is Linux-only).
@@ -138,7 +150,7 @@ Result (excerpt of a real run, sample bundle with 100 MB parts):
 [ ok ] SHA256SUMS written
 ```
 
-Files to upload (everything in the output directory):
+Files to upload (everything in the output directory - `./sclab-offline-out` by default, or the `--out` directory):
 
 ```
 sclab-offline-20261120-x86_64.tar.gz.part001 ... .part00N   (1 GB each by default; with --no-split: one sclab-offline-20261120-x86_64.tar.gz)
@@ -152,7 +164,8 @@ install-offline.sh    the installer (a copy is also inside the archive)
 
 ## 4. Step 2 - move the files to the server
 
-Copy **all** files into one directory on the server (USB disk, internal file share, `scp` through a jump host, ...).
+Copy **all** files of the output directory (`./sclab-offline-out` by default, or the directory given with `--out`; the `.work` staging
+folder is not needed) into one directory on the server (USB disk, internal file share, `scp` through a jump host, ...).
 Verifying the copy is optional here - `install-offline.sh` verifies everything again - but it is a quick way to find a bad transfer:
 
 ```bash
@@ -311,6 +324,7 @@ prompt is used. The script installs the AWS CLI if it is missing, logs in to ECR
 | `--services LIST` | comma separated services, e.g. `webapp,mail` (`--list-services` shows them all) |
 | `--arch ARCH` | target CPU architecture: `x86_64` (= `amd64`, default) or `aarch64` (= `arm64`); interactive runs ask. GPU and some optional services are x86_64 only |
 | `--out DIR` | output directory (default `./sclab-update-out`) |
+| `--work-dir DIR` | staging directory (default `<out>/.work-<name>`; needs about the size of the images) |
 | `--name NAME` | bundle name (default `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`) |
 | `--part-size SIZE` | size of each part: `500M`, `5G`, or a bare number in MB (default `1G`) |
 | `--no-split` | write one single `<name>.tar.gz` instead of parts |
@@ -332,9 +346,21 @@ sclab-update-20261120-153045-x86_64.MANIFEST.json     (kind, creation time, per 
 update-offline-images.sh                              (the same script for every bundle)
 ```
 
+**Where the update bundle is stored.** By default the files go to `./sclab-update-out` (inside the directory you ran the script
+from); `--out DIR` changes it. Every file name starts with the bundle name (`--name`, default `sclab-update-<YYYYMMDD-HHMMSS>-<arch>`).
+The staging directory is `--work-dir DIR` (default `<out>/.work-<name>`); it needs about the size of the selected images and is
+deleted at the end (`--keep-work` keeps it). If the output directory already contains files of a bundle with the same name, the
+script stops - pass another `--out` or `--name`. If a disk is too small, point `--out` and/or `--work-dir` to a bigger disk:
+
+```bash
+./make-offline-update-zip.sh --services webapp --out /Volumes/USB/sclab-update
+./make-offline-update-zip.sh --services webapp --out ~/bundles --work-dir /Volumes/BigDisk/tmp
+```
+
 ### 8.2 Copy the files to the server
 
-Copy **all** files of the bundle (`<name>.*` and `update-offline-images.sh`) into **one directory** on the server (USB, `scp`, ...).
+Copy **all** files of the bundle from the output directory (`./sclab-update-out` by default, or the `--out` directory): `<name>.*` and
+`update-offline-images.sh`, into **one directory** on the server (USB, `scp`, ...).
 Files of several update bundles can sit in the same directory; each bundle is recognised by its name prefix.
 
 ### 8.3 Apply the update on the server
